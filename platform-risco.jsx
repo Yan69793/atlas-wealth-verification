@@ -53,7 +53,7 @@
   };
 
   function ScenarioCard({ id, active, onSelect, stressData }) {
-    const meta = SCENARIO_META[id];
+    const meta = SCENARIO_META[id] || { label: id, desc: '—' };
     const loss    = stressData ? stressData.totalLoss    : 0;
     const lossPct = stressData ? stressData.totalLossPct : 0;
     return (
@@ -79,7 +79,7 @@
             <div style={{ fontSize:'1rem', fontWeight:700, color:'var(--red)', fontFamily:'JetBrains Mono, monospace' }}>
               {fmtCompactBRL(loss)}
             </div>
-            <div style={{ fontSize:'0.714rem', color:'var(--muted)' }}>
+            <div style={{ fontSize:'0.714rem', color:'var(--red)' }}>
               {fmtPct(lossPct, 1)} do AUM total
             </div>
           </>
@@ -101,6 +101,8 @@
         const compKeys = { mercado:1, concentracao:1, liquidez:1, suitability:1, operacional:1 };
         let va = compKeys[sortKey] ? a.components[sortKey] : a[sortKey];
         let vb = compKeys[sortKey] ? b.components[sortKey] : b[sortKey];
+        if (va == null) va = asc ? Infinity : -Infinity;
+        if (vb == null) vb = asc ? Infinity : -Infinity;
         if (typeof va === 'string') return asc ? va.localeCompare(vb) : vb.localeCompare(va);
         return asc ? va - vb : vb - va;
       });
@@ -293,7 +295,7 @@
           <KPITile
             label="Perda Estimada"
             value={fmtCompactBRL(activeStress.totalLoss)}
-            sub={SCENARIO_META[scenario].label}
+            sub={(SCENARIO_META[scenario] || { label: scenario }).label}
             variant="navy"
           />
         </div>
@@ -305,7 +307,7 @@
             Cenarios de Stress — clique para ativar
           </div>
           <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
-            {['juros200','bolsa15','liquidez','combinado'].map(id => (
+            {Object.keys(D.STRESS_SHOCKS).map(id => (
               <ScenarioCard
                 key={id}
                 id={id}
@@ -321,7 +323,7 @@
         <div className="card" style={{ marginBottom:24 }}>
           <div className="card-header">
             <span className="card-title">
-              Top 5 mais impactadas &mdash; {SCENARIO_META[scenario].label}
+              Top 5 mais impactadas &mdash; {(SCENARIO_META[scenario] || { label: scenario }).label}
             </span>
           </div>
           <div className="table-wrap">

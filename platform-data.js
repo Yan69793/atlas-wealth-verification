@@ -1098,7 +1098,7 @@
     if      (maxAssetPct > 0.30) conc += 7;
     else if (maxAssetPct > 0.25) conc += 4;
     var hhi = 0;
-    Object.keys(classPcts).forEach(function(cls) { hhi += classPcts[cls] * classPcts[cls]; });
+    Object.keys(classPcts).forEach(function(cls) { if (cls !== 'Liquidez') hhi += classPcts[cls] * classPcts[cls]; });
     if      (hhi > 0.40) conc += 5;
     else if (hhi > 0.25) conc += 3;
     conc = Math.min(25, conc);
@@ -1182,13 +1182,18 @@
       ? Math.round(scores.reduce(function(acc,s){ return acc+s.score; },0) / scores.length) : 0;
     var filaAcao = [];
     scores.filter(function(s){ return s.score >= 40; }).forEach(function(s) {
-      var motivos = [], recs = [];
-      if (s.components.operacional >= 6)  { motivos.push('Status CORRIGIR ativo'); recs.push('Bloquear liberação até resolução dos achados'); }
-      if (s.components.mercado >= 15)     { motivos.push('Underperformance persistente vs CDI'); recs.push('Solicitar relatório de atribuição ao gestor'); }
-      if (s.components.concentracao >= 12){ motivos.push('Concentração acima do limite'); recs.push('Revisar política de diversificação'); }
-      if (s.components.suitability >= 8)  { motivos.push('Exposição incompatível com perfil'); recs.push('Análise de adequação (suitability)'); }
-      if (s.components.liquidez >= 10)    { motivos.push('Liquidez abaixo do mínimo'); recs.push('Rever janela de resgate e buffer de caixa'); }
-      if (RECIDIVA_CODES.indexOf(s.code) >= 0) { motivos.push('Recidiva de alertas (4+ meses)'); recs.push('Escalar para comitê de risco'); }
+      var pares = [
+        { peso: s.components.operacional  / 10, motivo:'Status CORRIGIR ativo',              rec:'Bloquear liberação até resolução dos achados' },
+        { peso: s.components.mercado      / 30, motivo:'Underperformance persistente vs CDI', rec:'Solicitar relatório de atribuição ao gestor' },
+        { peso: s.components.concentracao / 25, motivo:'Concentração acima do limite',        rec:'Revisar política de diversificação' },
+        { peso: s.components.suitability  / 15, motivo:'Exposição incompatível com perfil',   rec:'Análise de adequação (suitability)' },
+        { peso: s.components.liquidez     / 20, motivo:'Liquidez abaixo do mínimo',           rec:'Rever janela de resgate e buffer de caixa' },
+        { peso: RECIDIVA_CODES.indexOf(s.code) >= 0 ? 1 : 0, motivo:'Recidiva de alertas (4+ meses)', rec:'Escalar para comitê de risco' },
+      ];
+      pares = pares.filter(function(p){ return p.peso > 0; });
+      pares.sort(function(a, b){ return b.peso - a.peso; });
+      var motivos = pares.map(function(p){ return p.motivo; });
+      var recs    = pares.map(function(p){ return p.rec; });
       if (motivos.length === 0) { motivos.push('Score elevado (' + s.score + '/100)'); recs.push('Revisão de monitoramento mensal'); }
       filaAcao.push({
         code:s.code, name:s.name, score:s.score, nivel:s.nivel,
@@ -1324,6 +1329,7 @@
     searchAssets: searchAssets,
     portfolioReportData: portfolioReportData,
     exportMonthlySnapshot: exportMonthlySnapshot,
+    STRESS_SHOCKS: STRESS_SHOCKS,
     riskScore:     riskScore,
     riskDashboard: riskDashboard,
     riskStress:    riskStress,
