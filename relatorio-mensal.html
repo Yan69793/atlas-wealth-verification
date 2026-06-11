@@ -1,0 +1,171 @@
+﻿<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Relatorio Mensal Abr/26 - Meridian Advisory</title>
+<style>
+:root{--cream:#f3efe7;--cream-mid:#e8e2d8;--rule:#d0c8bc;--body:#3c3028;--heading:#1a1208;--wine:#7a1f1f;--wine-2:#5e1818;--muted:#8a8070;--green:#2d6a2d;--green-bg:#edf5ed;--red:#9b1c1c;--red-bg:#fdf0f0;--amber:#7a4f00;--amber-bg:#fdf5e0;--mono:'JetBrains Mono','Courier New',monospace}
+*{box-sizing:border-box;margin:0;padding:0}
+html{font-size:14px}
+body{font-family:Georgia,serif;background:var(--cream);color:var(--body);line-height:1.5;min-height:100vh}
+.screen{display:none;min-height:100vh}
+.screen.active{display:flex;flex-direction:column}
+.lock-wrap{flex:1;display:flex;align-items:center;justify-content:center;padding:20px}
+.lock-card{background:#fff;border:1px solid var(--rule);border-radius:8px;padding:40px 32px;max-width:340px;width:100%;text-align:center}
+.lock-title{font-family:'Fraunces',Georgia,serif;font-size:1.5rem;color:var(--wine);margin-bottom:6px}
+.lock-sub{font-size:0.857rem;color:var(--muted);margin-bottom:28px;line-height:1.6}
+.pin-row{display:flex;gap:10px;justify-content:center;margin-bottom:16px}
+.pin-digit{width:52px;height:52px;border:1px solid var(--rule);border-radius:6px;font-size:1.5rem;text-align:center;font-family:monospace;background:#fff;color:var(--heading);outline:none;-webkit-text-security:disc}
+.pin-digit:focus{border-color:var(--wine);box-shadow:0 0 0 2px rgba(122,31,31,.15)}
+.pin-error{color:var(--red);font-size:0.786rem;min-height:20px;margin-bottom:12px}
+.exp-wrap{flex:1;display:flex;align-items:center;justify-content:center;padding:20px}
+.exp-card{background:#fff;border:1px solid var(--rule);border-radius:8px;padding:40px 32px;max-width:420px;width:100%;text-align:center}
+.exp-title{font-family:'Fraunces',Georgia,serif;font-size:1.4rem;color:var(--wine);margin-bottom:10px}
+.report-header{background:var(--wine);color:#fff;padding:28px 32px 22px;border-bottom:3px solid var(--wine-2)}
+.rpt-eyebrow{font-size:0.643rem;letter-spacing:.14em;opacity:.65;margin-bottom:8px;font-family:Georgia,serif}
+.rpt-title{font-family:'Fraunces',Georgia,serif;font-size:1.8rem;font-weight:400;margin-bottom:6px}
+.rpt-meta{font-size:0.786rem;opacity:.78}
+.container{max-width:1100px;margin:0 auto;padding:28px 20px}
+.kpi-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:28px}
+@media(max-width:640px){.kpi-grid{grid-template-columns:repeat(2,1fr)}}
+.kpi-card{background:#fff;border:1px solid var(--rule);border-radius:6px;padding:14px}
+.kpi-label{font-size:.643rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
+.kpi-value{font-family:var(--mono);font-size:1rem;font-weight:700;color:var(--heading)}
+.kpi-card.green{border-color:#a0c8a0;background:var(--green-bg)}.kpi-card.green .kpi-value{color:var(--green)}
+.kpi-card.amber{border-color:#c8a830;background:var(--amber-bg)}.kpi-card.amber .kpi-value{color:var(--amber)}
+.kpi-card.red{border-color:#e0b0b0;background:var(--red-bg)}.kpi-card.red .kpi-value{color:var(--red)}
+.tabs{display:flex;border-bottom:2px solid var(--rule);margin-bottom:24px}
+.tab-btn{padding:10px 20px;border:none;background:none;cursor:pointer;font-size:.857rem;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px;font-family:Georgia,serif}
+.tab-btn.active{color:var(--wine);border-bottom-color:var(--wine);font-weight:600}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.857rem}
+th{text-align:left;padding:8px 10px;font-size:.714rem;font-weight:600;color:var(--muted);border-bottom:1px solid var(--rule);white-space:nowrap}
+th.num,td.num{text-align:right;font-family:var(--mono);white-space:nowrap}
+td{padding:9px 10px;border-bottom:1px solid #ede8e0}
+tr:hover td{background:var(--cream-mid)}
+.badge{display:inline-block;padding:2px 8px;border-radius:3px;font-size:.643rem;font-weight:700;letter-spacing:.05em;white-space:nowrap}
+.b-lib{background:var(--green-bg);color:var(--green);border:1px solid #a0c8a0}
+.b-alt{background:var(--amber-bg);color:var(--amber);border:1px solid #c8a830}
+.b-cor{background:var(--red-bg);color:var(--red);border:1px solid #e0b0b0}
+.pos{color:var(--green)}.neg{color:var(--red)}
+.mv-acima{color:var(--green);font-family:var(--mono);font-weight:700;font-size:.75rem}
+.mv-prox{color:var(--amber);font-family:var(--mono);font-weight:700;font-size:.75rem}
+.mv-abaixo{color:var(--red);font-family:var(--mono);font-weight:700;font-size:.75rem}
+.footer{text-align:center;padding:20px;font-size:.714rem;color:var(--muted);border-top:1px solid var(--rule);margin-top:32px}
+</style>
+</head>
+<body>
+
+<div id="s-lock" class="screen active">
+  <div class="lock-wrap">
+    <div class="lock-card">
+      <div class="lock-title">Meridian Advisory</div>
+      <div class="lock-sub">Relatorio Mensal &middot; Abr/26<br>Informe o codigo de acesso de 4 digitos</div>
+      <div class="pin-row">
+        <input class="pin-digit" id="d0" type="tel" maxlength="1" autocomplete="off">
+        <input class="pin-digit" id="d1" type="tel" maxlength="1" autocomplete="off">
+        <input class="pin-digit" id="d2" type="tel" maxlength="1" autocomplete="off">
+        <input class="pin-digit" id="d3" type="tel" maxlength="1" autocomplete="off">
+      </div>
+      <div class="pin-error" id="pin-err"></div>
+      <div style="font-size:.714rem;color:var(--muted)">Documento de uso interno &middot; Meridian Advisory</div>
+    </div>
+  </div>
+</div>
+
+<div id="s-exp" class="screen">
+  <div class="exp-wrap">
+    <div class="exp-card">
+      <div style="font-size:2.5rem;margin-bottom:16px;color:var(--muted)">&#9201;</div>
+      <div class="exp-title">Acesso expirado</div>
+      <p style="font-size:.857rem;color:var(--muted);line-height:1.7">
+        Este relatorio nao esta mais disponivel.<br>
+        Solicite uma nova versao ao seu contato na Meridian Advisory.
+      </p>
+      <div style="margin-top:20px;font-size:.714rem;color:var(--muted)">Meridian Advisory &middot; Uso Interno</div>
+    </div>
+  </div>
+</div>
+
+<div id="s-rep" class="screen">
+  <div class="report-header">
+    <div class="rpt-eyebrow">MERIDIAN ADVISORY &middot; USO INTERNO</div>
+    <div class="rpt-title">Relatorio Mensal de Carteiras</div>
+    <div class="rpt-meta" id="rpt-meta"></div>
+  </div>
+  <div class="container">
+    <div class="kpi-grid" id="kpi-grid"></div>
+    <div class="tabs" role="tablist">
+      <button class="tab-btn active" onclick="sw('carteiras')" id="tab-carteiras">Carteiras</button>
+      <button class="tab-btn" onclick="sw('receita')" id="tab-receita">Receita</button>
+      <button class="tab-btn" onclick="sw('gestores')" id="tab-gestores">Por Gestor</button>
+    </div>
+    <div id="p-carteiras"></div>
+    <div id="p-receita" style="display:none"></div>
+    <div id="p-gestores" style="display:none"></div>
+  </div>
+  <div class="footer">Meridian Advisory &middot; Relatorio de Carteiras &middot; Uso Interno &middot; <span id="validity"></span></div>
+</div>
+
+<script>
+const REPORT_DATA={"month":"2026-04","label":"Abr/26","stats":{"total":40,"liberar":33,"alerta":5,"corrigir":2,"plTotal":1199999999.9999998,"cdi":0.0091},"revenue":{"month":"2026-04","label":"Abr/26","aum":1199999999.9999998,"nnm":2426064.7839950966,"roa":0.0005168911860786206,"clients":40,"revenue":620269.4232943446},"managers":[{"managerId":"AXIOM_AM","managerName":"Axiom Asset Management","nCarteiras":14,"aum":243596934.07023287,"revenue":116619.92616404066,"roa":0.0004787413544803371,"roaTarget":0.0052,"attainment":0.09206564509237253,"badge":"ABAIXO"},{"managerId":"BEACON_WM","managerName":"Beacon Wealth Management","nCarteiras":12,"aum":282238908.7077395,"revenue":113491.57391721885,"roa":0.00040211172313857064,"roaTarget":0.0048,"attainment":0.0837732756538689,"badge":"ABAIXO"},{"managerId":"CREST_FO","managerName":"Crest Family Office","nCarteiras":9,"aum":429226622.6274086,"revenue":275306.2549812623,"roa":0.0006414006971329984,"roaTarget":0.0055,"attainment":0.11661830856963609,"badge":"ABAIXO"},{"managerId":"DELTA_PB","managerName":"Delta Private Banking","nCarteiras":5,"aum":244937534.59461886,"revenue":114851.66823182265,"roa":0.00046890187092764947,"roaTarget":0.0043,"attainment":0.10904694672736034,"badge":"ABAIXO"}],"portfolios":[{"code":"ALPHA_01","name":"Alpha Gestão I","risk":"conservador","managerName":"Axiom Asset Management","plCurr":1175912.3510319956,"plPrev":1177998.30163918,"varBRL":-2085.9506071843207,"varPct":-0.001770758586223536,"rent":0.0002036531718465882,"vsCDI":-0.008896346828153412,"status":"LIBERAR","nAchados":0,"findings":[],"revenue":871.3964610110503,"revenueYTD":3522.417430420824,"fee":0.0007410386158851906,"cdi":0.0091},{"code":"ALPHA_02","name":"Alpha Gestão II","risk":"moderado","managerName":"Axiom Asset Management","plCurr":1583275.9015060617,"plPrev":1559125.3232511652,"varBRL":24150.57825489645,"varPct":0.015489824900372004,"rent":0.005008657075297704,"vsCDI":-0.004091342924702296,"status":"LIBERAR","nAchados":0,"findings":[],"revenue":1003.6793555622351,"revenueYTD":3969.611404247954,"fee":0.0006339257451007142,"cdi":0.0091},{"code":"ALPHA_03","name":"Alpha Gestão III","risk":"agressivo","managerName":"Axiom Asset Management","plCurr":4785677.845464616,"plPrev":4748828.925134239,"varBRL":36848.920330377296,"varPct":0.007759580501067568,"rent":0.002399434966841805,"vsCDI":-0.006700565033158195,"status":"LIBERAR","nAchados":0,"findings":[],"revenue":2413.437986713149,"revenueYTD":9417.129355875826,"fee":0.0005043043148005381,"cdi":0.0091},{"code":"BRAVO_FAM","name":"Bravo Family Office","risk":"moderado","managerName":"Axiom Asset Management","plCurr":5690307.203315345,"plPrev":5707218.476001032,"varBRL":-16911.272685687058,"varPct":-0.002963137429695271,"rent":-0.00036528020520973977,"vsCDI":-0.009465280205209741,"status":"LIBERAR","nAchados":0,"findings":[],"revenue":2704.0152157767493,"revenueYTD":10851.609290627068,"fee":0.0004751967018935829,"cdi":0.0091},{"code":"BRAVO_PV","name":"Bravo Patrimonial","risk":"conservador","managerName":"Axiom Asset Management","plCurr":14607634.257914757,"plPrev":14420762.328440525,"varBRL":186871.92947423272,"varPct":0.012958533343669719,"rent":0.001871531998766975,"vsCDI":-0.007228468001233026,"status":"LIBERAR","nAchados":0,"findings":[],"revenue":9863.19383089969,"revenueYTD":39057.21953567813,"fee":0.000675208158744499,"cdi":0.0091},{"code":"CEDRO_HLD","name":"Cedro Holding","risk":"moderado-agressivo","managerName":"Axiom Asset Management","plCurr":1302954.809739471,"plPrev":1289480.28823071,"varBRL":13474.521508760983,"varPct":0.010449575407817449,"rent":0.014656124626611925,"vsCDI":0.005556124626611925,"status":"LIBERAR","nAchados":1,"findings":[{"severity":"INFO","text":"Variação de 1.5% no mês — acima da faixa histórica da carteira. Confirmado pelo gestor como realocação tática."}],"revenue":923.9524644041163,"revenueYTD":3678.580699650765,"fee":0.000709120882395655,"cdi":0.0091},{"code":"CEDRO_CAP","name":"Cedro Capital","risk":"moderado","managerName":"Axiom Asset Management","plCurr":3178548.5970251528,"plPrev":3124094.7373351604,"varBRL":54453.85968999239,"varPct":0.01743028437621623,"rent":0.008612432788465027,"vsCDI":-0.0004875672115349731,"status":"LIBERAR","nAchados":0,"findings":[],"revenue":1597.1472912718314,"revenueYTD":6283.091184759864,"fee":0.0005024769143899902,"cdi":0.0091},{"code":"DUNAS_CAP","name":"Dunas Capital","risk":"moderado-agressivo","managerName":"Axiom Asset Management","plCurr":25201049.28365005,"plPrev":25190238.010186713,"varBRL":10811.273463338614,"varPct":0.0004291850461661628,"rent":0.0001,"vsCDI":-0.009000000000000001,"status":"CORRIGIR","nAchados":2,"findings":[{"severity":"CORRIGIR","text":"PL anterior reportado diverge do saldo final do mês anterior em 0.81% (R$ 202.530). Tolerância máxima: 0,30%."},{"severity":"COM ALERTA","text":"Rentabilidade 0.9pp abaixo do CDI pelo 4º mês consecutivo. Verificar qualidade da gestão."}],"revenue":13312.423935151666,"revenueYTD":52942.52611679163,"fee":0.0005282487957272679,"cdi":0.0091},{"code":"DUNAS_FAM","name":"Dunas Family","risk":"conservador","managerName":"Axiom Asset Management","plCurr":104343908.42828673,"plPrev":104078725.85462159,"varBRL":265182.57366514206,"varPct":0.002547903728525196,"rent":0.0038658779808192567,"vsCDI":-0.005234122019180744,"status":"LIBERAR","nAchados":0,"findings":[],"revenue":45942.69570048745,"revenueYTD":183607.20293883412,"fee":0.00044030069787986574,"cdi":0.0091},{"code":"ESTRELA_PV","name":"Estrela Patrimonial","risk":"moderado","managerName":"Axiom Asset Management","plCurr":8579265.969157787,"plPrev":8622513.171994137,"varBRL":-43247.20283634961,"varPct":-0.005015614586338496,"rent":0.002715209409779801,"vsCDI":-0.0063847905902201995,"status":"LIBERAR","nAchados":0,"findings":[],"revenue":4857.092948499769,"revenueYTD":19649.015341484563,"fee":0.0005661431835731492,"cdi":0.0091},{"code":"ESTRELA_HLD","name":"Estrela Holding","risk":"agressivo","managerName":"Axiom Asset Management","plCurr":42032088.24760684,"plPrev":42451011.21142836,"varBRL":-418922.96382151544,"varPct":-0.009868385978724012,"rent":0.0001,"vsCDI":-0.009000000000000001,"status":"CORRIGIR","nAchados":2,"findings":[{"severity":"CORRIGIR","text":"PL anterior reportado diverge do saldo final do mês anterior em 1.10% (R$ 462.514). Tolerância máxima: 0,30%."},{"severity":"COM ALERTA","text":"Mudança de alocação na classe Ações, de 14.9% para 19.0%. Verificar alinhamento com mandato."}],"revenue":21575.6925148632,"revenueYTD":86349.26740391664,"fee":0.00051331478911452,"cdi":0.0091},{"code":"FAROL_INV","name":"Farol Investimentos","risk":"moderado","managerName":"Axiom Asset Management","plCurr":2611584.5137583828,"plPrev":2611387.303627224,"varBRL":197.2101311585866,"varPct":0.00007551929615521266,"rent":-0.0017780844378980061,"vsCDI":-0.010878084437898006,"status":"LIBERAR","nAchados":0,"findings":[],"revenue":1870.6163601364553,"revenueYTD":7449.277492341875,"fee":0.0007162764024222269,"cdi":0.0091},{"code":"FAROL_FAM","name":"Farol Family","risk":"conservador","managerName":"Axiom Asset Management","plCurr":2375113.576484476,"plPrev":2380649.774635328,"varBRL":-5536.198150851764,"varPct":-0.0023254987818188454,"rent":0.004895751396815004,"vsCDI":-0.004204248603184997,"status":"LIBERAR","nAchados":0,"findings":[],"revenue":1327.4985427790982,"revenueYTD":5352.019775008777,"fee":0.0005589200263610109,"cdi":0.0091},{"code":"GAMMA_MID","name":"Gamma Mid-Cap","risk":"moderado-agressivo","managerName":"Axiom Asset Management","plCurr":26129613.085291196,"plPrev":25866118.60536059,"varBRL":263494.47993060574,"varPct":0.010186858103867125,"rent":0.013857051742898547,"vsCDI":0.0047570517428985465,"status":"LIBERAR","nAchados":1,"findings":[{"severity":"INFO","text":"Variação de 1.4% no mês — acima da faixa histórica da carteira. Confirmado pelo gestor como realocação tática."}],"revenue":8357.083556484213,"revenueYTD":33558.493460377,"fee":0.00031983189070597287,"cdi":0.0091},{"code":"GAMMA_LRG","name":"Gamma Large-Cap","risk":"agressivo","managerName":"Beacon Wealth Management","plCurr":27701247.546465844,"plPrev":27517768.537946917,"varBRL":183479.0085189268,"varPct":0.006667655782695818,"rent":-0.0027687603814127385,"vsCDI":-0.011868760381412739,"status":"LIBERAR","nAchados":0,"findings":[],"revenue":12836.976469753567,"revenueYTD":50510.56590397095,"fee":0.0004634078825591132,"cdi":0.0091},{"code":"HELIOS_01","name":"Helios Patrimonial I","risk":"moderado","managerName":"Beacon Wealth Management","plCurr":2392256.3627112624,"plPrev":2405032.18969722,"varBRL":-12775.826985957567,"varPct":-0.005312123072899898,"rent":0.004016275510641201,"vsCDI":-0.0050837244893587995,"status":"COM ALERTA","nAchados":1,"findings":[{"severity":"COM ALERTA","text":"Variação patrimonial de 0.00% não completamente explicada por movimentação registrada. Aguardando confirmação de dividendos."}],"revenue":1174.3828940846236,"revenueYTD":4697.284004966779,"fee":0.000490910135046579,"cdi":0.0091},{"code":"HELIOS_02","name":"Helios Patrimonial II","risk":"moderado","managerName":"Beacon Wealth Management","plCurr":114967738.6497687,"plPrev":114119194.25231995,"varBRL":848544.3974487484,"varPct":0.007435597517211686,"rent":0.005387755639872061,"vsCDI":-0.0037122443601279396,"status":"LIBERAR","nAchados":0,"findings":[],"revenue":49025.98902777174,"revenueYTD":194241.3154097794,"fee":0.00042643257668241853,"cdi":0.0091},{"code":"INDIGO_CAP","name":"Indigo Capital","risk":"conservador","managerName":"Beacon Wealth Management","plCurr":6780431.059485403,"plPrev":6755889.743064207,"varBRL":24541.316421195865,"varPct":0.003632580955956348,"rent":0.0028698541920307886,"vsCDI":-0.006230145807969212,"status":"LIBERAR","nAchados":0,"findings":[],"revenue":2491.1128126457866,"revenueYTD":9836.42094306771,"fee":0.00036739741039928047,"cdi":0.0091},{"code":"JOIA_FAM","name":"Joia Family Office","risk":"moderado-agressivo","managerName":"Beacon Wealth Management","plCurr":4858941.0245765485,"plPrev":4789931.749117746,"varBRL":69009.27545880247,"varPct":0.01440715214188871,"rent":0.01991553977947464,"vsCDI":0.01081553977947464,"status":"COM ALERTA","nAchados":1,"findings":[{"severity":"COM ALERTA","text":"Ausência de extrato confirmado pelo custodiante DTVM Pampulha. Posição estimada com base no último extrato disponível."}],"revenue":1904.064323260391,"revenueYTD":7486.56763442854,"fee":0.0003918681691400706,"cdi":0.0091},{"code":"JOIA_HLD","name":"Joia Holding","risk":"moderado","managerName":"Beacon Wealth Management","plCurr":3187064.9370374647,"plPrev":3102591.4303813777,"varBRL":84473.506656087,"varPct":0.027226758196035927,"rent":0.001689059941252403,"vsCDI":-0.0074109400587475975,"status":"LIBERAR","nAchados":0,"findings":[],"revenue":1514.0541604756443,"revenueYTD":5944.669412358334,"fee":0.0004750622250838205,"cdi":0.0091},{"code":"KAPPA_PV","name":"Kappa Patrimonial","risk":"moderado","managerName":"Beacon Wealth Management","plCurr":3139621.59191896,"plPrev":3101548.9373270175,"varBRL":38072.65459194267,"varPct":0.012275368005237574,"rent":0.0031022606961086533,"vsCDI":-0.005997739303891347,"status":"COM ALERTA","nAchados":1,"findings":[{"severity":"COM ALERTA","text":"Variação patrimonial de 0.00% não completamente explicada por movimentação registrada. Aguardando confirmação de dividendos."}],"revenue":1453.3361251336764,"revenueYTD":5763.783707161346,"fee":0.00046290168499108403,"cdi":0.0091},{"code":"KAPPA_INV","name":"Kappa Investimentos","risk":"conservador","managerName":"Beacon Wealth Management","plCurr":3118830.7169064055,"plPrev":3166241.091342548,"varBRL":-47410.37443614239,"varPct":-0.014973709540242075,"rent":0.003581228130202993,"vsCDI":-0.005518771869797007,"status":"LIBERAR","nAchados":0,"findings":[],"revenue":999.7229187251241,"revenueYTD":4035.6795911046333,"fee":0.0003205441428115591,"cdi":0.0091},{"code":"LUMIA_01","name":"Lumia Gestão I","risk":"agressivo","managerName":"Beacon Wealth Management","plCurr":3149885.3550953204,"plPrev":3062866.103704979,"varBRL":87019.2513903412,"varPct":0.0284110530607521,"rent":0.021545470801521915,"vsCDI":0.012445470801521915,"status":"COM ALERTA","nAchados":1,"findings":[{"severity":"COM ALERTA","text":"Mudança de alocação na classe Liquidez, de 29.6% para 37.3%. Verificar alinhamento com mandato."}],"revenue":1076.7488622860956,"revenueYTD":4188.194515903156,"fee":0.0003418374768923968,"cdi":0.0091},{"code":"LUMIA_02","name":"Lumia Gestão II","risk":"moderado","managerName":"Beacon Wealth Management","plCurr":20438961.182988536,"plPrev":20441953.968717117,"varBRL":-2992.7857285812497,"varPct":-0.00014640409293363989,"rent":0.004307259523416781,"vsCDI":-0.004792740476583219,"status":"LIBERAR","nAchados":0,"findings":[],"revenue":9651.61791933107,"revenueYTD":38174.67136361716,"fee":0.0004722166568506509,"cdi":0.0091},{"code":"MARTE_FAM","name":"Marte Family","risk":"conservador","managerName":"Beacon Wealth Management","plCurr":90375204.91003345,"plPrev":90435257.17438978,"varBRL":-60052.26435633004,"varPct":-0.000664035977036356,"rent":0.00267438626870509,"vsCDI":-0.00642561373129491,"status":"LIBERAR","nAchados":0,"findings":[],"revenue":30308.55055598891,"revenueYTD":120500.92706529485,"fee":0.00033536356112454086,"cdi":0.0091},{"code":"NOVA_CAP","name":"Nova Capital","risk":"moderado-agressivo","managerName":"Beacon Wealth Management","plCurr":2128725.370751602,"plPrev":2078313.0374336655,"varBRL":50412.33331793663,"varPct":0.02425637159077181,"rent":0.017917133394352185,"vsCDI":0.008817133394352184,"status":"COM ALERTA","nAchados":1,"findings":[{"severity":"COM ALERTA","text":"Mudança de alocação na classe RF Pós-Fixado, de 22.8% para 30.2%. Verificar alinhamento com mandato."}],"revenue":1055.0178477622032,"revenueYTD":4054.9341181306436,"fee":0.0004956101253163069,"cdi":0.0091},{"code":"NOVA_PV","name":"Nova Patrimonial","risk":"moderado","managerName":"Crest Family Office","plCurr":10778154.97714422,"plPrev":10754520.608105848,"varBRL":23634.369038373232,"varPct":0.002197621809433295,"rent":0.00558071991259204,"vsCDI":-0.0035192800874079607,"status":"LIBERAR","nAchados":0,"findings":[],"revenue":5268.276009782858,"revenueYTD":20802.910727898423,"fee":0.0004887920076260343,"cdi":0.0091},{"code":"ORION_01","name":"Orion Gestão I","risk":"conservador","managerName":"Crest Family Office","plCurr":83796972.4551087,"plPrev":82683031.11164655,"varBRL":1113941.3434621543,"varPct":0.013472429934964576,"rent":0.0019092373015317644,"vsCDI":-0.007190762698468236,"status":"LIBERAR","nAchados":0,"findings":[],"revenue":63047.61503607252,"revenueYTD":249246.53525243362,"fee":0.0007523853569990024,"cdi":0.0091},{"code":"ORION_02","name":"Orion Gestão II","risk":"moderado-agressivo","managerName":"Crest Family Office","plCurr":126565953.75446704,"plPrev":127614973.31103742,"varBRL":-1049019.556570381,"varPct":-0.008220191795312245,"rent":-0.002545901840812456,"vsCDI":-0.011645901840812456,"status":"LIBERAR","nAchados":0,"findings":[],"revenue":82509.93600383285,"revenueYTD":330583.09002244315,"fee":0.0006519125685561448,"cdi":0.0091},{"code":"PRADO_HLD","name":"Prado Holding","risk":"moderado","managerName":"Crest Family Office","plCurr":8102171.315755041,"plPrev":8086391.7625083765,"varBRL":15779.553246664815,"varPct":0.0019513713545050951,"rent":0.008846728511690643,"vsCDI":-0.0002532714883093576,"status":"LIBERAR","nAchados":0,"findings":[],"revenue":3457.837666438546,"revenueYTD":13608.275178654887,"fee":0.0004267791350837797,"cdi":0.0091},{"code":"PRADO_FAM","name":"Prado Family","risk":"conservador","managerName":"Crest Family Office","plCurr":17210373.03618208,"plPrev":17324508.76697844,"varBRL":-114135.73079635948,"varPct":-0.006588107768683698,"rent":0.0006821199581213029,"vsCDI":-0.008417880041878698,"status":"LIBERAR","nAchados":0,"findings":[],"revenue":11003.2647311741,"revenueYTD":44460.83882620322,"fee":0.000639339118800126,"cdi":0.0091},{"code":"QUASAR_CAP","name":"Quasar Capital","risk":"agressivo","managerName":"Crest Family Office","plCurr":53718010.56067947,"plPrev":53141834.90128,"varBRL":576175.6593994722,"varPct":0.010842223654298285,"rent":0.01467357311295401,"vsCDI":0.005573573112954009,"status":"LIBERAR","nAchados":1,"findings":[{"severity":"INFO","text":"Variação de 1.5% no mês — acima da faixa histórica da carteira. Confirmado pelo gestor como realocação tática."}],"revenue":25539.979601990828,"revenueYTD":100038.7916237515,"fee":0.00047544537363573906,"cdi":0.0091},{"code":"RIO_01","name":"Rio Patrimonial I","risk":"moderado","managerName":"Crest Family Office","plCurr":84907528.70114371,"plPrev":83178456.13227323,"varBRL":1729072.5688704848,"varPct":0.020787504953456392,"rent":0.0075140153200268876,"vsCDI":-0.0015859846799731129,"status":"LIBERAR","nAchados":0,"findings":[],"revenue":50471.18484911139,"revenueYTD":198468.18025083205,"fee":0.0005944253191817552,"cdi":0.0091},{"code":"RIO_02","name":"Rio Patrimonial II","risk":"moderado","managerName":"Crest Family Office","plCurr":42656851.23850673,"plPrev":41934703.74268908,"varBRL":722147.4958176464,"varPct":0.0172207606437078,"rent":0.006471373448988619,"vsCDI":-0.0026286265510113817,"status":"LIBERAR","nAchados":0,"findings":[],"revenue":33321.78868261282,"revenueYTD":131976.26031041646,"fee":0.0007811591272009536,"cdi":0.0091},{"code":"SOLAR_PV","name":"Solar Patrimonial","risk":"conservador","managerName":"Crest Family Office","plCurr":1490606.5884216395,"plPrev":1486804.9921444815,"varBRL":3801.596277158009,"varPct":0.0025568896373389265,"rent":0.0006794324615221764,"vsCDI":-0.008420567538477823,"status":"LIBERAR","nAchados":0,"findings":[],"revenue":686.3724002464063,"revenueYTD":2750.4909623231997,"fee":0.00046046515933703626,"cdi":0.0091},{"code":"SOLAR_INV","name":"Solar Investimentos","risk":"moderado","managerName":"Delta Private Banking","plCurr":68148994.75652899,"plPrev":67618011.33532462,"varBRL":530983.4212043732,"varPct":0.007852692067076216,"rent":0.0008043773206467437,"vsCDI":-0.008295622679353257,"status":"LIBERAR","nAchados":0,"findings":[],"revenue":31790.985138015363,"revenueYTD":127334.00902079712,"fee":0.0004664923562202602,"cdi":0.0091},{"code":"TIGRE_FAM","name":"Tigre Family Office","risk":"moderado-agressivo","managerName":"Delta Private Banking","plCurr":116929912.44057699,"plPrev":114808735.88406627,"varBRL":2121176.5565107167,"varPct":0.018475741764569887,"rent":0.014788734460490605,"vsCDI":0.005688734460490605,"status":"LIBERAR","nAchados":1,"findings":[{"severity":"INFO","text":"Variação de 1.5% no mês — acima da faixa histórica da carteira. Confirmado pelo gestor como realocação tática."}],"revenue":60073.332723688756,"revenueYTD":237203.17303280346,"fee":0.0005137550475308671,"cdi":0.0091},{"code":"UMBRA_01","name":"Umbra Gestão I","risk":"moderado","managerName":"Delta Private Banking","plCurr":12457873.38764145,"plPrev":12024767.365964234,"varBRL":433106.0216772165,"varPct":0.03601782957590605,"rent":0.005944737300551901,"vsCDI":-0.003155262699448099,"status":"LIBERAR","nAchados":0,"findings":[],"revenue":6454.315270307763,"revenueYTD":12684.242097870023,"fee":0.0005180912559852004,"cdi":0.0091},{"code":"UMBRA_02","name":"Umbra Gestão II","risk":"conservador","managerName":"Delta Private Banking","plCurr":3438276.146547005,"plPrev":3450862.3925764533,"varBRL":-12586.24602944823,"varPct":-0.0036472755495912993,"rent":0.0024904917436014474,"vsCDI":-0.0066095082563985535,"status":"LIBERAR","nAchados":0,"findings":[],"revenue":2304.6383489163177,"revenueYTD":4617.71311888552,"fee":0.0006702889037085697,"cdi":0.0091},{"code":"COMETA_FAM","name":"Cometa Family","risk":"moderado","managerName":"Delta Private Banking","plCurr":43962477.863324404,"plPrev":44002913.79562901,"varBRL":-40435.93230460584,"varPct":-0.0009189376070050731,"rent":0.009712411080710599,"vsCDI":0.0006124110807105981,"status":"LIBERAR","nAchados":0,"findings":[],"revenue":14228.396750894442,"revenueYTD":109443.26700102387,"fee":0.0003236486531794071,"cdi":0.0091}],"generatedAt":"2026-04-30T18:00:00.000Z"};
+const ISSUED_AT=1780272000;
+const TTL_HOURS=720;
+const EXPIRES_AT=ISSUED_AT+TTL_HOURS*3600;
+
+const p=new URLSearchParams(location.search),df=p.get('demo');
+const expired=df==='expired'?true:df==='fresh'?false:Math.floor(Date.now()/1000)>EXPIRES_AT;
+
+function show(id){['s-lock','s-exp','s-rep'].forEach(s=>{const el=document.getElementById(s);el.classList.toggle('active',s===id)});}
+
+if(expired){show('s-exp');}
+else if(df==='fresh'){render();show('s-rep');}
+
+const ds=[document.getElementById('d0'),document.getElementById('d1'),document.getElementById('d2'),document.getElementById('d3')];
+ds.forEach((d,i)=>{
+  d.addEventListener('input',()=>{
+    d.value=d.value.replace(/\D/,'').slice(-1);
+    if(d.value&&i<3)ds[i+1].focus();
+    if(ds.map(x=>x.value).join('').length===4)chk();
+  });
+  d.addEventListener('keydown',e=>{if(e.key==='Backspace'&&!d.value&&i>0){ds[i-1].focus();ds[i-1].value='';}});
+});
+if(!expired&&df!=='fresh')ds[0].focus();
+
+function chk(){
+  const pin=ds.map(d=>d.value).join('');
+  if(pin==='2026'){render();show('s-rep');}
+  else{
+    document.getElementById('pin-err').textContent='Codigo incorreto.';
+    ds.forEach(d=>{d.value='';d.style.borderColor='var(--red)';});
+    setTimeout(()=>{ds.forEach(d=>{d.style.borderColor='';});document.getElementById('pin-err').textContent='';ds[0].focus();},1200);
+  }
+}
+
+function fB(v){const a=Math.abs(v),f=n=>n.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1});return a>=1e9?'R\$ '+f(v/1e9)+' bi':a>=1e6?'R\$ '+f(v/1e6)+' mi':a>=1e3?'R\$ '+f(v/1e3)+' mil':'R\$ '+v.toFixed(0);}
+function fP(v,d){return(v*100).toFixed(d??2)+'%';}
+function fR(v){return(v*100).toFixed(3)+'%';}
+function sc(v){return v>=0?'pos':'neg';}
+function sp(v,fn){return(v>=0?'+':'')+fn(v);}
+function fD(ts){return new Date(ts*1000).toLocaleDateString('pt-BR');}
+function sb(s){return s==='LIBERAR'?'<span class="badge b-lib">LIBERAR</span>':s==='COM ALERTA'?'<span class="badge b-alt">ALERTA</span>':s==='CORRIGIR'?'<span class="badge b-cor">CORRIGIR</span>':'<span class="badge">'+s+'</span>';}
+function mb(b){return b==='ACIMA'?'<span class="mv-acima">ACIMA</span>':b==='PROX.'?'<span class="mv-prox">PROX.</span>':'<span class="mv-abaixo">ABAIXO</span>';}
+
+function sw(id){['carteiras','receita','gestores'].forEach(t=>{document.getElementById('tab-'+t).classList.toggle('active',t===id);document.getElementById('p-'+t).style.display=t===id?'':'none';});}
+
+function render(){
+  const D=REPORT_DATA,s=D.stats;
+  document.getElementById('rpt-meta').textContent=D.label+'  \xb7  '+s.total+' carteiras  \xb7  Emissao: '+fD(ISSUED_AT)+'  \xb7  Validade: '+fD(EXPIRES_AT);
+  document.getElementById('validity').textContent='Valido ate '+fD(EXPIRES_AT)+'.';
+  const kpis=[{l:'Total carteiras',v:s.total,c:''},{l:'PL Total',v:fB(s.plTotal),c:''},{l:'LIBERAR',v:s.liberar,c:'green'},{l:'COM ALERTA',v:s.alerta,c:s.alerta>0?'amber':''},{l:'CORRIGIR',v:s.corrigir,c:s.corrigir>0?'red':''},{l:'CDI mes',v:fP(s.cdi,3),c:''}];
+  document.getElementById('kpi-grid').innerHTML=kpis.map(k=>'<div class="kpi-card '+k.c+'"><div class="kpi-label">'+k.l+'</div><div class="kpi-value">'+k.v+'</div></div>').join('');
+  document.getElementById('p-carteiras').innerHTML='<div class="table-wrap"><table><thead><tr><th style="min-width:150px">Carteira</th><th>Status</th><th class="num">PL Atual</th><th class="num">Var. R\$</th><th class="num">Rent.</th><th class="num">vs CDI</th><th>Gestor</th><th>Achados</th></tr></thead><tbody>'+D.portfolios.map(p=>'<tr><td><b style="font-size:.857rem">'+p.code+'</b><div style="font-size:.714rem;color:var(--muted)">'+p.name+'</div></td><td>'+sb(p.status)+'</td><td class="num">'+fB(p.plCurr)+'</td><td class="num '+sc(p.varBRL)+'">'+sp(p.varBRL,fB)+'</td><td class="num '+sc(p.rent)+'">'+fP(p.rent,2)+'</td><td class="num '+sc(p.vsCDI)+'">'+sp(p.vsCDI,v=>fP(v,2))+'</td><td style="font-size:.786rem;color:var(--muted)">'+p.managerName+'</td><td>'+(p.findings||[]).map(f=>'<div style="font-size:.714rem;color:'+(f.severity==='CORRIGIR'?'var(--red)':'var(--amber)')+'">'+f.text.substring(0,55)+(f.text.length>55?'...':'')+'</div>').join('')+'</td></tr>').join('')+'</tbody></table></div>';
+  const r=D.revenue;
+  document.getElementById('p-receita').innerHTML='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px">'+'<div class="kpi-card"><div class="kpi-label">AUM</div><div class="kpi-value">'+fB(r.aum)+'</div></div>'+'<div class="kpi-card"><div class="kpi-label">Receita mes</div><div class="kpi-value">'+fB(r.revenue)+'</div></div>'+'<div class="kpi-card"><div class="kpi-label">ROA % a.m.</div><div class="kpi-value">'+fR(r.roa)+'</div></div>'+'<div class="kpi-card"><div class="kpi-label">NNM</div><div class="kpi-value '+sc(r.nnm)+'">'+sp(r.nnm,fB)+'</div></div>'+'</div><div class="table-wrap"><table><thead><tr><th style="min-width:150px">Carteira</th><th>Gestor</th><th class="num">PL</th><th class="num">Fee</th><th class="num">Receita mes</th><th class="num">Receita YTD</th><th class="num">ROA</th></tr></thead><tbody>'+[...D.portfolios].sort((a,b)=>b.revenue-a.revenue).map(p=>'<tr><td><b style="font-size:.857rem">'+p.code+'</b><div style="font-size:.714rem;color:var(--muted)">'+p.name+'</div></td><td style="font-size:.786rem;color:var(--muted)">'+p.managerName+'</td><td class="num">'+fB(p.plCurr)+'</td><td class="num" style="color:var(--muted)">'+fP(p.fee,3)+'</td><td class="num">'+fB(p.revenue)+'</td><td class="num">'+fB(p.revenueYTD)+'</td><td class="num">'+fR(p.plCurr>0?p.revenue/p.plCurr:0)+'</td></tr>').join('')+'</tbody></table></div>';
+  const tA=D.managers.reduce((s,m)=>s+m.aum,0),tR=D.managers.reduce((s,m)=>s+m.revenue,0);
+  document.getElementById('p-gestores').innerHTML='<div class="table-wrap"><table><thead><tr><th>Gestor</th><th class="num">Carteiras</th><th class="num">AUM</th><th class="num">Receita</th><th class="num">ROA % a.m.</th><th class="num">Meta ROA</th><th class="num">Atingimento</th><th>vs Meta</th></tr></thead><tbody>'+D.managers.map(m=>'<tr><td style="font-weight:600">'+m.managerName+'</td><td class="num">'+m.nCarteiras+'</td><td class="num">'+fB(m.aum)+'</td><td class="num">'+fB(m.revenue)+'</td><td class="num">'+fR(m.roa)+'</td><td class="num" style="color:var(--muted)">'+fR(m.roaTarget)+'</td><td class="num">'+fP(m.attainment,1)+'</td><td>'+mb(m.badge)+'</td></tr>').join('')+'<tr style="border-top:2px solid var(--rule);font-weight:700"><td>TOTAL</td><td class="num">'+D.managers.reduce((s,m)=>s+m.nCarteiras,0)+'</td><td class="num">'+fB(tA)+'</td><td class="num">'+fB(tR)+'</td><td class="num">'+fR(tA>0?tR/tA:0)+'</td><td class="num" style="color:var(--muted)">-</td><td class="num">-</td><td>-</td></tr></tbody></table></div>';
+}
+</script>
+</body>
+</html>

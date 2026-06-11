@@ -1,0 +1,16 @@
+{
+  "name": "atlas-wealth-verification",
+  "version": "0.1.0",
+  "description": "Plataforma de verificação mensal de carteiras — Meridian Advisory",
+  "private": true,
+  "scripts": {
+    "test": "node tests/validate.js",
+    "serve": "python -m http.server 7821",
+    "lint": "node tests/validate.js",
+    "build": "echo 'App estático — sem etapa de build. Use npm run serve para desenvolvimento local.'"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {}
+}

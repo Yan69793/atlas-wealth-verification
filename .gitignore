@@ -1,0 +1,53 @@
+# Dependências
+node_modules/
+
+# Artefatos de build
+dist/
+build/
+.cache/
+
+# Variáveis de ambiente
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temporários
+*.tmp
+*.bak
+*.swp
+*~
+
+# LGPD — documentos com dados operacionais reais
+# A pasta Verificação Mensal contém PDFs, relatórios e dados de clientes
+Verificação Mensal de Carteiras Mirabaud/Verificacao_*.md
+Verificação Mensal de Carteiras Mirabaud/ATLAS_*.docx
+Verificação Mensal de Carteiras Mirabaud/*.skill
+Verificação Mensal de Carteiras Mirabaud/carteiras-app/dist/
+Verificação Mensal de Carteiras Mirabaud/carteiras-app/public/
+Verificação Mensal de Carteiras Mirabaud/carteiras-app/**/*.pdf
+Verificação Mensal de Carteiras Mirabaud/**/*.pdf
+
+# Binários e arquivos grandes
+*.pdf
+*.docx
+*.xlsx
+*.zip
+
+# Editores
+.vscode/settings.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
