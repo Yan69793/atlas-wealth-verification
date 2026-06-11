@@ -241,6 +241,62 @@ ok('coluna ausente → portfolios vazio e erro listando faltante',
   missingColRes.portfolios.length === 0 &&
   missingColRes.errors.some(e => /status/i.test(e)));
 
+// --- parseCSV: aspa literal no meio de campo não-quoted (bug RFC4180) ---
+const csvQuoteMid = P.parseCSV('a,b,c\nx,Tela 27" cm,z\n');
+ok('parseCSV: aspa no meio de campo não engole o delimitador',
+  csvQuoteMid.length === 1 && Object.keys(csvQuoteMid[0]).length === 3,
+  `linhas: ${csvQuoteMid.length}, campos: ${csvQuoteMid[0] ? Object.keys(csvQuoteMid[0]).length : 0}`);
+ok('parseCSV: aspa literal preservada no campo do meio',
+  csvQuoteMid[0] && csvQuoteMid[0].b === 'Tela 27" cm',
+  `obtido b: "${csvQuoteMid[0] ? csvQuoteMid[0].b : ''}"`);
+ok('parseCSV: campo seguinte à aspa preservado',
+  csvQuoteMid[0] && csvQuoteMid[0].c === 'z',
+  `obtido c: "${csvQuoteMid[0] ? csvQuoteMid[0].c : ''}"`);
+
+// aspa não-fechada no fim de campo não pode consumir a linha seguinte
+const csvUnterminated = P.parseCSV('a,b\n1,2"\n3,4\n');
+ok('parseCSV: aspa não-fechada não engole a linha seguinte',
+  csvUnterminated.length === 2,
+  `linhas de dados: ${csvUnterminated.length}`);
+
+// --- parseImportRows: toNumber com campo só-espaço gera ERRO de PL ---
+const blankPlRes = P.parseImportRows([
+  { codigo:'SP1', nome:'PL Espaco', perfil:'moderado', mes:'2026-04', pl:'   ',
+    rentabilidade_pct:'0.01', status:'LIBERAR', classe:'CDB', ativo:'CDB Banco', pct_alocacao:'1' }
+], { validMonths: VALID_MONTHS });
+ok('PL só-espaço gera erro (não passa como 0)',
+  blankPlRes.errors.some(e => /PL inválido/i.test(e)),
+  `errors: ${blankPlRes.errors.join(' | ')}`);
+
+// --- parseImportRows: warning de normalização de pct (soma ≠ 1) ---
+const normRes = P.parseImportRows([
+  { codigo:'N1', nome:'Normaliza', perfil:'moderado', mes:'2026-04', pl:'1000',
+    rentabilidade_pct:'0.01', status:'LIBERAR', classe:'CDB', ativo:'CDB A', pct_alocacao:'0.5' },
+  { codigo:'N1', nome:'Normaliza', perfil:'moderado', mes:'2026-04', pl:'1000',
+    rentabilidade_pct:'0.01', status:'LIBERAR', classe:'Ações', ativo:'Ação B', pct_alocacao:'0.3' }
+], { validMonths: VALID_MONTHS });
+ok('soma de pct ≠ 1 não gera erro mas gera warning',
+  normRes.errors.length === 0 && normRes.warnings.length >= 1,
+  `errors: ${normRes.errors.length}, warnings: ${normRes.warnings.length}`);
+const normComp = normRes.portfolios[0] && normRes.portfolios[0].months['2026-04'].composition;
+const normSum = normComp ? normComp.reduce((acc, c) => acc + c.pct, 0) : NaN;
+ok('composição normalizada soma ≈ 1', Math.abs(normSum - 1) < 1e-9,
+  `soma: ${normSum}`);
+
+// --- parseImportRows: warning de divergência de campos de carteira ---
+const divRes = P.parseImportRows([
+  { codigo:'D1', nome:'Nome Original', perfil:'moderado', mes:'2026-04', pl:'1000',
+    rentabilidade_pct:'0.01', status:'LIBERAR', classe:'CDB', ativo:'CDB A', pct_alocacao:'0.5' },
+  { codigo:'D1', nome:'Nome Divergente', perfil:'moderado', mes:'2026-04', pl:'1000',
+    rentabilidade_pct:'0.01', status:'LIBERAR', classe:'Ações', ativo:'Ação B', pct_alocacao:'0.5' }
+], { validMonths: VALID_MONTHS });
+ok('divergência de campos de carteira gera warning',
+  divRes.warnings.some(w => /Divergência/i.test(w)),
+  `warnings: ${divRes.warnings.join(' | ')}`);
+ok('valores usados são os da primeira linha (nome)',
+  divRes.portfolios[0] && divRes.portfolios[0].name === 'Nome Original',
+  `name: ${divRes.portfolios[0] ? divRes.portfolios[0].name : ''}`);
+
 // ─── Resultado ──────────────────────────────────────────────────────────────
 
 const total = pass + fail;

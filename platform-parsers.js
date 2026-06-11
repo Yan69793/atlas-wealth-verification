@@ -59,7 +59,14 @@
 
       // fora de aspas
       if (ch === '"') {
-        inQuotes = true;
+        // RFC4180: aspas só são especiais no INÍCIO do campo (campo ainda vazio).
+        // Uma aspa no meio de um campo não-quoted é um caractere LITERAL.
+        if (field === '') {
+          inQuotes = true;
+          i++;
+          continue;
+        }
+        field += '"';
         i++;
         continue;
       }
@@ -144,6 +151,10 @@
     return Number.isFinite(num) ? num : NaN;
   }
 
+  // Contrato: retorna { portfolios, errors, warnings }.
+  // IMPORTANTE: se `errors` NÃO estiver vazio, NÃO use `portfolios` — pode
+  // conter dados parciais/inválidos. O consumidor deve bloquear a importação
+  // quando errors.length > 0. `warnings` é não-bloqueante (normalização, etc.).
   function parseImportRows(rows, options) {
     options = options || {};
     var validMonths = options.validMonths || null;
