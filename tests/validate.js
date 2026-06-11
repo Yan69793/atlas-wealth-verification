@@ -93,6 +93,29 @@ ok('useEffect sincroniza selectedMonth',
 ok('top5Quedas filtra plA > 0',
   /top5Quedas.*filter.*plA\s*>\s*0/.test(dataContent.replace(/\s+/g, ' ')));
 
+// ─── 7. index.html — SRI integrity nos scripts CDN sem SRI original ─────────
+
+ok('prop-types tem integrity no index.html',
+  /prop-types[^<]+integrity\s*=\s*"sha384-/.test(indexHtml.replace(/\s+/g, ' ')));
+
+ok('Recharts tem integrity no index.html',
+  /recharts[^<]+integrity\s*=\s*"sha384-/i.test(indexHtml.replace(/\s+/g, ' ')));
+
+// ─── 8. README — conteúdo mínimo ────────────────────────────────────────────
+
+const readmePath = path.join(ROOT, 'README.md');
+ok('README.md existe', fs.existsSync(readmePath));
+
+if (fs.existsSync(readmePath)) {
+  const readme = fs.readFileSync(readmePath, 'utf8');
+  ok('README menciona dados sintéticos/demo',
+    /demo|sint[eé]tico/i.test(readme));
+  ok('README menciona que dados reais\/LGPD ficam fora do Git',
+    /LGPD|dados reais|fora do Git|ignorad/i.test(readme));
+  ok('README menciona a senha demo atlas2026',
+    /atlas2026/.test(readme));
+}
+
 // ─── Resultado ──────────────────────────────────────────────────────────────
 
 const total = pass + fail;
