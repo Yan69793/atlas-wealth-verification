@@ -41,6 +41,60 @@ A senha `atlas2026` é verificada no lado cliente via localStorage. Não há bac
 - **Dados demo/sintéticos**: os arquivos do repositório contêm estruturas de exemplo sem dados pessoais reais.
 - **Dados reais ficam fora do Git**: a pasta `Verificação Mensal de Carteiras Mirabaud/` contém dados operacionais reais (PDFs, relatórios, dados de clientes / LGPD) e está explicitamente ignorada pelo `.gitignore`. Nunca deve ser commitada.
 
+## Próxima etapa: parser de arquivos
+
+A tela `#/importar` já existe, mas hoje é apenas um stub visual. O próximo desenvolvimento deve implementar um parser local/seguro para transformar arquivos de carteira em dados estruturados antes de qualquer gravação no sistema.
+
+Formatos desejados:
+
+- **PDF**: extratos ou books mensais emitidos por custodiante/gestor.
+- **XLSX/XLS**: planilhas de posições, movimentações, receitas ou conciliações.
+- **CSV/TSV**: arquivos tabulares exportados por sistemas internos.
+- **Markdown (`.md`)**: tabelas simples ou notas estruturadas de conferência.
+- **JSON**: opcional, útil para integrações futuras e testes automatizados.
+
+Contrato mínimo de saída do parser:
+
+```js
+{
+  fileName: "Book_Cliente_2026_04.pdf",
+  month: "2026-04",
+  portfolio: {
+    code: "CLIENTE_01",
+    name: "Cliente 01",
+    currency: "BRL"
+  },
+  positions: [
+    {
+      name: "Ativo ou Produto",
+      cls: "RF Pós-Fixado",
+      institution: "Custodiante",
+      quantity: 1000,
+      saldoFinal: 123456.78,
+      pct: 0.1234
+    }
+  ],
+  totals: {
+    pl: 1000000,
+    positions: 12
+  },
+  warnings: [
+    "Percentuais não somam 100%; revisar arredondamento ou caixa."
+  ]
+}
+```
+
+Regras funcionais esperadas:
+
+- O parser deve rodar no navegador ou em backend controlado, sem enviar dados reais para serviços externos.
+- A importação deve primeiro mostrar uma prévia auditável, com posições, classes, PL total e alertas.
+- O usuário deve confirmar antes de incorporar os dados à base da plataforma.
+- PDF e Excel precisam de parsers específicos; não assumir que todo PDF terá tabela limpa.
+- Campos financeiros devem aceitar formato brasileiro (`1.234.567,89`) e internacional (`1,234,567.89`).
+- O parser deve identificar colunas comuns: ativo/produto, classe, custodiante/instituição, quantidade, saldo/valor financeiro e percentual.
+- Arquivos com baixa confiança devem ser marcados para revisão manual, não importados automaticamente.
+- Dados reais de clientes não devem ser commitados nem adicionados ao Git.
+
 ## Riscos conhecidos
 
 | Risco | Severidade | Observação |
