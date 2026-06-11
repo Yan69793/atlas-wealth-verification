@@ -346,7 +346,7 @@
           open={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
         />
-        <div style={{ flex:1, display:'flex', flexDirection:'column', marginLeft:'var(--sidebar-w)' }}>
+        <div style={{ flex:1, display:'flex', flexDirection:'column', minWidth:0 }}>
           <Topbar title={title} onMenuClick={() => setSidebarOpen(s => !s)} />
           <main className="main-content">
             {children}

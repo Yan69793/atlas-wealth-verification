@@ -507,6 +507,35 @@ input, select, textarea {
   padding-right: 30px;
 }
 
+/* Selects/inputs de filtro (toolbars) — espelha .form-select com seta e alvo de toque */
+.filter-select {
+  padding: 8px 30px 8px 12px;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--r-sm);
+  background-color: var(--paper);
+  font-size: 0.857rem;
+  color: var(--body);
+  outline: none;
+  min-height: 36px;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M6 8L1 3h10z' fill='%239A9188'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
+
+.filter-select:focus {
+  border-color: var(--navy);
+  box-shadow: 0 0 0 3px rgba(5,48,95,0.08);
+}
+
+/* Layout da página de usuários (lista + painel) — colapsa no mobile via @media */
+.usuarios-grid {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 24px;
+  align-items: start;
+}
+
 /* Search input */
 .search-wrap {
   position: relative;
@@ -1261,10 +1290,24 @@ th.sort-asc .th-sort-icon, th.sort-desc .th-sort-icon { opacity: 1; }
     padding: 16px;
   }
 
+  /* KPIs: força 2 colunas no mobile mesmo com gridTemplateColumns inline (repeat(N)) */
   .kpi-grid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1fr !important;
     gap: 10px;
   }
+
+  /* Topbar compacta: título menor e sem rótulo "Mês" para caber com o seletor */
+  .topbar-title { font-size: 1rem; }
+  .topbar-month-select label { display: none; }
+
+  /* Tabelas: rolam internamente (.table-wrap tem overflow-x:auto); densidade menor no toque */
+  .table-wrap { -webkit-overflow-scrolling: touch; }
+  .table-wrap table { font-size: 0.8rem; }
+  .table-wrap thead th,
+  .table-wrap tbody td { padding: 8px 10px; }
+
+  /* Grid de usuários colapsa para 1 coluna */
+  .usuarios-grid { grid-template-columns: 1fr !important; gap: 16px; }
 
   .topbar-hamburger {
     display: flex;

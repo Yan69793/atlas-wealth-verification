@@ -390,7 +390,7 @@
 
         {/* Summary bar */}
         <div style={{
-          display: 'flex', gap: 24, padding: '10px 16px',
+          display: 'flex', flexWrap: 'wrap', gap: 24, padding: '10px 16px',
           background: 'var(--paper-mid)', borderRadius: 'var(--r-sm)',
           border: '1px solid var(--rule)', marginBottom: 16,
           fontSize: '0.786rem',

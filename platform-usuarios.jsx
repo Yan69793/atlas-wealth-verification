@@ -64,7 +64,7 @@
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 24, alignItems: 'start' }}>
+        <div className="usuarios-grid">
           {/* Lista de usuários */}
           <div>
             {/* Usuário admin fixo */}
