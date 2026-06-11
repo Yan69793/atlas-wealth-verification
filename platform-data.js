@@ -1056,6 +1056,28 @@
     },
   };
 
+  /* ----------------------------------------------------------------
+     RISK_CONFIG — parâmetros centrais do scoring de risco
+     Edite este bloco para calibrar limiares sem tocar nas funções
+  ---------------------------------------------------------------- */
+  var RISK_CONFIG = {
+    /* Dimensões e pesos máximos (soma = 100) */
+    max: { mercado: 30, concentracao: 25, liquidez: 20, suitability: 15, operacional: 10 },
+
+    /* Faixas de nível de risco (score total 0–100) */
+    nivel: { alto: 70, atencao: 40 },
+
+    /* Thresholds de ativação da fila de ação (score por dimensão) */
+    filaAcao: {
+      scoreMinimo:  40,  /* score total mínimo para entrar na fila */
+      operacional:   6,
+      mercado:      15,
+      concentracao: 12,
+      suitability:   8,
+      liquidez:     10,
+    },
+  };
+
   function riskScore(code, month) {
     var p = _codeMap[code];
     if (!p) return null;
@@ -1145,7 +1167,7 @@
     op = Math.min(10, op);
 
     var total = Math.min(100, Math.round(mercado + conc + liq + suit + op));
-    var nivel = total >= 70 ? 'Alto' : total >= 40 ? 'Atenção' : 'Baixo';
+    var nivel = total >= RISK_CONFIG.nivel.alto ? 'Alto' : total >= RISK_CONFIG.nivel.atencao ? 'Atenção' : 'Baixo';
 
     var components = [
       { label:'Mercado',      value:mercado, max:30 },
@@ -1181,13 +1203,14 @@
     var scoreMedia = scores.length > 0
       ? Math.round(scores.reduce(function(acc,s){ return acc+s.score; },0) / scores.length) : 0;
     var filaAcao = [];
-    scores.filter(function(s){ return s.score >= 40; }).forEach(function(s) {
+    var FA = RISK_CONFIG.filaAcao;
+    scores.filter(function(s){ return s.score >= FA.scoreMinimo; }).forEach(function(s) {
       var pares = [
-        { ativo: s.components.operacional  >= 6,  peso: s.components.operacional  / 10, motivo:'Status CORRIGIR ativo',              rec:'Bloquear liberação até resolução dos achados' },
-        { ativo: s.components.mercado      >= 15, peso: s.components.mercado      / 30, motivo:'Underperformance persistente vs CDI', rec:'Solicitar relatório de atribuição ao gestor' },
-        { ativo: s.components.concentracao >= 12, peso: s.components.concentracao / 25, motivo:'Concentração acima do limite',        rec:'Revisar política de diversificação' },
-        { ativo: s.components.suitability  >= 8,  peso: s.components.suitability  / 15, motivo:'Exposição incompatível com perfil',   rec:'Análise de adequação (suitability)' },
-        { ativo: s.components.liquidez     >= 10, peso: s.components.liquidez     / 20, motivo:'Liquidez abaixo do mínimo',           rec:'Rever janela de resgate e buffer de caixa' },
+        { ativo: s.components.operacional  >= FA.operacional,   peso: s.components.operacional  / RISK_CONFIG.max.operacional,   motivo:'Status CORRIGIR ativo',              rec:'Bloquear liberação até resolução dos achados' },
+        { ativo: s.components.mercado      >= FA.mercado,       peso: s.components.mercado      / RISK_CONFIG.max.mercado,       motivo:'Underperformance persistente vs CDI', rec:'Solicitar relatório de atribuição ao gestor' },
+        { ativo: s.components.concentracao >= FA.concentracao,  peso: s.components.concentracao / RISK_CONFIG.max.concentracao,  motivo:'Concentração acima do limite',        rec:'Revisar política de diversificação' },
+        { ativo: s.components.suitability  >= FA.suitability,   peso: s.components.suitability  / RISK_CONFIG.max.suitability,   motivo:'Exposição incompatível com perfil',   rec:'Análise de adequação (suitability)' },
+        { ativo: s.components.liquidez     >= FA.liquidez,      peso: s.components.liquidez     / RISK_CONFIG.max.liquidez,      motivo:'Liquidez abaixo do mínimo',           rec:'Rever janela de resgate e buffer de caixa' },
         { ativo: RECIDIVA_CODES.indexOf(s.code) >= 0,  peso: 1,                         motivo:'Recidiva de alertas (4+ meses)',      rec:'Escalar para comitê de risco' },
       ];
       pares = pares.filter(function(p){ return p.ativo; });
@@ -1330,6 +1353,7 @@
     portfolioReportData: portfolioReportData,
     exportMonthlySnapshot: exportMonthlySnapshot,
     STRESS_SHOCKS: STRESS_SHOCKS,
+    RISK_CONFIG:   RISK_CONFIG,
     riskScore:     riskScore,
     riskDashboard: riskDashboard,
     riskStress:    riskStress,

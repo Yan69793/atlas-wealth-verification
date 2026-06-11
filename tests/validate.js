@@ -127,7 +127,7 @@ ok('AtlasPages.Risco registrado em platform-risco.jsx',
 ok('rota /risco em platform-app.jsx',
   /['"]\/risco['"]/.test(appContent));
 ok('navegação contém Risco em platform-app.jsx',
-  /label:\s*['"]Risco['"]/.test(appContent));
+  /label:\s*['"]Radar de Risco['"]/.test(appContent));
 ok('AtlasData.riskDashboard exportado',
   dataContent.includes('riskDashboard:'));
 ok('AtlasData.riskStress exportado',

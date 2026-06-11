@@ -168,11 +168,11 @@
 
   const NAV_PAINEL = [
     { id:'dashboard',   label:'Dashboard',          icon:'dashboard',  path:'#/dashboard'   },
+    { id:'risco',       label:'Radar de Risco',      icon:'alert',      path:'#/risco'       },
     { id:'comparativo', label:'Comparativo',         icon:'compare',    path:'#/comparativo' },
     { id:'achados',     label:'Achados & Exceções',  icon:'findings',   path:'#/achados'     },
     { id:'receitas',    label:'Receitas & ROA',      icon:'revenue',    path:'#/receitas'    },
     { id:'busca',       label:'Busca por Ativo',     icon:'search',     path:'#/busca'       },
-    { id:'risco',       label:'Risco',               icon:'alert',      path:'#/risco'       },
   ];
 
   const NAV_GESTAO = [
