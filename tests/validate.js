@@ -7,6 +7,7 @@
 
 const fs   = require('fs');
 const path = require('path');
+const P    = require('../platform-parsers.js');
 
 const ROOT = path.join(__dirname, '..');
 let pass = 0, fail = 0;
@@ -132,6 +133,113 @@ ok('AtlasData.riskDashboard exportado',
   dataContent.includes('riskDashboard:'));
 ok('AtlasData.riskStress exportado',
   dataContent.includes('riskStress:'));
+
+// ─── 10. platform-parsers.js — parseCSV e parseImportRows ───────────────────
+
+const VALID_MONTHS = [
+  '2025-01','2025-02','2025-03','2025-04','2025-05','2025-06',
+  '2025-07','2025-08','2025-09','2025-10','2025-11','2025-12',
+  '2026-01','2026-02','2026-03','2026-04'
+];
+
+ok('platform-parsers.js carrega em Node', P && typeof P.parseCSV === 'function' &&
+  typeof P.parseImportRows === 'function');
+
+ok('constantes exportadas sem mojibake',
+  P.VALID_CLASSES.indexOf('RF Pós-Fixado') !== -1 &&
+  P.VALID_CLASSES.indexOf('Ações') !== -1 &&
+  P.VALID_CLASSES.indexOf('Previdência') !== -1 &&
+  P.VALID_CLASSES.indexOf('RF Inflação') !== -1);
+
+// --- parseCSV: BOM + campo entre aspas com vírgula + quebra CRLF ---
+const csvText = '﻿codigo,nome,obs\r\n' +
+  'C1,"Fundo, Especial","linha1"\r\n' +
+  'C2,Simples,ok\n';
+const csvRows = P.parseCSV(csvText);
+
+ok('parseCSV retorna nº de linhas correto', csvRows.length === 2,
+  `obtido: ${csvRows.length}`);
+ok('parseCSV remove BOM do header', Object.keys(csvRows[0]).indexOf('codigo') === 0,
+  `headers: ${Object.keys(csvRows[0]).join('|')}`);
+ok('parseCSV preserva vírgula dentro de aspas',
+  csvRows[0].nome === 'Fundo, Especial', `obtido: "${csvRows[0].nome}"`);
+
+// --- parseImportRows: fixture VÁLIDA (2 carteiras, uma com 2 meses) ---
+const validRows = [
+  // Carteira A — 2026-03, 2 ativos
+  { codigo:'A1', nome:'Carteira Alfa', perfil:'moderado', mes:'2026-03', pl:'1000000',
+    rentabilidade_pct:'0.0095', status:'LIBERAR', classe:'RF Pós-Fixado', ativo:'Fundo DI', pct_alocacao:'0.6' },
+  { codigo:'A1', nome:'Carteira Alfa', perfil:'moderado', mes:'2026-03', pl:'1000000',
+    rentabilidade_pct:'0.0095', status:'LIBERAR', classe:'Ações', ativo:'Fundo Ações', pct_alocacao:'0.4' },
+  // Carteira A — 2026-04 (segundo mês), 1 ativo
+  { codigo:'A1', nome:'Carteira Alfa', perfil:'moderado', mes:'2026-04', pl:'1050000',
+    rentabilidade_pct:'0.012', status:'COM ALERTA', classe:'Multimercado', ativo:'Fundo MM', pct_alocacao:'1' },
+  // Carteira B — 2026-04, 2 ativos
+  { codigo:'B2', nome:'Carteira Beta', perfil:'agressivo', mes:'2026-04', pl:'2500000',
+    rentabilidade_pct:'-0.003', status:'CORRIGIR', classe:'Internacional', ativo:'ETF Global', pct_alocacao:'0.7' },
+  { codigo:'B2', nome:'Carteira Beta', perfil:'agressivo', mes:'2026-04', pl:'2500000',
+    rentabilidade_pct:'-0.003', status:'CORRIGIR', classe:'FII', ativo:'FII Logística', pct_alocacao:'0.3' }
+];
+
+const okRes = P.parseImportRows(validRows, { validMonths: VALID_MONTHS });
+
+ok('fixture válida sem erros', okRes.errors.length === 0,
+  `errors: ${okRes.errors.join(' | ')}`);
+ok('fixture válida gera 2 portfolios', okRes.portfolios.length === 2,
+  `obtido: ${okRes.portfolios.length}`);
+ok('carteira A1 tem 2 meses',
+  okRes.portfolios[0] && Object.keys(okRes.portfolios[0].months).length === 2);
+ok('carteira A1/2026-03 tem 2 ativos na composição',
+  okRes.portfolios[0].months['2026-03'].composition.length === 2);
+ok('perfil normalizado para valor canônico',
+  okRes.portfolios[0].risk === 'moderado' && okRes.portfolios[1].risk === 'agressivo');
+const compA = okRes.portfolios[0].months['2026-03'].composition;
+const sumA = compA.reduce((acc, c) => acc + c.pct, 0);
+ok('soma de pct ≈ 1 na carteira A1/2026-03', Math.abs(sumA - 1) < 1e-9,
+  `soma: ${sumA}`);
+
+// --- parseImportRows: fixture INVÁLIDA (um erro por categoria) ---
+const badRows = [
+  // perfil inválido
+  { codigo:'X1', nome:'Ruim Perfil', perfil:'inexistente', mes:'2026-04', pl:'1000',
+    rentabilidade_pct:'0.01', status:'LIBERAR', classe:'CDB', ativo:'CDB Banco', pct_alocacao:'1' },
+  // classe inválida
+  { codigo:'X2', nome:'Ruim Classe', perfil:'moderado', mes:'2026-04', pl:'1000',
+    rentabilidade_pct:'0.01', status:'LIBERAR', classe:'Cripto', ativo:'Bitcoin', pct_alocacao:'1' },
+  // status inválido
+  { codigo:'X3', nome:'Ruim Status', perfil:'moderado', mes:'2026-04', pl:'1000',
+    rentabilidade_pct:'0.01', status:'TALVEZ', classe:'CDB', ativo:'CDB Banco', pct_alocacao:'1' },
+  // pl <= 0
+  { codigo:'X4', nome:'Ruim PL', perfil:'moderado', mes:'2026-04', pl:'0',
+    rentabilidade_pct:'0.01', status:'LIBERAR', classe:'CDB', ativo:'CDB Banco', pct_alocacao:'1' },
+  // mes fora de faixa
+  { codigo:'X5', nome:'Ruim Mes', perfil:'moderado', mes:'2030-01', pl:'1000',
+    rentabilidade_pct:'0.01', status:'LIBERAR', classe:'CDB', ativo:'CDB Banco', pct_alocacao:'1' }
+];
+
+const badRes = P.parseImportRows(badRows, { validMonths: VALID_MONTHS });
+
+ok('fixture inválida gera erros', badRes.errors.length > 0,
+  `errors: ${badRes.errors.length}`);
+ok('erro de perfil inválido detectado',
+  badRes.errors.some(e => /Perfil inválido/i.test(e)));
+ok('erro de classe inválida detectado',
+  badRes.errors.some(e => /Classe inválida/i.test(e)));
+ok('erro de status inválido detectado',
+  badRes.errors.some(e => /Status inválido/i.test(e)));
+ok('erro de PL inválido detectado',
+  badRes.errors.some(e => /PL inválido/i.test(e)));
+ok('erro de mês fora de faixa detectado',
+  badRes.errors.some(e => /fora da faixa suportada/i.test(e)));
+
+// --- coluna obrigatória ausente → erro único e portfolios vazio ---
+const missingColRes = P.parseImportRows(
+  [{ codigo:'Z1', nome:'Sem Status', perfil:'moderado', mes:'2026-04', pl:'1000',
+     rentabilidade_pct:'0.01', classe:'CDB', ativo:'CDB', pct_alocacao:'1' }],
+  { validMonths: VALID_MONTHS });
+ok('coluna ausente → portfolios vazio e erro listando faltante',
+  missingColRes.portfolios.length === 0 &&
+  missingColRes.errors.some(e => /status/i.test(e)));
 
 // ─── Resultado ──────────────────────────────────────────────────────────────
 
