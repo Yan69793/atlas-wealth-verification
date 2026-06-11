@@ -133,6 +133,16 @@ ok('AtlasData.riskDashboard exportado',
   dataContent.includes('riskDashboard:'));
 ok('AtlasData.riskStress exportado',
   dataContent.includes('riskStress:'));
+ok('AtlasData.importPortfolioData exportado',
+  dataContent.includes('importPortfolioData:'));
+ok('AtlasData.restoreDemo exportado',
+  dataContent.includes('restoreDemo:'));
+ok('AtlasData.getDataMode exportado',
+  dataContent.includes('getDataMode:'));
+ok('importPortfolioData() é função em platform-data.js',
+  /function importPortfolioData\s*\(/.test(dataContent));
+ok('restoreDemo() é função em platform-data.js',
+  /function restoreDemo\s*\(/.test(dataContent));
 
 // ─── 10. platform-parsers.js — parseCSV e parseImportRows ───────────────────
 

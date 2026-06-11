@@ -320,6 +320,38 @@
   })();
 
   /* =============================================================
+     4b. SNAPSHOT DEMO + ESTADO DE IMPORTAÇÃO
+     Captura deep-copy do dataset demo logo após materialize().
+     Usado por restoreDemo() para recompor tudo in-place.
+  ============================================================= */
+
+  var _demoSnapshot = (function () {
+    var snap = { catalog: [], portfolioData: {}, managers: [], statusScript: {} };
+    CATALOG.forEach(function (p) {
+      snap.catalog.push({ code: p.code, name: p.name, risk: p.risk, inception: p.inception });
+    });
+    Object.keys(_portfolioData).forEach(function (code) {
+      var pd = _portfolioData[code];
+      snap.portfolioData[code] = {
+        fee: pd.fee,
+        plArr: pd.plArr.slice(),
+        nnmArr: pd.nnmArr.slice(),
+        retArr: pd.retArr.slice(),
+        feeArr: pd.feeArr.slice(),
+        reportedPlPrevArr: pd.reportedPlPrevArr.slice()
+      };
+    });
+    MANAGERS.forEach(function (m) {
+      snap.managers.push({ id: m.id, name: m.name, codes: m.codes.slice(), roaTarget: m.roaTarget });
+    });
+    Object.keys(STATUS_SCRIPT).forEach(function (k) { snap.statusScript[k] = STATUS_SCRIPT[k]; });
+    return snap;
+  })();
+
+  var _importCompositions = {};   // chave "code|month" -> array de linhas de composição
+  var _dataMode = 'demo';
+
+  /* =============================================================
      5. GERADOR DE ACHADOS
   ============================================================= */
 
@@ -410,6 +442,7 @@
 
   function getComposition(code, month) {
     var cacheKey = code + '|' + month;
+    if (_importCompositions[cacheKey]) return _importCompositions[cacheKey];
     if (_compCache[cacheKey]) return _compCache[cacheKey];
 
     var pd = _portfolioData[code];
@@ -1318,6 +1351,169 @@
   }
 
   /* =============================================================
+     8c. INJEÇÃO DE DADOS IMPORTADOS
+     Troca de dataset por MUTAÇÃO IN-PLACE das estruturas exportadas
+     (CATALOG, MANAGERS, _portfolioData, STATUS_SCRIPT, _codeMap,
+     _importCompositions, _compCache). NUNCA reatribui as `var`.
+  ============================================================= */
+
+  var IMPORT_FEE = 0.0004; // taxa mensal default para carteiras importadas
+
+  // Constrói a entrada _portfolioData[code] a partir de um portfolio normalizado
+  // (formato do parser: { code, name, risk, months:{ 'YYYY-MM': {pl, ret, status, composition} } }).
+  function buildPortfolioEntry(portfolio) {
+    var n = MONTHS.length;
+    var entry = {
+      fee: IMPORT_FEE,
+      plArr: new Array(n).fill(0),
+      nnmArr: new Array(n).fill(0),
+      retArr: new Array(n).fill(0),
+      feeArr: new Array(n).fill(0),
+      reportedPlPrevArr: new Array(n).fill(0)
+    };
+    // 1ª passada: preenche todos os plArr/retArr/feeArr dos meses importados.
+    Object.keys(portfolio.months).forEach(function (mes) {
+      var mi = MONTHS.indexOf(mes);
+      if (mi < 0) return;
+      var m = portfolio.months[mes];
+      entry.plArr[mi] = m.pl;
+      entry.retArr[mi] = m.ret;
+      entry.feeArr[mi] = m.pl * entry.fee;
+    });
+    // 2ª passada: reportedPlPrevArr referencia plArr[mi-1] já preenchido.
+    Object.keys(portfolio.months).forEach(function (mes) {
+      var mi = MONTHS.indexOf(mes);
+      if (mi < 0) return;
+      entry.reportedPlPrevArr[mi] = mi > 0 ? entry.plArr[mi - 1] : 0;
+    });
+    return entry;
+  }
+
+  // Constrói as linhas de composição (overlay) de um mês a partir de pl + composition.
+  function buildCompositionRows(pl, composition) {
+    return composition.map(function (c) {
+      return {
+        name: c.name,
+        cls: c.cls,
+        institution: 'Importado',
+        vencto: null,
+        saldoInicial: pl * c.pct,
+        saldoFinal: pl * c.pct,
+        varBRL: 0,
+        retAtivo: 0,
+        contrib: 0,
+        pct: c.pct
+      };
+    });
+  }
+
+  function importPortfolioData(parsed) {
+    if (!parsed || !Array.isArray(parsed.portfolios)) {
+      return { ok: false, reason: 'Entrada inválida: estrutura parsed ausente.' };
+    }
+    if (Array.isArray(parsed.errors) && parsed.errors.length > 0) {
+      return { ok: false, reason: 'Importação bloqueada: há erros de validação.' };
+    }
+    if (parsed.portfolios.length === 0) {
+      return { ok: false, reason: 'Nenhuma carteira válida para importar.' };
+    }
+
+    // --- Construção das novas estruturas em locais primeiro ---
+    var newCatalog = [];
+    var newPortfolioData = {};
+    var newStatusScript = {};
+    var newImportCompositions = {};
+    var allCodes = [];
+    var monthsSet = {};
+
+    parsed.portfolios.forEach(function (pf) {
+      var meses = Object.keys(pf.months).filter(function (mes) {
+        return MONTHS.indexOf(mes) >= 0;
+      });
+      // inception = menor mês importado da carteira
+      var inception = meses.slice().sort()[0] || MONTHS[0];
+
+      newCatalog.push({ code: pf.code, name: pf.name, risk: pf.risk, inception: inception });
+      newPortfolioData[pf.code] = buildPortfolioEntry(pf);
+      allCodes.push(pf.code);
+
+      meses.forEach(function (mes) {
+        var m = pf.months[mes];
+        newStatusScript[pf.code + '|' + mes] = m.status;
+        newImportCompositions[pf.code + '|' + mes] = buildCompositionRows(m.pl, m.composition);
+        monthsSet[mes] = true;
+      });
+    });
+
+    // --- Aplicação IN-PLACE ---
+    CATALOG.length = 0;
+    newCatalog.forEach(function (e) { CATALOG.push(e); });
+
+    Object.keys(_codeMap).forEach(function (k) { delete _codeMap[k]; });
+    CATALOG.forEach(function (p) { _codeMap[p.code] = p; });
+
+    Object.keys(STATUS_SCRIPT).forEach(function (k) { delete STATUS_SCRIPT[k]; });
+    Object.keys(newStatusScript).forEach(function (k) { STATUS_SCRIPT[k] = newStatusScript[k]; });
+
+    Object.keys(_portfolioData).forEach(function (k) { delete _portfolioData[k]; });
+    Object.keys(newPortfolioData).forEach(function (k) { _portfolioData[k] = newPortfolioData[k]; });
+
+    Object.keys(_importCompositions).forEach(function (k) { delete _importCompositions[k]; });
+    Object.keys(newImportCompositions).forEach(function (k) { _importCompositions[k] = newImportCompositions[k]; });
+
+    Object.keys(_compCache).forEach(function (k) { delete _compCache[k]; });
+
+    MANAGERS.length = 0;
+    MANAGERS.push({ id: 'IMPORTADAS', name: 'Carteiras Importadas', codes: allCodes.slice(), roaTarget: 0.0050 });
+
+    _dataMode = 'imported';
+
+    var mesesOrdenados = Object.keys(monthsSet).sort();
+    return { ok: true, nCarteiras: parsed.portfolios.length, meses: mesesOrdenados, mode: 'imported' };
+  }
+
+  function restoreDemo() {
+    CATALOG.length = 0;
+    _demoSnapshot.catalog.forEach(function (e) {
+      CATALOG.push({ code: e.code, name: e.name, risk: e.risk, inception: e.inception });
+    });
+
+    Object.keys(_codeMap).forEach(function (k) { delete _codeMap[k]; });
+    CATALOG.forEach(function (p) { _codeMap[p.code] = p; });
+
+    Object.keys(STATUS_SCRIPT).forEach(function (k) { delete STATUS_SCRIPT[k]; });
+    Object.keys(_demoSnapshot.statusScript).forEach(function (k) {
+      STATUS_SCRIPT[k] = _demoSnapshot.statusScript[k];
+    });
+
+    Object.keys(_portfolioData).forEach(function (k) { delete _portfolioData[k]; });
+    Object.keys(_demoSnapshot.portfolioData).forEach(function (code) {
+      var pd = _demoSnapshot.portfolioData[code];
+      _portfolioData[code] = {
+        fee: pd.fee,
+        plArr: pd.plArr.slice(),
+        nnmArr: pd.nnmArr.slice(),
+        retArr: pd.retArr.slice(),
+        feeArr: pd.feeArr.slice(),
+        reportedPlPrevArr: pd.reportedPlPrevArr.slice()
+      };
+    });
+
+    Object.keys(_importCompositions).forEach(function (k) { delete _importCompositions[k]; });
+    Object.keys(_compCache).forEach(function (k) { delete _compCache[k]; });
+
+    MANAGERS.length = 0;
+    _demoSnapshot.managers.forEach(function (m) {
+      MANAGERS.push({ id: m.id, name: m.name, codes: m.codes.slice(), roaTarget: m.roaTarget });
+    });
+
+    _dataMode = 'demo';
+    return { ok: true, mode: 'demo' };
+  }
+
+  function getDataMode() { return _dataMode; }
+
+  /* =============================================================
      9. EXPORTS
   ============================================================= */
 
@@ -1357,6 +1553,9 @@
     riskScore:     riskScore,
     riskDashboard: riskDashboard,
     riskStress:    riskStress,
+    importPortfolioData: importPortfolioData,
+    restoreDemo: restoreDemo,
+    getDataMode: getDataMode,
     validate: validate,
   };
 
