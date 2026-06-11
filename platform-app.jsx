@@ -448,6 +448,14 @@
     // Auth state
     const [authed, setAuthed] = useState(() => storage.isAuthed());
 
+    // Re-render quando os dados mudam (import/restore demo)
+    const [dataVersion, setDataVersion] = useState(0);
+    useEffect(() => {
+      function onDataChange() { setDataVersion(v => v + 1); }
+      window.addEventListener('atlas:datachange', onDataChange);
+      return () => window.removeEventListener('atlas:datachange', onDataChange);
+    }, []);
+
     // Month state (global)
     const [selectedMonth, setSelectedMonthState] = useState(() => storage.getSelectedMonth());
     const setSelectedMonth = useCallback(m => {
@@ -488,7 +496,7 @@
         <MonthContext.Provider value={{ selectedMonth, setSelectedMonth }}>
           <ToastContext.Provider value={{ toasts, addToast }}>
             <AppShell page={page} onNavigate={path => { window.location.href = path; }}>
-              {renderPage(page, location)}
+              <React.Fragment key={dataVersion}>{renderPage(page, location)}</React.Fragment>
             </AppShell>
           </ToastContext.Provider>
         </MonthContext.Provider>

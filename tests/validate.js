@@ -144,6 +144,17 @@ ok('importPortfolioData() é função em platform-data.js',
 ok('restoreDemo() é função em platform-data.js',
   /function restoreDemo\s*\(/.test(dataContent));
 
+// ─── 9b. platform-import.jsx — UI de importação ─────────────────────────────
+
+const importContent = fs.readFileSync(path.join(ROOT, 'platform-import.jsx'), 'utf8');
+
+ok('platform-import.jsx referencia AtlasParsers',
+  importContent.includes('AtlasParsers'));
+ok('platform-import.jsx chama importPortfolioData',
+  importContent.includes('importPortfolioData'));
+ok('platform-app.jsx registra listener atlas:datachange',
+  appContent.includes("'atlas:datachange'") || appContent.includes('"atlas:datachange"'));
+
 // ─── 10. platform-parsers.js — parseCSV e parseImportRows ───────────────────
 
 const VALID_MONTHS = [
