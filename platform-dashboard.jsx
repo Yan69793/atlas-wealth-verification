@@ -392,6 +392,8 @@
           onNavigate={f => setFilter(f)}
         />
 
+        <PlChart range={range} onRange={setRange} />
+
         <Toolbar
           filter={filter}
           onFilter={handleFilterChange}
@@ -406,8 +408,6 @@
           onSort={handleSort}
           month={selectedMonth}
         />
-
-        <PlChart range={range} onRange={setRange} />
       </div>
     );
   }
