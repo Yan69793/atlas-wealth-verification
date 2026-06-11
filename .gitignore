@@ -28,15 +28,8 @@ desktop.ini
 *.swp
 *~
 
-# LGPD — documentos com dados operacionais reais
-# A pasta Verificação Mensal contém PDFs, relatórios e dados de clientes
-Verificação Mensal de Carteiras Mirabaud/Verificacao_*.md
-Verificação Mensal de Carteiras Mirabaud/ATLAS_*.docx
-Verificação Mensal de Carteiras Mirabaud/*.skill
-Verificação Mensal de Carteiras Mirabaud/carteiras-app/dist/
-Verificação Mensal de Carteiras Mirabaud/carteiras-app/public/
-Verificação Mensal de Carteiras Mirabaud/carteiras-app/**/*.pdf
-Verificação Mensal de Carteiras Mirabaud/**/*.pdf
+# LGPD — pasta com dados operacionais reais (PDFs, relatórios, dados de clientes)
+Verificação Mensal de Carteiras Mirabaud/
 
 # Binários e arquivos grandes
 *.pdf
