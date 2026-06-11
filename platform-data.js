@@ -1183,14 +1183,14 @@
     var filaAcao = [];
     scores.filter(function(s){ return s.score >= 40; }).forEach(function(s) {
       var pares = [
-        { peso: s.components.operacional  / 10, motivo:'Status CORRIGIR ativo',              rec:'Bloquear liberação até resolução dos achados' },
-        { peso: s.components.mercado      / 30, motivo:'Underperformance persistente vs CDI', rec:'Solicitar relatório de atribuição ao gestor' },
-        { peso: s.components.concentracao / 25, motivo:'Concentração acima do limite',        rec:'Revisar política de diversificação' },
-        { peso: s.components.suitability  / 15, motivo:'Exposição incompatível com perfil',   rec:'Análise de adequação (suitability)' },
-        { peso: s.components.liquidez     / 20, motivo:'Liquidez abaixo do mínimo',           rec:'Rever janela de resgate e buffer de caixa' },
-        { peso: RECIDIVA_CODES.indexOf(s.code) >= 0 ? 1 : 0, motivo:'Recidiva de alertas (4+ meses)', rec:'Escalar para comitê de risco' },
+        { ativo: s.components.operacional  >= 6,  peso: s.components.operacional  / 10, motivo:'Status CORRIGIR ativo',              rec:'Bloquear liberação até resolução dos achados' },
+        { ativo: s.components.mercado      >= 15, peso: s.components.mercado      / 30, motivo:'Underperformance persistente vs CDI', rec:'Solicitar relatório de atribuição ao gestor' },
+        { ativo: s.components.concentracao >= 12, peso: s.components.concentracao / 25, motivo:'Concentração acima do limite',        rec:'Revisar política de diversificação' },
+        { ativo: s.components.suitability  >= 8,  peso: s.components.suitability  / 15, motivo:'Exposição incompatível com perfil',   rec:'Análise de adequação (suitability)' },
+        { ativo: s.components.liquidez     >= 10, peso: s.components.liquidez     / 20, motivo:'Liquidez abaixo do mínimo',           rec:'Rever janela de resgate e buffer de caixa' },
+        { ativo: RECIDIVA_CODES.indexOf(s.code) >= 0,  peso: 1,                         motivo:'Recidiva de alertas (4+ meses)',      rec:'Escalar para comitê de risco' },
       ];
-      pares = pares.filter(function(p){ return p.peso > 0; });
+      pares = pares.filter(function(p){ return p.ativo; });
       pares.sort(function(a, b){ return b.peso - a.peso; });
       var motivos = pares.map(function(p){ return p.motivo; });
       var recs    = pares.map(function(p){ return p.rec; });
