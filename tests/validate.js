@@ -155,6 +155,14 @@ ok('platform-import.jsx chama importPortfolioData',
 ok('platform-app.jsx registra listener atlas:datachange',
   appContent.includes("'atlas:datachange'") || appContent.includes('"atlas:datachange"'));
 
+// ─── 9c. Wiring — index.html carrega parsers + template CSV ─────────────────
+
+ok('index.html carrega platform-parsers.js',
+  indexHtml.includes('platform-parsers.js'));
+
+ok('docs/templates/atlas_template.csv existe',
+  fs.existsSync(path.join(ROOT, 'docs', 'templates', 'atlas_template.csv')));
+
 // ─── 10. platform-parsers.js — parseCSV e parseImportRows ───────────────────
 
 const VALID_MONTHS = [

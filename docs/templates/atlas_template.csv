@@ -1,0 +1,14 @@
+codigo,nome,perfil,mes,pl,rentabilidade_pct,status,classe,ativo,pct_alocacao
+EXEMPLO_A,Carteira Exemplo A,conservador,2026-04,1500000,0.0082,LIBERAR,RF Pós-Fixado,Fundo DI Exemplo,0.5
+EXEMPLO_A,Carteira Exemplo A,conservador,2026-04,1500000,0.0082,LIBERAR,CDB,CDB Banco Exemplo,0.3
+EXEMPLO_A,Carteira Exemplo A,conservador,2026-04,1500000,0.0082,LIBERAR,Liquidez,Caixa Exemplo,0.2
+EXEMPLO_B,Familia Modelo Beta,moderado,2026-03,3200000,0.0105,COM ALERTA,RF Inflação,Tesouro IPCA Exemplo,0.4
+EXEMPLO_B,Familia Modelo Beta,moderado,2026-03,3200000,0.0105,COM ALERTA,Multimercado,Fundo MM Exemplo,0.35
+EXEMPLO_B,Familia Modelo Beta,moderado,2026-03,3200000,0.0105,COM ALERTA,Liquidez,Caixa Exemplo,0.25
+EXEMPLO_B,Familia Modelo Beta,moderado,2026-04,3300000,0.0118,LIBERAR,RF Inflação,Tesouro IPCA Exemplo,0.45
+EXEMPLO_B,Familia Modelo Beta,moderado,2026-04,3300000,0.0118,LIBERAR,Ações,Fundo Ações Exemplo,0.3
+EXEMPLO_B,Familia Modelo Beta,moderado,2026-04,3300000,0.0118,LIBERAR,Liquidez,Caixa Exemplo,0.25
+EXEMPLO_C,Carteira Exemplo C,moderado-agressivo,2026-04,5800000,0.0153,CORRIGIR,Internacional,ETF Global Exemplo,0.35
+EXEMPLO_C,Carteira Exemplo C,moderado-agressivo,2026-04,5800000,0.0153,CORRIGIR,FII,FII Exemplo,0.25
+EXEMPLO_C,Carteira Exemplo C,moderado-agressivo,2026-04,5800000,0.0153,CORRIGIR,Previdência,Previdência Exemplo,0.25
+EXEMPLO_C,Carteira Exemplo C,moderado-agressivo,2026-04,5800000,0.0153,CORRIGIR,Liquidez,Caixa Exemplo,0.15

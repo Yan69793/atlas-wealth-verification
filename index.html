@@ -46,8 +46,11 @@
     crossorigin="anonymous"
   ></script>
 
+  <!-- Parser de importação (CSV/Excel) — JS puro, sem Babel -->
+  <script src="platform-parsers.js?v=20260611c"></script>
+
   <!-- 1. Dados (script normal — sem Babel, sem JSX) -->
-  <script src="platform-data.js?v=20260611"></script>
+  <script src="platform-data.js?v=20260611c"></script>
 
   <!-- 2. Utilitários, ícones, gráficos (Babel JSX) -->
   <script type="text/babel" src="platform-utils.jsx?v=20260611"></script>
@@ -61,12 +64,12 @@
   <script type="text/babel" src="platform-receitas.jsx?v=20260611"></script>
   <script type="text/babel" src="platform-cadastro.jsx?v=20260611"></script>
   <script type="text/babel" src="platform-busca.jsx?v=20260611"></script>
-  <script type="text/babel" src="platform-import.jsx?v=20260611"></script>
+  <script type="text/babel" src="platform-import.jsx?v=20260611c"></script>
   <script type="text/babel" src="platform-usuarios.jsx?v=20260611"></script>
 
   <script type="text/babel" src="platform-risco.jsx?v=20260611b"></script>
 
   <!-- 4. App shell — deve ser carregado por ÚLTIMO (monta o ReactDOM) -->
-  <script type="text/babel" src="platform-app.jsx?v=20260611"></script>
+  <script type="text/babel" src="platform-app.jsx?v=20260611c"></script>
 </body>
 </html>
