@@ -1026,6 +1026,205 @@
     };
   }
 
+  /* ================================================================
+     8b. RISK SCORING
+  ================================================================ */
+
+  var LESS_LIQUID_CLS = ['FII', 'Previdência', 'Internacional'];
+  var RISKY_CLS       = ['Ações', 'Multimercado', 'FII', 'Internacional'];
+
+  var STRESS_SHOCKS = {
+    juros200: {
+      'RF Pós-Fixado':  0.000, 'RF Inflação':  -0.080, 'CDB':  0.000,
+      'Multimercado':  -0.030, 'Ações':         -0.040, 'FII': -0.070,
+      'Previdência':   -0.050, 'Internacional': -0.020, 'Liquidez': 0,
+    },
+    bolsa15: {
+      'RF Pós-Fixado':  0.000, 'RF Inflação':  -0.010, 'CDB':  0.000,
+      'Multimercado':  -0.080, 'Ações':         -0.150, 'FII': -0.080,
+      'Previdência':   -0.060, 'Internacional': -0.050, 'Liquidez': 0,
+    },
+    liquidez: {
+      'RF Pós-Fixado': -0.010, 'RF Inflação':  -0.020, 'CDB': -0.030,
+      'Multimercado':  -0.050, 'Ações':         -0.070, 'FII': -0.120,
+      'Previdência':   -0.080, 'Internacional': -0.060, 'Liquidez': 0,
+    },
+    combinado: {
+      'RF Pós-Fixado': -0.010, 'RF Inflação':  -0.100, 'CDB': -0.030,
+      'Multimercado':  -0.140, 'Ações':         -0.220, 'FII': -0.200,
+      'Previdência':   -0.150, 'Internacional': -0.120, 'Liquidez': 0,
+    },
+  };
+
+  function riskScore(code, month) {
+    var p = _codeMap[code];
+    if (!p) return null;
+    var row = getRow(code, month);
+    if (!row || row.plCurr <= 0) return null;
+    var mi = MONTHS.indexOf(month);
+    var pd = _portfolioData[code];
+    var comp = getComposition(code, month);
+    var classPcts = {};
+    comp.forEach(function(item) { classPcts[item.cls] = (classPcts[item.cls] || 0) + item.pct; });
+
+    // MERCADO (0-30)
+    var mercado = 0;
+    var last6Start = Math.max(0, mi - 5);
+    var monthsBelowCDI = 0, plPeak = 0;
+    for (var j = last6Start; j <= mi; j++) {
+      if (MONTHS[j] < p.inception) continue;
+      if ((pd.retArr[j] || 0) < (CDI[MONTHS[j]] || 0)) monthsBelowCDI++;
+      var pl6 = pd.plArr[j] || 0;
+      if (pl6 > plPeak) plPeak = pl6;
+    }
+    mercado += Math.min(18, monthsBelowCDI * 3);
+    var drawdown6M = plPeak > 0 ? Math.max(0, (plPeak - row.plCurr) / plPeak) : 0;
+    if      (drawdown6M > 0.05) mercado += 12;
+    else if (drawdown6M > 0.02) mercado += 6;
+    else if (drawdown6M > 0.01) mercado += 3;
+    if      (p.risk === 'agressivo'          && row.rent < -0.01)  mercado += 5;
+    else if (p.risk === 'moderado-agressivo' && row.rent < -0.005) mercado += 3;
+    mercado = Math.min(30, mercado);
+
+    // CONCENTRACAO (0-25)
+    var conc = 0;
+    var maxClsPct = 0;
+    Object.keys(classPcts).forEach(function(cls) { if (classPcts[cls] > maxClsPct) maxClsPct = classPcts[cls]; });
+    if      (maxClsPct > 0.70) conc += 15;
+    else if (maxClsPct > 0.60) conc += 10;
+    else if (maxClsPct > 0.50) conc += 5;
+    var maxAssetPct = 0;
+    comp.forEach(function(item) { if (item.cls !== 'Liquidez' && item.pct > maxAssetPct) maxAssetPct = item.pct; });
+    if      (maxAssetPct > 0.30) conc += 7;
+    else if (maxAssetPct > 0.25) conc += 4;
+    var hhi = 0;
+    Object.keys(classPcts).forEach(function(cls) { hhi += classPcts[cls] * classPcts[cls]; });
+    if      (hhi > 0.40) conc += 5;
+    else if (hhi > 0.25) conc += 3;
+    conc = Math.min(25, conc);
+
+    // LIQUIDEZ (0-20)
+    var liq = 0;
+    var liqPct = classPcts['Liquidez'] || 0;
+    var lessLiqPct = 0;
+    LESS_LIQUID_CLS.forEach(function(cls) { lessLiqPct += (classPcts[cls] || 0); });
+    if      (liqPct < 0.03) liq += 12;
+    else if (liqPct < 0.05) liq += 7;
+    else if (liqPct < 0.08) liq += 3;
+    if      (lessLiqPct > 0.40) liq += 8;
+    else if (lessLiqPct > 0.30) liq += 5;
+    else if (lessLiqPct > 0.20) liq += 2;
+    liq = Math.min(20, liq);
+
+    // SUITABILITY (0-15)
+    var suit = 0;
+    var riskyPct = 0;
+    RISKY_CLS.forEach(function(cls) { riskyPct += (classPcts[cls] || 0); });
+    if (p.risk === 'conservador') {
+      if      (riskyPct > 0.30) suit += 15;
+      else if (riskyPct > 0.15) suit += 8;
+      else if (riskyPct > 0.05) suit += 3;
+    } else if (p.risk === 'moderado') {
+      if      (riskyPct > 0.60) suit += 10;
+      else if (riskyPct > 0.45) suit += 5;
+    } else if (p.risk === 'moderado-agressivo') {
+      if      (riskyPct > 0.80) suit += 8;
+      else if (riskyPct > 0.70) suit += 3;
+    }
+    suit = Math.min(15, suit);
+
+    // OPERACIONAL (0-10)
+    var op = 0;
+    if      (row.status === 'CORRIGIR')   op += 6;
+    else if (row.status === 'COM ALERTA') op += 3;
+    if      (row.nAchados >= 2) op += 2;
+    else if (row.nAchados >= 1) op += 1;
+    if (RECIDIVA_CODES.indexOf(code) >= 0) op += 2;
+    if      (row.continuidade > 0.005) op += 2;
+    else if (row.continuidade > 0.001) op += 1;
+    op = Math.min(10, op);
+
+    var total = Math.min(100, Math.round(mercado + conc + liq + suit + op));
+    var nivel = total >= 70 ? 'Alto' : total >= 40 ? 'Atenção' : 'Baixo';
+
+    var components = [
+      { label:'Mercado',      value:mercado, max:30 },
+      { label:'Concentração', value:conc,    max:25 },
+      { label:'Liquidez',     value:liq,     max:20 },
+      { label:'Suitability',  value:suit,    max:15 },
+      { label:'Operacional',  value:op,      max:10 },
+    ];
+    components.sort(function(a,b) { return (b.value/b.max) - (a.value/a.max); });
+    var drivers = components.filter(function(c){ return c.value > 0; }).slice(0,3).map(function(c){ return c.label; });
+
+    return {
+      code:code, name:p.name, risk:p.risk,
+      manager: getManagerForCode(code),
+      score:total, nivel:nivel,
+      components:{ mercado:mercado, concentracao:conc, liquidez:liq, suitability:suit, operacional:op },
+      drivers:drivers,
+      drawdown6M:drawdown6M, monthsBelowCDI:monthsBelowCDI,
+      classPcts:classPcts, riskyPct:riskyPct, liqPct:liqPct,
+      plCurr:row.plCurr, status:row.status,
+    };
+  }
+
+  function riskDashboard(month) {
+    var scores = [];
+    CATALOG.forEach(function(p) {
+      var s = riskScore(p.code, month);
+      if (s) scores.push(s);
+    });
+    scores.sort(function(a,b){ return b.score - a.score; });
+    var alto    = scores.filter(function(s){ return s.nivel === 'Alto'; }).length;
+    var atencao = scores.filter(function(s){ return s.nivel === 'Atenção'; }).length;
+    var scoreMedia = scores.length > 0
+      ? Math.round(scores.reduce(function(acc,s){ return acc+s.score; },0) / scores.length) : 0;
+    var filaAcao = [];
+    scores.filter(function(s){ return s.score >= 40; }).forEach(function(s) {
+      var motivos = [], recs = [];
+      if (s.components.operacional >= 6)  { motivos.push('Status CORRIGIR ativo'); recs.push('Bloquear liberação até resolução dos achados'); }
+      if (s.components.mercado >= 15)     { motivos.push('Underperformance persistente vs CDI'); recs.push('Solicitar relatório de atribuição ao gestor'); }
+      if (s.components.concentracao >= 12){ motivos.push('Concentração acima do limite'); recs.push('Revisar política de diversificação'); }
+      if (s.components.suitability >= 8)  { motivos.push('Exposição incompatível com perfil'); recs.push('Análise de adequação (suitability)'); }
+      if (s.components.liquidez >= 10)    { motivos.push('Liquidez abaixo do mínimo'); recs.push('Rever janela de resgate e buffer de caixa'); }
+      if (RECIDIVA_CODES.indexOf(s.code) >= 0) { motivos.push('Recidiva de alertas (4+ meses)'); recs.push('Escalar para comitê de risco'); }
+      if (motivos.length === 0) { motivos.push('Score elevado (' + s.score + '/100)'); recs.push('Revisão de monitoramento mensal'); }
+      filaAcao.push({
+        code:s.code, name:s.name, score:s.score, nivel:s.nivel,
+        motivo:motivos.slice(0,2).join('; '),
+        recomendacao:recs[0] || '—',
+        severidade:s.nivel === 'Alto' ? 'CORRIGIR' : 'COM ALERTA',
+      });
+    });
+    return { kpis:{alto:alto, atencao:atencao, scoreMedia:scoreMedia}, carteiras:scores, filaAcao:filaAcao };
+  }
+
+  function riskStress(month, scenario) {
+    var shocks = STRESS_SHOCKS[scenario] || STRESS_SHOCKS['combinado'];
+    var totalLoss = 0, totalAUM = 0;
+    var portfolioLosses = [];
+    CATALOG.forEach(function(p) {
+      var mi = MONTHS.indexOf(month);
+      if (mi < 0) return;
+      var plCurr = _portfolioData[p.code].plArr[mi] || 0;
+      if (plCurr <= 0) return;
+      totalAUM += plCurr;
+      var comp = getComposition(p.code, month);
+      var loss = 0;
+      comp.forEach(function(item) { loss += (shocks[item.cls] || 0) * item.pct * plCurr; });
+      totalLoss += loss;
+      portfolioLosses.push({ code:p.code, name:p.name, plCurr:plCurr, loss:loss, lossPct:plCurr > 0 ? loss/plCurr : 0 });
+    });
+    portfolioLosses.sort(function(a,b){ return a.loss - b.loss; });
+    return {
+      scenario:scenario, totalLoss:totalLoss,
+      totalLossPct: totalAUM > 0 ? totalLoss / totalAUM : 0,
+      portfolioLosses:portfolioLosses,
+      top5Stressed:portfolioLosses.slice(0,5),
+    };
+  }
+
   function validate() {
     var errs = 0;
 
@@ -1125,6 +1324,9 @@
     searchAssets: searchAssets,
     portfolioReportData: portfolioReportData,
     exportMonthlySnapshot: exportMonthlySnapshot,
+    riskScore:     riskScore,
+    riskDashboard: riskDashboard,
+    riskStress:    riskStress,
     validate: validate,
   };
 

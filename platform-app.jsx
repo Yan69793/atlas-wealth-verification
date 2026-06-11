@@ -172,6 +172,7 @@
     { id:'achados',     label:'Achados & Exceções',  icon:'findings',   path:'#/achados'     },
     { id:'receitas',    label:'Receitas & ROA',      icon:'revenue',    path:'#/receitas'    },
     { id:'busca',       label:'Busca por Ativo',     icon:'search',     path:'#/busca'       },
+    { id:'risco',       label:'Risco',               icon:'alert',      path:'#/risco'       },
   ];
 
   const NAV_GESTAO = [
@@ -311,6 +312,7 @@
     if (path === '/receitas') return 'receitas';
     if (path === '/cadastro') return 'cadastro';
     if (path === '/busca') return 'busca';
+    if (path === '/risco') return 'risco';
     if (path === '/importar') return 'importar';
     if (path === '/usuarios') return 'usuarios';
     if (path.startsWith('/dev/relatorio/')) return 'dev-relatorio';
@@ -325,6 +327,7 @@
     receitas:   'Receitas & ROA',
     cadastro:   'Cadastro & Compliance',
     busca:      'Busca por Ativo',
+    risco:      'Radar de Risco',
     importar:   'Importar Extratos',
     usuarios:   'Usuários',
   };
@@ -400,6 +403,11 @@
         return pages.Busca
           ? React.createElement(pages.Busca)
           : <PlaceholderPage title="Busca por Ativo" etapa={8} />;
+
+      case 'risco':
+        return pages.Risco
+          ? React.createElement(pages.Risco)
+          : <PlaceholderPage title="Radar de Risco" etapa="risco" />;
 
       case 'importar':
         return pages.Importar

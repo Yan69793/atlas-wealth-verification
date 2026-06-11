@@ -116,6 +116,23 @@ if (fs.existsSync(readmePath)) {
     /atlas2026/.test(readme));
 }
 
+// ─── 9. platform-risco.jsx — estrutura mínima ───────────────────────────────
+
+const riscoPath = path.join(ROOT, 'platform-risco.jsx');
+const riscoExists = fs.existsSync(riscoPath);
+ok('platform-risco.jsx existe', riscoExists);
+const riscoContent = riscoExists ? fs.readFileSync(riscoPath, 'utf8') : '';
+ok('AtlasPages.Risco registrado em platform-risco.jsx',
+  riscoContent.includes('AtlasPages.Risco'));
+ok('rota /risco em platform-app.jsx',
+  /['"]\/risco['"]/.test(appContent));
+ok('navegação contém Risco em platform-app.jsx',
+  /label:\s*['"]Risco['"]/.test(appContent));
+ok('AtlasData.riskDashboard exportado',
+  dataContent.includes('riskDashboard:'));
+ok('AtlasData.riskStress exportado',
+  dataContent.includes('riskStress:'));
+
 // ─── Resultado ──────────────────────────────────────────────────────────────
 
 const total = pass + fail;
