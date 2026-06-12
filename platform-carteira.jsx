@@ -29,6 +29,9 @@
       .sort((a, b) => b.pct - a.pct);
 
     const hasVencto = comp.some(a => a.vencto);
+    const colCount  = 8 + (hasVencto ? 1 : 0);
+
+    const [expandedIdx, setExpandedIdx] = useState(null);
 
     const {
       PieChart, Pie, Cell,
@@ -92,25 +95,62 @@
             </thead>
             <tbody>
               {comp.map((a, i) => (
-                <tr key={i}>
-                  <td>
-                    <div style={{ fontWeight: 500, fontSize: '0.857rem' }}>{a.name}</div>
-                  </td>
-                  <td style={{ fontSize: '0.786rem', color: 'var(--muted)' }}>{a.cls}</td>
-                  <td className="num">{fmtPct(a.pct, 1)}</td>
-                  <td className="num">{fmtCompactBRL(a.saldoFinal)}</td>
-                  <td className={`num ${signClass(a.varBRL)}`}>
-                    {a.varBRL >= 0 ? '+' : ''}{fmtCompactBRL(a.varBRL)}
-                  </td>
-                  <td className={`num ${signClass(a.retAtivo)}`}>
-                    {a.retAtivo > 0 ? '+' : ''}{fmtPct(a.retAtivo, 2)}
-                  </td>
-                  <td className={`num ${signClass(a.contrib)}`}>
-                    {a.contrib > 0 ? '+' : ''}{fmtPct(a.contrib, 3)}
-                  </td>
-                  <td style={{ fontSize: '0.786rem', color: 'var(--muted)' }}>{a.institution || '—'}</td>
-                  {hasVencto && <td style={{ fontSize: '0.786rem' }}>{a.vencto || '—'}</td>}
-                </tr>
+                <React.Fragment key={i}>
+                  <tr
+                    onClick={() => setExpandedIdx(expandedIdx === i ? null : i)}
+                    style={{ cursor: 'pointer', background: expandedIdx === i ? 'var(--paper-mid)' : undefined }}
+                  >
+                    <td>
+                      <div style={{ fontWeight: 500, fontSize: '0.857rem' }}>{a.name}</div>
+                    </td>
+                    <td style={{ fontSize: '0.786rem', color: 'var(--muted)' }}>{a.cls}</td>
+                    <td className="num" style={a.pct >= 0.25 ? { color: 'var(--amber)' } : undefined}>
+                      {fmtPct(a.pct, 1)}{a.pct >= 0.25 && <span style={{ fontSize: '0.75rem', marginLeft: 4 }}>(&#62;25%)</span>}
+                    </td>
+                    <td className="num">{fmtCompactBRL(a.saldoFinal)}</td>
+                    <td className={`num ${signClass(a.varBRL)}`}>
+                      {a.varBRL >= 0 ? '+' : ''}{fmtCompactBRL(a.varBRL)}
+                    </td>
+                    <td className={`num ${signClass(a.retAtivo)}`}>
+                      {a.retAtivo > 0 ? '+' : ''}{fmtPct(a.retAtivo, 2)}
+                    </td>
+                    <td className={`num ${signClass(a.contrib)}`}>
+                      {a.contrib > 0 ? '+' : ''}{fmtPct(a.contrib, 3)}
+                    </td>
+                    <td style={{ fontSize: '0.786rem', color: 'var(--muted)' }}>{a.institution || '—'}</td>
+                    {hasVencto && <td style={{ fontSize: '0.786rem' }}>{a.vencto || '—'}</td>}
+                  </tr>
+                  {expandedIdx === i && (
+                    <tr style={{ background: 'var(--paper-mid)' }}>
+                      <td colSpan={colCount} style={{ padding: '10px 16px', borderTop: 'none' }}>
+                        <div style={{ display: 'flex', gap: 32, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                          <div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--muted)', marginBottom: 2 }}>Saldo m-1</div>
+                            <div className="num" style={{ fontSize: '0.857rem' }}>
+                              {a.saldoInicial != null ? fmtCompactBRL(a.saldoInicial) : 'Sem dados de saldo anterior.'}
+                            </div>
+                          </div>
+                          <div style={{ minWidth: 200, flex: 1 }}>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--muted)', marginBottom: 4 }}>Peso na carteira</div>
+                            <div style={{ background: 'var(--rule)', borderRadius: 3, height: 6 }}>
+                              <div style={{
+                                background: a.pct >= 0.25 ? 'var(--amber)' : 'var(--navy)',
+                                borderRadius: 3, height: 6,
+                                width: `${Math.min(a.pct * 100, 100)}%`,
+                              }} />
+                            </div>
+                            <div style={{ fontSize: '0.75rem', marginTop: 2, color: 'var(--muted)' }}>{fmtPct(a.pct, 2)}</div>
+                          </div>
+                          {a.pct >= 0.25 && (
+                            <div style={{ color: 'var(--amber)', fontSize: '0.786rem', fontWeight: 500, alignSelf: 'center' }}>
+                              Concentração elevada (&#62;25%)
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
               ))}
             </tbody>
           </table>
@@ -457,6 +497,18 @@
     const p   = useMemo(() => D.CATALOG.find(x => x.code === code), [code]);
     const row = useMemo(() => D.getRow(code, selectedMonth), [code, selectedMonth]);
 
+    const { twr, cdiAcc } = useMemo(() => {
+      if (!p) return { twr: 0, cdiAcc: 0 };
+      const inc = p.inception || D.MONTHS[0];
+      const months = D.MONTHS.filter(m => m >= inc && m <= selectedMonth);
+      const rows = months.map(m => D.getRow(code, m)).filter(Boolean);
+      if (!rows.length) return { twr: 0, cdiAcc: 0 };
+      return {
+        twr:    rows.reduce((acc, r) => acc * (1 + r.rent), 1) - 1,
+        cdiAcc: rows.reduce((acc, r) => acc * (1 + r.cdi),  1) - 1,
+      };
+    }, [code, selectedMonth, p]);
+
     if (!p) {
       return (
         <div>
@@ -554,7 +606,7 @@
             </div>
 
             {/* KPI row 2 */}
-            <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 24 }}>
+            <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 10 }}>
               <KPITile
                 label="Continuidade"
                 value={fmtPct(row.continuidade, 3)}
@@ -568,6 +620,18 @@
               />
               <KPITile label="Ativos m-1" value={row.nAtivosPrev != null ? row.nAtivosPrev : '—'} sub="Posições mês anterior" />
               <KPITile label="Ativos m"   value={row.nAtivos     != null ? row.nAtivos     : '—'} sub="Posições mês atual" />
+            </div>
+
+            {/* KPI row 3 */}
+            <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', marginBottom: 24 }}>
+              <KPITile label="CDI Mês"       value={fmtPct(row.cdi, 3)} sub="Taxa mês" />
+              <KPITile label="TWR Acumulado" value={fmtPct(twr, 2)}     sub={`desde ${fmtMonthLabel(p.inception || D.MONTHS[0])}`} />
+              <KPITile
+                label="CDI Acumulado"
+                value={fmtPct(cdiAcc, 2)}
+                sub="Período"
+                variant={twr < cdiAcc ? 'amber' : undefined}
+              />
             </div>
           </>
         ) : (
