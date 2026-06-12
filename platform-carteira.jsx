@@ -3,7 +3,7 @@
   const { useState, useMemo, useEffect } = React;
 
   // Safe IIFE-level destructuring (carregam antes das páginas)
-  const { fmtCompactBRL, fmtPct, fmtMonthLabel, signClass, navigate, storage } = window.AtlasUtils;
+  const { fmtBRL, fmtCompactBRL, fmtPct, fmtMonthLabel, signClass, navigate, storage } = window.AtlasUtils;
   const { Icon }            = window.AtlasIcons;
   const { Badge, SeverityBadge, KPITile, EmptyState } = window.AtlasUI;
   const { LineChart } = window.AtlasCharts;
@@ -394,6 +394,117 @@
   }
 
   /* ============================================================
+     TAB — CONTA CORRENTE
+  ============================================================ */
+  function TabContaCorrente({ code, month }) {
+    const mov = useMemo(() => D.getMovimentacoes(code, month), [code, month]);
+
+    if (!mov || !mov.plInicio) {
+      return <EmptyState title="Sem dados" sub="Sem dados de movimentação para este mês. Importe o extrato via PDF." icon="search" />;
+    }
+
+    const varPositivo = mov.varPatrimonial >= 0;
+    const aportePositivo = mov.aporteLiqEst >= 0;
+
+    return (
+      <div>
+        {/* KPI tiles resumo */}
+        <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', marginBottom: 20 }}>
+          <KPITile label="PL Início"        value={fmtCompactBRL(mov.plInicio)} sub="Saldo abertura" />
+          <KPITile label="PL Fim"           value={fmtCompactBRL(mov.plFim)}    sub="Saldo fechamento" />
+          <KPITile
+            label="Var. Patrimonial"
+            value={(varPositivo ? '+' : '') + fmtCompactBRL(mov.varPatrimonial)}
+            sub="Período"
+            variant={varPositivo ? undefined : 'amber'}
+          />
+        </div>
+
+        {/* Decomposição */}
+        <div className="card" style={{ marginBottom: 20, padding: '16px 20px' }}>
+          <div className="card-title" style={{ marginBottom: 12 }}>Decomposição da Variação</div>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.857rem' }}>
+            <tbody>
+              <tr style={{ borderBottom: '1px solid var(--rule)' }}>
+                <td style={{ padding: '8px 0', color: 'var(--body)' }}>Retorno dos ativos</td>
+                <td className="num" style={{ padding: '8px 0', fontFamily: 'JetBrains Mono, monospace' }}>
+                  {(mov.retornoRS >= 0 ? '+' : '') + fmtBRL(mov.retornoRS)}
+                </td>
+              </tr>
+              <tr>
+                <td style={{ padding: '8px 0', color: 'var(--body)' }}>
+                  Aporte/Resgate Est.
+                  <span style={{ color: 'var(--muted)', fontSize: '0.75rem', marginLeft: 6 }}>
+                    {aportePositivo ? '(entrada)' : '(saída)'}
+                  </span>
+                </td>
+                <td
+                  className="num"
+                  style={{
+                    padding: '8px 0',
+                    fontFamily: 'JetBrains Mono, monospace',
+                    color: aportePositivo ? 'var(--green)' : 'var(--amber)',
+                  }}
+                >
+                  {(aportePositivo ? '+' : '') + fmtBRL(mov.aporteLiqEst)}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <p style={{ marginTop: 12, fontSize: '0.75rem', color: 'var(--muted)', lineHeight: 1.5 }}>
+            Aporte/Resgate estimado: diferenca entre variacao patrimonial e retorno calculado.
+            Para dados de transacao reais, importe o extrato via PDF.
+          </p>
+        </div>
+
+        {/* Movimentos por ativo */}
+        {mov.ativos && mov.ativos.length > 0 && (
+          <div className="card" style={{ padding: 0 }}>
+            <div style={{ padding: '14px 20px 10px', borderBottom: '1px solid var(--rule)' }}>
+              <div className="card-title">Movimentos por Ativo</div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--muted)', marginTop: 2 }}>
+                Ordenado por contribuicao ao retorno (maior primeiro)
+              </div>
+            </div>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.857rem' }}>
+                <thead>
+                  <tr style={{ position: 'sticky', top: 0, background: 'var(--paper-mid)', zIndex: 1 }}>
+                    <th style={{ textAlign: 'left', padding: '8px 12px', fontWeight: 600, fontSize: '0.786rem', color: 'var(--muted)' }}>Ativo</th>
+                    <th style={{ textAlign: 'left', padding: '8px 12px', fontWeight: 600, fontSize: '0.786rem', color: 'var(--muted)' }}>Classe</th>
+                    <th className="num" style={{ padding: '8px 12px', fontWeight: 600, fontSize: '0.786rem', color: 'var(--muted)', minWidth: 110 }}>Saldo Inicio</th>
+                    <th className="num" style={{ padding: '8px 12px', fontWeight: 600, fontSize: '0.786rem', color: 'var(--muted)', minWidth: 110 }}>Saldo Fim</th>
+                    <th className="num" style={{ padding: '8px 12px', fontWeight: 600, fontSize: '0.786rem', color: 'var(--muted)', minWidth: 100 }}>Var. R$</th>
+                    <th className="num" style={{ padding: '8px 12px', fontWeight: 600, fontSize: '0.786rem', color: 'var(--muted)', minWidth: 90 }}>Rent. Ativo</th>
+                    <th className="num" style={{ padding: '8px 12px', fontWeight: 600, fontSize: '0.786rem', color: 'var(--muted)', minWidth: 90 }}>Contrib.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {mov.ativos.map((a, i) => (
+                    <tr key={i} style={{ borderBottom: '1px solid var(--rule)' }}>
+                      <td style={{ padding: '8px 12px', fontWeight: 500 }}>{a.nome}</td>
+                      <td style={{ padding: '8px 12px', color: 'var(--muted)', fontSize: '0.786rem' }}>{a.classe}</td>
+                      <td className="num" style={{ padding: '8px 12px', fontFamily: 'JetBrains Mono, monospace' }}>{fmtCompactBRL(a.saldoInicio)}</td>
+                      <td className="num" style={{ padding: '8px 12px', fontFamily: 'JetBrains Mono, monospace' }}>{fmtCompactBRL(a.saldoFim)}</td>
+                      <td className="num" style={{ padding: '8px 12px', fontFamily: 'JetBrains Mono, monospace', color: a.varTotal >= 0 ? 'var(--green)' : 'var(--red)' }}>
+                        {(a.varTotal >= 0 ? '+' : '') + fmtCompactBRL(a.varTotal)}
+                      </td>
+                      <td className="num" style={{ padding: '8px 12px', fontFamily: 'JetBrains Mono, monospace' }}>{fmtPct(a.retAtivo, 2)}</td>
+                      <td className="num" style={{ padding: '8px 12px', fontFamily: 'JetBrains Mono, monospace', color: a.contrib >= 0 ? 'var(--green)' : 'var(--red)' }}>
+                        {(a.contrib >= 0 ? '+' : '') + fmtPct(a.contrib, 2)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  /* ============================================================
      BLOCO DE OBSERVAÇÃO EDITÁVEL
   ============================================================ */
   function ObsBlock({ code, month }) {
@@ -527,10 +638,11 @@
     const prevMonthLabel = prevMonthIdx >= 0 ? fmtMonthLabel(D.MONTHS[prevMonthIdx]) : '—';
 
     const TABS = [
-      { key: 'composicao', label: 'Composição' },
-      { key: 'achados',    label: `Achados${row && row.nAchados > 0 ? ` (${row.nAchados})` : ''}` },
-      { key: 'historico',  label: 'Histórico' },
-      { key: 'receita',    label: 'Receita' },
+      { key: 'composicao',    label: 'Composição' },
+      { key: 'achados',       label: `Achados${row && row.nAchados > 0 ? ` (${row.nAchados})` : ''}` },
+      { key: 'historico',     label: 'Histórico' },
+      { key: 'receita',       label: 'Receita' },
+      { key: 'contacorrente', label: 'Conta Corrente' },
     ];
 
     function handleExport() {
@@ -657,10 +769,11 @@
         </div>
 
         {/* Tab content */}
-        {activeTab === 'composicao' && <TabComposicao code={code} month={selectedMonth} row={row} />}
-        {activeTab === 'achados'    && <TabAchados row={row} />}
-        {activeTab === 'historico'  && <TabHistorico code={code} month={selectedMonth} />}
-        {activeTab === 'receita'    && <TabReceita code={code} month={selectedMonth} />}
+        {activeTab === 'composicao'    && <TabComposicao code={code} month={selectedMonth} row={row} />}
+        {activeTab === 'achados'       && <TabAchados row={row} />}
+        {activeTab === 'historico'     && <TabHistorico code={code} month={selectedMonth} />}
+        {activeTab === 'receita'       && <TabReceita code={code} month={selectedMonth} />}
+        {activeTab === 'contacorrente' && <TabContaCorrente code={code} month={selectedMonth} />}
 
         {/* Observation block */}
         <ObsBlock code={code} month={selectedMonth} />

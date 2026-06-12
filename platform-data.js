@@ -793,6 +793,59 @@
     return result;
   }
 
+  function twrAgregado(fromMonth, toMonth) {
+    var result = [];
+    MONTHS.forEach(function(m) {
+      if (m < fromMonth || m > toMonth) return;
+      var idx = MONTHS.indexOf(m);
+      var totalPl = 0;
+      var weightedRet = 0;
+      CATALOG.forEach(function(p) {
+        var d = _portfolioData[p.code];
+        var weight = idx > 0 ? (d.plArr[idx - 1] || 0) : (d.plArr[idx] || 0);
+        var r = d.retArr[idx] || 0;
+        totalPl += weight;
+        weightedRet += weight * r;
+      });
+      var wRet = totalPl > 0 ? weightedRet / totalPl : 0;
+      result.push({ month: m, twr: wRet });
+    });
+    return result;
+  }
+
+  function getMovimentacoes(code, month) {
+    var row = getRow(code, month);
+    if (!row) return null;
+    var comp = getComposition(code, month);
+    var plInicio = row.plPrev;
+    var plFim = row.plCurr;
+    var varPatrimonial = plFim - plInicio;
+    var retornoRS = plInicio * row.rent;
+    var aporteLiqEst = varPatrimonial - retornoRS;
+    var ativos = comp.map(function(a) {
+      return {
+        nome: a.name,
+        classe: a.cls,
+        saldoInicio: a.saldoInicial,
+        saldoFim: a.saldoFinal,
+        varTotal: a.varBRL,
+        retAtivo: a.retAtivo,
+        contrib: a.contrib,
+      };
+    });
+    ativos.sort(function(a, b) { return b.contrib - a.contrib; });
+    return {
+      mes: month,
+      plInicio: plInicio,
+      plFim: plFim,
+      rentabilidade: row.rent,
+      varPatrimonial: varPatrimonial,
+      retornoRS: retornoRS,
+      aporteLiqEst: aporteLiqEst,
+      ativos: ativos,
+    };
+  }
+
   function findings(month) {
     var result = [];
     CATALOG.forEach(function(p) {
@@ -1620,6 +1673,8 @@
     getComposition: getComposition,
     dashboardStats: dashboardStats,
     plTotalSeries: plTotalSeries,
+    twrAgregado: twrAgregado,
+    getMovimentacoes: getMovimentacoes,
     findings: findings,
     recidivas: recidivas,
     anomalias: anomalias,

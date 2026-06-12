@@ -242,27 +242,28 @@
     } = window.Recharts;
 
     const months    = rangeMonths(range);
-    const rawSeries = D.plTotalSeries(months[0], months[months.length - 1]);
-    const base      = rawSeries[0] ? rawSeries[0].pl : 1;
+    const twrSeries = D.twrAgregado(months[0], months[months.length - 1]);
 
+    let twrRun = 1;
     let cdiAcc = 1;
     const chartData = months.map((m, i) => {
+      twrRun *= (1 + (twrSeries[i] ? twrSeries[i].twr : 0));
       cdiAcc *= (1 + (D.CDI[m] || 0));
       return {
         label: D.MONTH_LABELS[D.MONTHS.indexOf(m)] || m.slice(5),
-        pl:  rawSeries[i] ? +((rawSeries[i].pl - base) / base * 100).toFixed(3) : 0,
+        pl:  +((twrRun - 1) * 100).toFixed(3),
         cdi: +((cdiAcc - 1) * 100).toFixed(3),
       };
     });
 
     const tickInterval = months.length > 8 ? Math.ceil(months.length / 7) : 0;
     const fmtY  = v => v.toFixed(1) + '%';
-    const fmtTT = (value, name) => [value.toFixed(2) + '%', name === 'pl' ? 'PL Total' : 'CDI acum.'];
+    const fmtTT = (value, name) => [value.toFixed(2) + '%', name === 'pl' ? 'Retorno TWR' : 'CDI acum.'];
 
     return (
       <div className="chart-wrap" style={{ marginTop: 20 }}>
         <div className="card-header">
-          <div className="card-title">Evolução do PL Total</div>
+          <div className="card-title">Retorno TWR vs CDI</div>
           <div className="chart-range-btns">
             {RANGES.map(r => (
               <button key={r} className={`range-btn${range === r ? ' active' : ''}`} onClick={() => onRange(r)}>
@@ -291,7 +292,7 @@
               contentStyle={{ fontSize: 12, borderRadius: 4, border: '1px solid #E3DDD5', background: '#F9F7F4' }}
             />
             <Legend
-              formatter={name => name === 'pl' ? 'PL Total' : 'CDI acum.'}
+              formatter={name => name === 'pl' ? 'Retorno TWR' : 'CDI acum.'}
               iconType="line"
               wrapperStyle={{ fontSize: 12, paddingTop: 8 }}
             />
