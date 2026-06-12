@@ -567,15 +567,18 @@
     var lossyWarned = {};
     var skippedNoClass = false;
 
+    // A seção de conciliação atravessa páginas: um grupo de classe aberto no
+    // fim de uma página vale para os ativos no início da seguinte. Por isso o
+    // estado persiste entre as páginas da seção (o TOTAL geral o encerra).
+    var currentCls = null;
+    var pending = [];
+    var lastAsset = null;
+
     for (p = 0; p < pagesLines.length; p++) {
       var cpage = pagesLines[p];
       var isConc = cpage.some(function (s) { return /Saldo\s+Anterior/i.test(s); }) &&
                    cpage.some(function (s) { return /Part\.?\s*%/i.test(s); });
       if (!isConc) continue;
-
-      var currentCls = null;
-      var pending = [];
-      var lastAsset = null;
 
       for (l = 0; l < cpage.length; l++) {
         var cline = String(cpage[l]).trim();

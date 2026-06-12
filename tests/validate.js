@@ -446,6 +446,44 @@ ok('book sintético: warning de mapeamento de classe',
   bookRes.warnings.some(w => /Prefixado/.test(w)) &&
   bookRes.warnings.some(w => /RV Global/.test(w)));
 
+// --- conciliação atravessando páginas: grupo no fim de uma, ativo na seguinte ---
+const BOOK_MULTIPAGE = [
+  ['Relatório Mensal', '30/04/2026', 'MPAG'],
+  [
+    'Data Extrato: 30/04/2026',
+    'Asset Allocation $ % Histórico Asset Allocation',
+    'Liquidez 500.000,00 50,00',
+    'Ações 500.000,00 50,00',
+    'TOTAL 1.000.000,00 100,00',
+  ],
+  [
+    'Data Extrato: 30/04/2026',
+    'Saldo Anterior Aplicações Resgates Eventos Imposto Saldo Líquido',
+    'Ativos Instituição Saldo Bruto de Part.%',
+    'IR+IOF',
+    'Liquidez 490.000,00 0,00 0,00 0,00 0,00 500.000,00 0,00 500.000,00 50,00',
+    'FUNDO TESTE DI BTG 490.000,00 0,00 0,00 0,00 0,00 500.000,00 0,00 500.000,00 50,00',
+    // grupo abre no FIM desta página; o ativo dele vem na página seguinte
+    'Ações 488.000,00 0,00 0,00 0,00 0,00 500.000,00 0,00 500.000,00 50,00',
+  ],
+  [
+    'Data Extrato: 30/04/2026',
+    'Saldo Anterior Aplicações Resgates Eventos Imposto Saldo Líquido',
+    'Ativos Instituição Saldo Bruto de Part.%',
+    'IR+IOF',
+    'FUNDO ACOES TESTE BTG 488.000,00 0,00 0,00 0,00 0,00 500.000,00 0,00 500.000,00 50,00',
+    'TOTAL 978.000,00 0,00 0,00 0,00 0,00 1.000.000,00 0,00 1.000.000,00 100,00',
+  ],
+];
+const mpRes = P.parseMirabaudBook(BOOK_MULTIPAGE, {
+  validMonths: VALID_MONTHS, fileName: 'Book_MPAG_2026_04.pdf'
+});
+ok('grupo de classe persiste entre páginas da conciliação',
+  mpRes.confidence === 'alta' && mpRes.portfolio &&
+  mpRes.portfolio.months['2026-04'].composition.length === 2 &&
+  mpRes.portfolio.months['2026-04'].composition.some(c => c.cls === 'Ações' && c.name === 'FUNDO ACOES TESTE'),
+  `confidence: ${mpRes.confidence}; errors: ${mpRes.errors.join(' | ')}`);
+
 // --- book degradado (sem TOTAL nem conciliação) → revisão manual ---
 const BOOK_BAD = [
   ['Relatório Mensal', '30/04/2026', 'RUIM'],
