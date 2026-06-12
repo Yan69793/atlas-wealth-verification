@@ -41,8 +41,8 @@
 
     return (
       <div>
-        <div className="card" style={{ marginBottom: 20, padding: '16px' }}>
-          <div className="card-title" style={{ marginBottom: 16 }}>Asset Allocation</div>
+        <div className="card" style={{ marginBottom: 12, padding: '14px 16px 12px' }}>
+          <div className="card-title" style={{ marginBottom: 12 }}>Asset Allocation</div>
           <div style={{ display: 'flex', gap: 24, alignItems: 'center', flexWrap: 'wrap' }}>
             <div style={{ width: 220, height: 220, flexShrink: 0 }}>
               <PResponsive width="100%" height="100%">
@@ -672,17 +672,15 @@
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', paddingTop: 4, flexWrap: 'wrap' }}>
             <button
-              className="btn--ghost"
+              className="btn btn--ghost btn--sm"
               onClick={() => navigate('#/dashboard')}
-              style={{ fontSize: '0.786rem', display: 'flex', alignItems: 'center', gap: 4 }}
             >
               <Icon name="dashboard" size={14} />
               Dashboard
             </button>
             <button
-              className="btn--primary"
+              className="btn btn--primary btn--sm"
               onClick={handleExport}
-              style={{ fontSize: '0.786rem', display: 'flex', alignItems: 'center', gap: 4 }}
             >
               <Icon name="report" size={14} />
               Exportar Relatório
