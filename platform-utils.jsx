@@ -150,7 +150,7 @@
   }
 
   function navigate(path) {
-    window.location.hash = '#' + path;
+    window.location.hash = '#' + path.replace(/^#/, '');
   }
 
   function useRouter() {
