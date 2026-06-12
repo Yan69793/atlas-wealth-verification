@@ -1,6 +1,6 @@
 /* platform-risco.jsx — Radar de Risco: scoring multidimensional por carteira */
 (() => {
-  const { useState, useMemo } = React;
+  const { useState, useMemo, useEffect } = React;
   const { fmtCompactBRL, fmtPct, fmtMonthLabel } = window.AtlasUtils;
   const { KPITile, EmptyState } = window.AtlasUI;
   const D = window.AtlasData;
@@ -39,6 +39,248 @@
           {score}
         </span>
       </div>
+    );
+  }
+
+  /* ============================================================
+     DRAWER DE DETALHE — abre ao clicar em linha do heatmap
+  ============================================================ */
+  function DrawerDetalhe({ code, month, onClose }) {
+    const rs = useMemo(() => D.riskScore(code, month), [code, month]);
+
+    const scoreHistory = useMemo(() => {
+      const mi = D.MONTHS.indexOf(month);
+      if (mi < 0 || !rs) return [];
+      const start = Math.max(0, mi - 5);
+      return D.MONTHS.slice(start, mi + 1).map(m => {
+        const s = D.riskScore(code, m);
+        return s ? { month: m, score: s.score } : null;
+      }).filter(Boolean);
+    }, [code, month]);
+
+    if (!rs) return null;
+
+    const dims = [
+      { key: 'mercado',      label: 'Mercado',   max: 30 },
+      { key: 'concentracao', label: 'Concent.',   max: 25 },
+      { key: 'liquidez',     label: 'Liquidez',   max: 20 },
+      { key: 'suitability',  label: 'Suitab.',    max: 15 },
+      { key: 'operacional',  label: 'Op.',         max: 10 },
+    ];
+
+    function radarPts(ratios, cx, cy, r) {
+      return ratios.map((ratio, i) => {
+        const ang = (i * 72 - 90) * Math.PI / 180;
+        return `${(cx + r * ratio * Math.cos(ang)).toFixed(2)},${(cy + r * ratio * Math.sin(ang)).toFixed(2)}`;
+      }).join(' ');
+    }
+
+    const ratios    = dims.map(d => (rs.components[d.key] || 0) / d.max);
+    const dataPts   = radarPts(ratios, 80, 80, 60);
+    const guides    = [0.33, 0.67, 1.0];
+
+    const sparkW = 120, sparkH = 28;
+    const sparkScores = scoreHistory.map(h => h.score);
+    const minS = Math.min(...sparkScores), maxS = Math.max(...sparkScores);
+    const sparkRange = (maxS - minS) || 1;
+    const sparkPath = sparkScores.length > 1
+      ? sparkScores.map((s, i) => {
+          const x = (i / (sparkScores.length - 1)) * sparkW;
+          const y = sparkH - ((s - minS) / sparkRange) * sparkH * 0.8 - sparkH * 0.1;
+          return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`;
+        }).join(' ')
+      : '';
+
+    return (
+      <>
+        <div onClick={onClose} style={{
+          position:'fixed', top:0, right:0, bottom:0, left:0, zIndex:999,
+          background:'rgba(0,0,0,0.35)',
+        }} />
+        <div style={{
+          position:'fixed', right:0, top:0, height:'100vh',
+          width:'40%', minWidth:360, zIndex:1000,
+          background:'var(--paper)', borderLeft:'1px solid var(--rule)',
+          boxShadow:'-4px 0 24px rgba(0,0,0,0.18)',
+          overflowY:'auto', padding:'24px',
+          display:'flex', flexDirection:'column', gap:20,
+        }}>
+          {/* Header */}
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+            <div>
+              <div style={{ fontSize:'0.714rem', fontWeight:600, color:'var(--muted)',
+                marginBottom:4, letterSpacing:'0.08em', textTransform:'uppercase' }}>
+                {rs.code}
+              </div>
+              <div style={{ fontSize:'1rem', fontWeight:700, color:'var(--heading)',
+                marginBottom:6, lineHeight:1.3 }}>
+                {rs.name}
+              </div>
+              <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+                <NivelBadge nivel={rs.nivel} />
+                <span style={{ fontSize:'0.714rem', color:'var(--muted)' }}>Score {rs.score}/100</span>
+              </div>
+            </div>
+            <button onClick={onClose} style={{
+              background:'transparent', border:'none', cursor:'pointer',
+              padding:'4px 8px', color:'var(--muted)', fontSize:'1.2rem', lineHeight:1,
+            }}>×</button>
+          </div>
+
+          {/* 5 tiles de dimensao */}
+          <div>
+            <div style={{ fontSize:'0.714rem', fontWeight:600, color:'var(--muted)',
+              marginBottom:8, textTransform:'uppercase', letterSpacing:'0.08em' }}>
+              Scores por Dimensao
+            </div>
+            <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+              {dims.map(d => {
+                const v = rs.components[d.key] || 0;
+                const ratio = v / d.max;
+                const color = ratio > 0.67 ? 'var(--red)' : ratio > 0.33 ? 'var(--amber)' : 'var(--green)';
+                const bg    = ratio > 0.67 ? 'var(--red-bg)' : ratio > 0.33 ? 'var(--amber-bg)' : 'var(--green-bg)';
+                return (
+                  <div key={d.key} style={{
+                    padding:'8px 10px', borderRadius:'var(--r-md)', background:bg,
+                    flex:'1 1 68px', textAlign:'center',
+                  }}>
+                    <div style={{ fontSize:'0.643rem', color:'var(--muted)', marginBottom:3 }}>{d.label}</div>
+                    <div style={{ fontFamily:'JetBrains Mono, monospace', fontWeight:700,
+                      fontSize:'0.857rem', color }}>{v}/{d.max}</div>
+                    <div style={{ marginTop:4, height:3, borderRadius:2,
+                      background:'var(--rule)', overflow:'hidden' }}>
+                      <div style={{ width:(ratio*100)+'%', height:'100%', background:color }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Radar + Sparkline */}
+          <div style={{ display:'flex', gap:16, alignItems:'flex-start' }}>
+            <div style={{ flex:'0 0 160px' }}>
+              <div style={{ fontSize:'0.714rem', fontWeight:600, color:'var(--muted)',
+                marginBottom:6, textTransform:'uppercase', letterSpacing:'0.08em' }}>
+                Radar
+              </div>
+              <svg viewBox="0 0 160 160" width={160} height={160}>
+                {guides.map((gr, gi) => (
+                  <polygon key={gi} points={radarPts([gr,gr,gr,gr,gr], 80, 80, 60)}
+                    fill="none" stroke="var(--rule)" strokeWidth={gi === 2 ? 1 : 0.5} />
+                ))}
+                {dims.map((d, i) => {
+                  const ang = (i * 72 - 90) * Math.PI / 180;
+                  return <line key={d.key} x1={80} y1={80}
+                    x2={(80 + 60 * Math.cos(ang)).toFixed(2)}
+                    y2={(80 + 60 * Math.sin(ang)).toFixed(2)}
+                    stroke="var(--rule)" strokeWidth={0.5} />;
+                })}
+                <polygon points={dataPts}
+                  fill="var(--navy)" fillOpacity={0.25}
+                  stroke="var(--navy)" strokeWidth={1.5} />
+                {ratios.map((r, i) => {
+                  const ang = (i * 72 - 90) * Math.PI / 180;
+                  return <circle key={i}
+                    cx={(80 + 60 * r * Math.cos(ang)).toFixed(2)}
+                    cy={(80 + 60 * r * Math.sin(ang)).toFixed(2)}
+                    r={3} fill="var(--navy)" />;
+                })}
+                {dims.map((d, i) => {
+                  const ang = (i * 72 - 90) * Math.PI / 180;
+                  return <text key={d.key}
+                    x={(80 + 76 * Math.cos(ang)).toFixed(2)}
+                    y={(80 + 76 * Math.sin(ang)).toFixed(2)}
+                    textAnchor="middle" dominantBaseline="middle"
+                    fontSize={8} fill="var(--muted)">{d.label}</text>;
+                })}
+              </svg>
+            </div>
+            <div style={{ flex:1, minWidth:0 }}>
+              <div style={{ fontSize:'0.714rem', fontWeight:600, color:'var(--muted)',
+                marginBottom:6, textTransform:'uppercase', letterSpacing:'0.08em' }}>
+                Score 6 Meses
+              </div>
+              {sparkPath ? (
+                <div>
+                  <svg viewBox={`0 0 ${sparkW} ${sparkH}`} width="100%" height={sparkH}
+                    style={{ overflow:'visible', display:'block' }}>
+                    <polyline points={sparkPath} fill="none"
+                      stroke="var(--gold)" strokeWidth={1.5} />
+                    {sparkScores.map((s, i) => {
+                      const x = (i / (sparkScores.length - 1)) * sparkW;
+                      const y = sparkH - ((s - minS) / sparkRange) * sparkH * 0.8 - sparkH * 0.1;
+                      return <circle key={i} cx={x.toFixed(1)} cy={y.toFixed(1)} r={2.5} fill="var(--gold)" />;
+                    })}
+                  </svg>
+                  <div style={{ display:'flex', justifyContent:'space-between',
+                    fontSize:'0.571rem', color:'var(--muted)', marginTop:3 }}>
+                    {scoreHistory.map(h => <span key={h.month}>{h.month.slice(5)}</span>)}
+                  </div>
+                </div>
+              ) : (
+                <div style={{ fontSize:'0.714rem', color:'var(--muted)' }}>Dados insuficientes</div>
+              )}
+              <div style={{ marginTop:12, display:'flex', flexDirection:'column', gap:4,
+                fontSize:'0.714rem', color:'var(--muted)' }}>
+                <span>Drawdown 6M: <strong style={{ color: rs.drawdown6M > 0.02 ? 'var(--red)' : 'var(--body)' }}>
+                  {fmtPct(rs.drawdown6M, 1)}
+                </strong></span>
+                <span>Meses abaixo CDI: <strong style={{ color:'var(--body)' }}>{rs.monthsBelowCDI}</strong></span>
+                <span>PL: <strong style={{ color:'var(--body)' }}>{fmtCompactBRL(rs.plCurr)}</strong></span>
+                <span>Perfil: <strong style={{ color:'var(--body)' }}>{rs.risk}</strong></span>
+              </div>
+            </div>
+          </div>
+
+          {/* Barras de contribuicao */}
+          <div>
+            <div style={{ fontSize:'0.714rem', fontWeight:600, color:'var(--muted)',
+              marginBottom:8, textTransform:'uppercase', letterSpacing:'0.08em' }}>
+              Contribuicao por Dimensao
+            </div>
+            <div style={{ display:'flex', flexDirection:'column', gap:7 }}>
+              {dims.map(d => {
+                const v = rs.components[d.key] || 0;
+                const ratio = v / d.max;
+                const color = ratio > 0.67 ? 'var(--red)' : ratio > 0.33 ? 'var(--amber)' : 'var(--green)';
+                return (
+                  <div key={d.key} style={{ display:'flex', alignItems:'center', gap:8 }}>
+                    <div style={{ width:64, fontSize:'0.714rem', color:'var(--muted)',
+                      flexShrink:0, textAlign:'right' }}>{d.label}</div>
+                    <div style={{ flex:1, height:8, background:'var(--rule)',
+                      borderRadius:4, overflow:'hidden' }}>
+                      <div style={{ width:(ratio*100)+'%', height:'100%',
+                        background:color, borderRadius:4 }} />
+                    </div>
+                    <div style={{ width:36, textAlign:'right', fontSize:'0.714rem',
+                      fontFamily:'JetBrains Mono, monospace', color }}>{v}/{d.max}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Drivers */}
+          {rs.drivers.length > 0 && (
+            <div>
+              <div style={{ fontSize:'0.714rem', fontWeight:600, color:'var(--muted)',
+                marginBottom:6, textTransform:'uppercase', letterSpacing:'0.08em' }}>
+                Principais Drivers
+              </div>
+              <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+                {rs.drivers.map(d => (
+                  <span key={d} style={{
+                    padding:'3px 10px', borderRadius:'var(--r-sm)',
+                    background:'var(--paper-mid)', border:'1px solid var(--rule)',
+                    fontSize:'0.714rem', fontWeight:600, color:'var(--body)',
+                  }}>{d}</span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </>
     );
   }
 
@@ -91,7 +333,7 @@
   /* ============================================================
      HEATMAP — tabela de scores por carteira (ordenavel)
   ============================================================ */
-  function RiscoHeatmap({ carteiras }) {
+  function RiscoHeatmap({ carteiras, selectedCode, onSelect }) {
     const [sortKey, setSortKey] = useState('score');
     const [asc, setAsc]         = useState(false);
 
@@ -163,7 +405,14 @@
           </thead>
           <tbody>
             {sorted.map(s => (
-              <tr key={s.code}>
+              <tr key={s.code}
+                onClick={() => onSelect(s.code)}
+                style={{
+                  cursor:'pointer',
+                  background: s.code === selectedCode ? 'var(--paper-mid)' : undefined,
+                  borderLeft: s.code === selectedCode ? '2px solid var(--gold)' : '2px solid transparent',
+                  transition:'background 0.1s',
+                }}>
                 <td style={{ padding:'8px 12px' }}>
                   <div style={{ fontWeight:600, fontSize:'0.857rem' }}>{s.code}</div>
                   <div style={{ fontSize:'0.714rem', color:'var(--muted)' }}>{s.name}</div>
@@ -250,7 +499,14 @@
   function Risco() {
     const { useMonth } = window.AtlasContexts;
     const { selectedMonth } = useMonth();
-    const [scenario, setScenario] = useState('bolsa15');
+    const [scenario,      setScenario]      = useState('bolsa15');
+    const [selectedCode,  setSelectedCode]  = useState(null);
+
+    useEffect(() => {
+      function onKey(e) { if (e.key === 'Escape') setSelectedCode(null); }
+      window.addEventListener('keydown', onKey);
+      return () => window.removeEventListener('keydown', onKey);
+    }, []);
 
     const dash = useMemo(() => D.riskDashboard(selectedMonth), [selectedMonth]);
 
@@ -360,7 +616,11 @@
               Heatmap de Risco &mdash; {fmtMonthLabel(selectedMonth)}
             </span>
           </div>
-          <RiscoHeatmap carteiras={dash.carteiras} />
+          <RiscoHeatmap
+            carteiras={dash.carteiras}
+            selectedCode={selectedCode}
+            onSelect={setSelectedCode}
+          />
         </div>
 
         {/* Fila de acao */}
@@ -385,6 +645,15 @@
           IOSCO Principles of Liquidity Risk Management e BIS BCBS 239 (risk data aggregation).
           Nao constitui recomendacao de investimento nem substitui analise de risco regulatoria formal.
         </div>
+
+        {/* Drawer de detalhe por carteira */}
+        {selectedCode && (
+          <DrawerDetalhe
+            code={selectedCode}
+            month={selectedMonth}
+            onClose={() => setSelectedCode(null)}
+          />
+        )}
       </div>
     );
   }
