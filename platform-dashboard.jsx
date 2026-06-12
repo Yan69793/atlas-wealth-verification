@@ -247,12 +247,14 @@
     let twrRun = 1;
     let cdiAcc = 1;
     const chartData = months.map((m, i) => {
+      const pl  = +((twrRun - 1) * 100).toFixed(3);
+      const cdi = +((cdiAcc - 1) * 100).toFixed(3);
       twrRun *= (1 + (twrSeries[i] ? twrSeries[i].twr : 0));
       cdiAcc *= (1 + (D.CDI[m] || 0));
       return {
         label: D.MONTH_LABELS[D.MONTHS.indexOf(m)] || m.slice(5),
-        pl:  +((twrRun - 1) * 100).toFixed(3),
-        cdi: +((cdiAcc - 1) * 100).toFixed(3),
+        pl,
+        cdi,
       };
     });
 
