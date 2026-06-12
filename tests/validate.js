@@ -326,6 +326,169 @@ ok('valores usados são os da primeira linha (nome)',
   divRes.portfolios[0] && divRes.portfolios[0].name === 'Nome Original',
   `name: ${divRes.portfolios[0] ? divRes.portfolios[0].name : ''}`);
 
+// ─── 11. platform-parsers.js — parser de PDF (books Mirabaud) ───────────────
+
+ok('parseBRNumber/reconstructPdfLines/parseMirabaudBook exportados',
+  typeof P.parseBRNumber === 'function' &&
+  typeof P.reconstructPdfLines === 'function' &&
+  typeof P.parseMirabaudBook === 'function');
+
+// --- parseBRNumber ---
+ok('parseBRNumber: milhar + decimal pt-BR', P.parseBRNumber('1.234,56') === 1234.56);
+ok('parseBRNumber: negativo', P.parseBRNumber('-3,54') === -3.54);
+ok('parseBRNumber: inteiro simples', P.parseBRNumber('5') === 5);
+ok('parseBRNumber: "100,00"', P.parseBRNumber('100,00') === 100);
+ok('parseBRNumber: "--" → null', P.parseBRNumber('--') === null);
+ok('parseBRNumber: vazio → null', P.parseBRNumber('  ') === null);
+ok('parseBRNumber: texto → null', P.parseBRNumber('CDI') === null);
+ok('parseBRNumber: data → null', P.parseBRNumber('12/04/2027') === null);
+ok('parseBRNumber: percent com símbolo → null', P.parseBRNumber('120,00%') === null);
+
+// --- reconstructPdfLines: página rotacionada 90° (transform real dos books) ---
+const ROT = Math.PI / 2;
+const pdfItems = [
+  { str: 'World',  x: 100, y: 90, rot: ROT },
+  { str: 'Hello',  x: 100, y: 50, rot: ROT },
+  { str: 'Linha1', x: 80,  y: 50, rot: ROT },
+  { str: '  ',     x: 80,  y: 70, rot: ROT },   // whitespace ignorado
+];
+const recLines = P.reconstructPdfLines(pdfItems);
+ok('reconstructPdfLines: 2 linhas reconstruídas', recLines.length === 2,
+  `obtido: ${JSON.stringify(recLines)}`);
+ok('reconstructPdfLines: ordem de leitura dentro da linha',
+  recLines[1] === 'Hello World', `obtido: "${recLines[1]}"`);
+ok('reconstructPdfLines: ordem das linhas (topo primeiro)',
+  recLines[0] === 'Linha1', `obtido: "${recLines[0]}"`);
+
+// --- parseMirabaudBook: fixture sintética no layout real (dados fictícios) ---
+const BOOK_OK = [
+  // pág 1 — capa
+  ['Relatório Mensal', '30/04/2026', 'XPTO'],
+  // pág 2 — Asset Allocation + índices
+  [
+    'Data Extrato: 30/04/2026',
+    'Asset Allocation $ % Histórico Asset Allocation',
+    'Liquidez 500.000,00 50,00',
+    'Prefixado 300.000,00 30,00',
+    'RV Global 200.000,00 20,00',
+    'TOTAL 1.000.000,00 100,00',
+    'Índice Abr/2026 2026 12M 24M',
+    'CDI 1,09 4,54 14,83 27,97',
+  ],
+  // pág 3 — Rentabilidades Mensais
+  [
+    'Data Extrato: 30/04/2026',
+    'Rentabilidades Mensais da Carteira',
+    'Ano Jan Fev Mar Abr Mai Jun Jul Ago Set Out Nov Dez Rent.Ano o',
+    '2025 -- -- 0,50 1,00 1,00 1,00 1,00 1,00 1,00 1,00 1,00 1,00 9,90 9,90',
+    '2026 1,00 1,00 1,00 1,25 -- -- -- -- -- -- -- -- 4,30 14,60',
+  ],
+  // pág 4 — conciliação por ativo
+  [
+    'Data Extrato: 30/04/2026',
+    'Provisão',
+    'Saldo Anterior Aplicações Resgates Eventos Imposto Saldo Líquido',
+    'Ativos Instituição Saldo Bruto de Part.%',
+    '(31/03/2026) Compras Vendas Financeiros Pago (30/04/2026)',
+    'IR+IOF',
+    'Liquidez 490.000,00 0,00 0,00 0,00 0,00 500.000,00 0,00 500.000,00 50,00',
+    'FUNDO TESTE DI BTG 490.000,00 0,00 0,00 0,00 0,00 500.000,00 0,00 500.000,00 50,00',
+    'Prefixado 244.000,00 0,00 51.000,00 0,00 0,00 300.000,00 0,00 300.000,00 30,00',
+    'CDB BANCO FICTICIO 13,00% Vencto:',
+    'BTG 295.000,00 0,00 0,00 0,00 0,00 300.000,00 0,00 300.000,00 30,00',
+    '01/01/2030',
+    'ATIVO ZERADO BTG 50.000,00 0,00 51.000,00 0,00 0,00 0,00 0,00 0,00 0,00',
+    'RV Global 196.000,00 0,00 0,00 0,00 0,00 200.000,00 0,00 200.000,00 20,00',
+    'ETF FICTICIO BTG CORRETORA 196.000,00 0,00 0,00 0,00 0,00 200.000,00 0,00 200.000,00 20,00',
+    'TOTAL 981.000,00 0,00 51.000,00 0,00 0,00 1.000.000,00 0,00 1.000.000,00 100,00',
+    '4 © Powered by',
+  ],
+];
+
+const bookRes = P.parseMirabaudBook(BOOK_OK, {
+  validMonths: VALID_MONTHS, fileName: 'Book_XPTO_2026_04.pdf'
+});
+
+ok('book sintético: confiança alta e sem erros',
+  bookRes.confidence === 'alta' && bookRes.errors.length === 0,
+  `confidence: ${bookRes.confidence}; errors: ${bookRes.errors.join(' | ')}`);
+ok('book sintético: portfolio presente', !!bookRes.portfolio);
+
+const bp = bookRes.portfolio || { months: {} };
+ok('book sintético: code da capa', bp.code === 'XPTO', `code: ${bp.code}`);
+ok('book sintético: mês 2026-04', !!bp.months['2026-04']);
+const bm = bp.months['2026-04'] || {};
+ok('book sintético: PL do TOTAL', bm.pl === 1000000, `pl: ${bm.pl}`);
+ok('book sintético: rentabilidade do mês (1,25% → 0.0125)',
+  Math.abs(bm.ret - 0.0125) < 1e-9, `ret: ${bm.ret}`);
+ok('book sintético: status fixo COM ALERTA', bm.status === 'COM ALERTA');
+ok('book sintético: perfil default moderado', bp.risk === 'moderado');
+
+const bComp = bm.composition || [];
+ok('book sintético: 3 ativos (zerado excluído)', bComp.length === 3,
+  `ativos: ${bComp.map(c => c.name).join(' | ')}`);
+ok('book sintético: soma de pct ≈ 1',
+  Math.abs(bComp.reduce((a, c) => a + c.pct, 0) - 1) < 1e-9);
+ok('book sintético: Prefixado mapeado para CDB',
+  bComp.some(c => c.cls === 'CDB'));
+ok('book sintético: RV Global mapeado para Internacional',
+  bComp.some(c => c.cls === 'Internacional'));
+ok('book sintético: stitching de nome multi-linha (Vencto + data)',
+  bComp.some(c => c.name === 'CDB BANCO FICTICIO 13,00% Vencto: 01/01/2030'),
+  `nomes: ${bComp.map(c => c.name).join(' | ')}`);
+ok('book sintético: sufixo de custódia removido do nome',
+  bComp.some(c => c.name === 'ETF FICTICIO') && bComp.some(c => c.name === 'FUNDO TESTE DI'),
+  `nomes: ${bComp.map(c => c.name).join(' | ')}`);
+ok('book sintético: warnings de status e perfil default',
+  bookRes.warnings.some(w => /COM ALERTA/.test(w)) &&
+  bookRes.warnings.some(w => /perfil/i.test(w)));
+ok('book sintético: warning de mapeamento de classe',
+  bookRes.warnings.some(w => /Prefixado/.test(w)) &&
+  bookRes.warnings.some(w => /RV Global/.test(w)));
+
+// --- book degradado (sem TOTAL nem conciliação) → revisão manual ---
+const BOOK_BAD = [
+  ['Relatório Mensal', '30/04/2026', 'RUIM'],
+  ['Data Extrato: 30/04/2026', 'Asset Allocation $ %', 'Liquidez 1.000,00 100,00'],
+];
+const badBook = P.parseMirabaudBook(BOOK_BAD, {
+  validMonths: VALID_MONTHS, fileName: 'Book_RUIM_2026_04.pdf'
+});
+ok('book degradado: confiança baixa e portfolio null',
+  badBook.confidence === 'baixa' && badBook.portfolio === null);
+ok('book degradado: erro pede revisão manual',
+  badBook.errors.some(e => /revisão manual necessária/i.test(e)),
+  `errors: ${badBook.errors.join(' | ')}`);
+
+// --- book com mês fora da faixa suportada → erro, sem portfolio ---
+const BOOK_OOR = BOOK_OK.map(pg => pg.map(s => s.replace(/30\/04\/2026/g, '31/07/2027')));
+const oorBook = P.parseMirabaudBook(BOOK_OOR, {
+  validMonths: VALID_MONTHS, fileName: 'Book_XPTO_2027_07.pdf'
+});
+ok('book com mês fora da faixa: erro e portfolio null',
+  oorBook.portfolio === null &&
+  oorBook.errors.some(e => /fora da faixa suportada/i.test(e)),
+  `errors: ${oorBook.errors.join(' | ')}`);
+
+// ─── 12. Importação de PDF — estrutura da UI e docs ─────────────────────────
+
+ok('platform-import.jsx aceita .pdf no input',
+  /accept="[^"]*\.pdf/.test(importContent));
+ok('platform-import.jsx tem loadPdfJs com SRI (integrity)',
+  importContent.includes('loadPdfJs') && /PDFJS[^]*?sha512-/.test(importContent));
+ok('platform-import.jsx usa parseMirabaudBook e reconstructPdfLines',
+  importContent.includes('parseMirabaudBook') && importContent.includes('reconstructPdfLines'));
+ok('platform-import.jsx tem bloco de revisão manual',
+  /[Rr]evisão manual/.test(importContent));
+ok('platform-import.jsx tem prévia do texto extraído',
+  /texto extraído/i.test(importContent));
+
+if (fs.existsSync(readmePath)) {
+  const readme2 = fs.readFileSync(readmePath, 'utf8');
+  ok('README documenta PDF como beta/experimental',
+    /PDF/.test(readme2) && /beta|experimental/i.test(readme2));
+}
+
 // ─── Resultado ──────────────────────────────────────────────────────────────
 
 const total = pass + fail;

@@ -1,4 +1,4 @@
-/* platform-import.jsx — Importar Extratos (CSV + Excel) */
+/* platform-import.jsx — Importar Extratos (PDF + CSV + Excel) */
 (() => {
   const { useState, useRef } = React;
   const { Icon } = window.AtlasIcons;
@@ -32,6 +32,49 @@
     return _sheetjsPromise;
   }
 
+  // pdf.js 3.11.174 (última linha UMD) — cdnjs, SRI publicado pela API do cdnjs.
+  const PDFJS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+  const PDFJS_SRI = 'sha512-q+4liFwdPC/bNdhUpZx6aXDx/h77yEQtn4I1slHydcbZK34nLaR3cAeYSJshoxIOq3mjEf7xJE8YWIUHMn+oCQ==';
+  // Worker carregado como script clássico (com SRI): define globalThis.pdfjsWorker
+  // e o pdf.js processa no main thread (fake worker) — nenhum fetch sem SRI.
+  const PDFJS_WORKER_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  const PDFJS_WORKER_SRI = 'sha512-BbrZ76UNZq5BhH7LL7pn9A4TKQpQeNCHOo65/akfelcIBbcVvYWOFQKPXIrykE3qZxYjmDX573oa4Ywsc7rpTw==';
+
+  let _pdfjsPromise = null;
+
+  function loadScriptSRI(src, sri) {
+    return new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = src;
+      script.crossOrigin = 'anonymous';
+      script.integrity = sri;
+      script.onload = resolve;
+      script.onerror = () => reject(new Error('Falha ao carregar ' + src));
+      document.head.appendChild(script);
+    });
+  }
+
+  // Lazy-load do pdf.js (worker primeiro, depois a lib).
+  function loadPdfJs() {
+    if (window.pdfjsLib && window.pdfjsWorker) return Promise.resolve(window.pdfjsLib);
+    if (_pdfjsPromise) return _pdfjsPromise;
+
+    _pdfjsPromise = Promise.all([
+      window.pdfjsWorker ? Promise.resolve() : loadScriptSRI(PDFJS_WORKER_URL, PDFJS_WORKER_SRI),
+      window.pdfjsLib ? Promise.resolve() : loadScriptSRI(PDFJS_URL, PDFJS_SRI),
+    ]).then(() => {
+      if (!window.pdfjsLib) throw new Error('pdfjsLib não disponível após carga.');
+      // Fallback: se a detecção do worker em main thread falhar, o pdf.js
+      // recorre ao workerSrc abaixo.
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_URL;
+      return window.pdfjsLib;
+    }).catch((err) => {
+      _pdfjsPromise = null;
+      throw err;
+    });
+    return _pdfjsPromise;
+  }
+
   function Importar() {
     const { useMonth, useToast } = window.AtlasContexts;
     const { setSelectedMonth } = useMonth();
@@ -41,9 +84,11 @@
     const D = window.AtlasData;
 
     const [dragging, setDragging] = useState(false);
-    const [parsed, setParsed] = useState(null);   // { portfolios, errors, warnings }
+    const [parsed, setParsed] = useState(null);   // { portfolios, errors, warnings, review?, source? }
     const [fileName, setFileName] = useState('');
     const [busy, setBusy] = useState(false);
+    const [pdfPreviews, setPdfPreviews] = useState([]);   // [{ fileName, pages: [[linha]] }]
+    const [perfilOverrides, setPerfilOverrides] = useState({});  // code -> perfil
     const fileInputRef = useRef(null);
 
     const dataMode = D.getDataMode();
@@ -118,19 +163,130 @@
       });
     }
 
-    function handleFile(file) {
-      if (!file) return;
+    // --- PDF (books Mirabaud) ---
+
+    // Extrai o texto de um PDF página a página e interpreta o layout do book.
+    function parsePdfFile(pdfjsLib, file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const data = new Uint8Array(reader.result);
+          pdfjsLib.getDocument({ data }).promise.then(doc => {
+            const pagePromises = [];
+            for (let n = 1; n <= doc.numPages; n++) {
+              pagePromises.push(
+                doc.getPage(n).then(page => page.getTextContent()).then(tc => {
+                  const items = tc.items.map(it => ({
+                    str: it.str,
+                    x: it.transform[4],
+                    y: it.transform[5],
+                    rot: Math.atan2(it.transform[1], it.transform[0]),
+                  }));
+                  return P.reconstructPdfLines(items);
+                })
+              );
+            }
+            return Promise.all(pagePromises);
+          }).then(pagesLines => {
+            const res = P.parseMirabaudBook(pagesLines, {
+              validMonths: D.MONTHS, fileName: file.name,
+            });
+            resolve({ fileName: file.name, pages: pagesLines, res });
+          }).catch(reject);
+        };
+        reader.onerror = () => reject(new Error('Falha ao ler ' + file.name));
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
+    function handlePDFs(files) {
+      loadPdfJs().then(pdfjsLib => {
+        return Promise.all(files.map(f => parsePdfFile(pdfjsLib, f)));
+      }).then(results => {
+        // Merge: 1 book = 1 carteira/1 mês; mesmo código em arquivos
+        // diferentes agrega meses na mesma carteira.
+        const byCode = {};
+        const order = [];
+        const errors = [];
+        const warnings = [];
+        const review = [];
+
+        results.forEach(r => {
+          r.res.warnings.forEach(w => warnings.push(w));
+          r.res.errors.forEach(e => {
+            if (/revisão manual necessária/i.test(e)) review.push(e);
+            else errors.push(e);
+          });
+          const pf = r.res.portfolio;
+          if (!pf) return;
+          if (byCode[pf.code]) {
+            Object.keys(pf.months).forEach(mes => {
+              if (byCode[pf.code].months[mes]) {
+                warnings.push(r.fileName + ': mês ' + mes + ' duplicado para a carteira ' +
+                  pf.code + '; usando o último arquivo.');
+              }
+              byCode[pf.code].months[mes] = pf.months[mes];
+            });
+          } else {
+            byCode[pf.code] = pf;
+            order.push(pf.code);
+          }
+        });
+
+        const result = {
+          portfolios: order.map(c => byCode[c]),
+          errors,
+          warnings,
+          review,
+          source: 'pdf',
+        };
+        setParsed(result);
+        setPdfPreviews(results.map(r => ({ fileName: r.fileName, pages: r.pages })));
+        setBusy(false);
+
+        if (errors.length > 0) {
+          addToast(errors.length + ' erro(s) de validação. Corrija antes de importar.', 'error');
+        } else if (review.length > 0 && result.portfolios.length === 0) {
+          addToast('Nenhum book importável: revisão manual necessária.', 'error');
+        } else if (result.portfolios.length > 0) {
+          addToast(result.portfolios.length + ' carteira(s) prontas para confirmação.', 'info');
+        }
+      }).catch(() => {
+        addToast('Falha ao processar o PDF. Verifique o arquivo ou use CSV/XLSX.', 'error');
+        setBusy(false);
+      });
+    }
+
+    function handleFiles(fileList) {
+      const files = Array.prototype.slice.call(fileList || []);
+      if (files.length === 0) return;
       setParsed(null);
-      setFileName(file.name);
-      const lower = file.name.toLowerCase();
+      setPdfPreviews([]);
+      setPerfilOverrides({});
+
+      const exts = files.map(f => {
+        const m = f.name.toLowerCase().match(/\.(csv|xlsx|pdf)$/);
+        return m ? m[1] : '?';
+      });
+
+      const allPdf = exts.every(x => x === 'pdf');
+      if (files.length > 1 && !allPdf) {
+        addToast('Seleção múltipla apenas para PDFs. CSV/XLSX: um arquivo por vez.', 'error');
+        return;
+      }
+
+      setFileName(files.length === 1 ? files[0].name : files.length + ' arquivos PDF');
       setBusy(true);
-      if (lower.endsWith('.csv')) {
-        handleCSV(file);
-      } else if (lower.endsWith('.xlsx')) {
-        handleXLSX(file);
+
+      if (allPdf) {
+        handlePDFs(files);
+      } else if (exts[0] === 'csv') {
+        handleCSV(files[0]);
+      } else if (exts[0] === 'xlsx') {
+        handleXLSX(files[0]);
       } else {
         setBusy(false);
-        addToast('Formato não suportado. Use CSV ou XLSX.', 'error');
+        addToast('Formato não suportado. Use PDF, CSV ou XLSX.', 'error');
       }
     }
 
@@ -138,12 +294,12 @@
       e.preventDefault();
       setDragging(false);
       const files = e.dataTransfer ? e.dataTransfer.files : (e.target ? e.target.files : null);
-      if (files && files.length > 0) handleFile(files[0]);
+      if (files && files.length > 0) handleFiles(files);
     }
 
     function handleInputChange(e) {
       const files = e.target.files;
-      if (files && files.length > 0) handleFile(files[0]);
+      if (files && files.length > 0) handleFiles(files);
       e.target.value = '';
     }
 
@@ -153,7 +309,15 @@
     // --- Confirmação da importação ---
 
     function handleConfirm() {
-      const res = D.importPortfolioData(parsed);
+      // Aplica os perfis ajustados na pré-visualização (importação de PDF).
+      const toImport = {
+        portfolios: parsed.portfolios.map(pf => (
+          perfilOverrides[pf.code] ? { ...pf, risk: perfilOverrides[pf.code] } : pf
+        )),
+        errors: parsed.errors,
+        warnings: parsed.warnings,
+      };
+      const res = D.importPortfolioData(toImport);
       if (res.ok) {
         const lastMonth = res.meses[res.meses.length - 1];
         if (lastMonth) setSelectedMonth(lastMonth);
@@ -206,7 +370,7 @@
           <div className="page-eyebrow">Entrada de Dados</div>
           <h1 className="page-title">Importar Extratos</h1>
           <div className="page-subtitle">
-            Carregue carteiras em CSV ou Excel para substituir o conjunto exibido nos painéis
+            Carregue books em PDF (ou CSV/Excel) para substituir o conjunto exibido nos painéis
           </div>
         </div>
 
@@ -251,7 +415,7 @@
               Arraste um arquivo aqui ou clique para selecionar
             </div>
             <div style={{ fontSize: '0.857rem', color: 'var(--muted)' }}>
-              Formatos suportados: CSV, XLSX
+              Formatos suportados: PDF (books mensais — vários de uma vez), CSV, XLSX
             </div>
             {fileName && (
               <div style={{ marginTop: 12, fontSize: '0.786rem', color: 'var(--navy)', fontFamily: 'var(--font-mono)' }}>
@@ -261,15 +425,17 @@
             <input
               ref={fileInputRef}
               type="file"
-              accept=".csv,.xlsx"
+              accept=".csv,.xlsx,.pdf"
+              multiple
               style={{ display: 'none' }}
               onChange={handleInputChange}
             />
           </div>
 
           {/* Formatos aceitos */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginBottom: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 16 }}>
             {[
+              { fmt: 'PDF', tag: 'beta', desc: 'Books mensais (Relatório Mensal). Aceita vários arquivos de uma vez.' },
               { fmt: 'CSV', desc: 'Dados tabulares (UTF-8, separador vírgula).' },
               { fmt: 'XLSX', desc: 'Planilha Excel — lê a primeira aba.' },
             ].map(f => (
@@ -279,8 +445,19 @@
                 border: '1px solid var(--rule)',
                 borderRadius: 'var(--r-sm)',
               }}>
-                <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, fontSize: '0.857rem', color: 'var(--navy)', marginBottom: 4 }}>
-                  .{f.fmt}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, fontSize: '0.857rem', color: 'var(--navy)' }}>
+                    .{f.fmt}
+                  </span>
+                  {f.tag && (
+                    <span style={{
+                      fontSize: '0.643rem', fontWeight: 600, letterSpacing: '0.04em',
+                      color: 'var(--amber)', border: '1px solid var(--amber)',
+                      borderRadius: 'var(--r-sm)', padding: '0 5px', textTransform: 'uppercase',
+                    }}>
+                      {f.tag}
+                    </span>
+                  )}
                 </div>
                 <div style={{ fontSize: '0.714rem', color: 'var(--muted)' }}>{f.desc}</div>
               </div>
@@ -312,6 +489,60 @@
                 <li key={i} style={{ marginBottom: 4 }}>{e}</li>
               ))}
             </ul>
+          </div>
+        )}
+
+        {/* Bloco de REVISÃO MANUAL (books de PDF com baixa confiança) */}
+        {parsed && parsed.review && parsed.review.length > 0 && (
+          <div className="card" style={{
+            maxWidth: 760, marginBottom: 24,
+            border: '1px solid var(--amber)', background: 'var(--amber-bg)',
+          }}>
+            <div style={{ fontWeight: 600, fontSize: '0.929rem', color: 'var(--amber)', marginBottom: 6 }}>
+              Revisão manual necessária
+            </div>
+            <div style={{ fontSize: '0.786rem', color: 'var(--body)', marginBottom: 10 }}>
+              Os arquivos abaixo não atingiram a confiança mínima de extração e ficaram fora
+              desta importação. Confira o texto extraído ou use o formato CSV/XLSX.
+            </div>
+            <ul style={{ margin: 0, paddingLeft: 18, fontSize: '0.786rem', color: 'var(--body)' }}>
+              {parsed.review.map((r, i) => (
+                <li key={i} style={{ marginBottom: 4 }}>{r}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Prévia do texto extraído dos PDFs (auditável antes de confirmar) */}
+        {pdfPreviews.length > 0 && (
+          <div className="card" style={{ maxWidth: 760, marginBottom: 24 }}>
+            <div style={{ fontWeight: 600, fontSize: '0.929rem', color: 'var(--heading)', marginBottom: 4 }}>
+              Texto extraído dos PDFs
+            </div>
+            <div style={{ fontSize: '0.786rem', color: 'var(--muted)', marginBottom: 12 }}>
+              Conferência do que foi lido de cada arquivo, página a página, antes da conversão.
+            </div>
+            {pdfPreviews.map(pv => (
+              <details key={pv.fileName} style={{ marginBottom: 8 }}>
+                <summary style={{
+                  cursor: 'pointer', fontSize: '0.786rem', fontWeight: 600,
+                  color: 'var(--navy)', fontFamily: 'var(--font-mono)',
+                }}>
+                  {pv.fileName} — {pv.pages.length} página(s)
+                </summary>
+                <pre style={{
+                  margin: '8px 0 0', padding: '10px 12px',
+                  background: 'var(--paper-mid)', border: '1px solid var(--rule)',
+                  borderRadius: 'var(--r-sm)', maxHeight: 280, overflow: 'auto',
+                  fontSize: '0.679rem', lineHeight: 1.5, whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                }}>
+                  {pv.pages.map((pg, i) =>
+                    '--- página ' + (i + 1) + ' ---\n' + pg.join('\n')
+                  ).join('\n\n')}
+                </pre>
+              </details>
+            ))}
           </div>
         )}
 
@@ -354,7 +585,18 @@
                     <tr key={r.code}>
                       <td style={{ fontWeight: 600, fontSize: '0.857rem' }}>{r.code}</td>
                       <td style={{ fontSize: '0.857rem' }}>{r.name}</td>
-                      <td style={{ fontSize: '0.786rem', color: 'var(--muted)' }}>{r.risk}</td>
+                      <td style={{ fontSize: '0.786rem', color: 'var(--muted)' }}>
+                        {parsed.source === 'pdf' ? (
+                          <select
+                            className="filter-select"
+                            style={{ minHeight: 30, fontSize: '0.786rem' }}
+                            value={perfilOverrides[r.code] || r.risk}
+                            onChange={e => setPerfilOverrides(o => ({ ...o, [r.code]: e.target.value }))}
+                          >
+                            {P.VALID_PERFIS.map(pf => <option key={pf} value={pf}>{pf}</option>)}
+                          </select>
+                        ) : r.risk}
+                      </td>
                       <td style={{ fontSize: '0.786rem', color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>
                         {r.meses.join(', ')}
                       </td>
@@ -415,9 +657,9 @@
           borderRadius: 'var(--r-sm)', fontSize: '0.786rem', color: 'var(--body)', lineHeight: 1.6,
         }}>
           Dados importados ficam apenas em memória do navegador — não são persistidos nem enviados a
-          nenhum servidor. Atualizar a página recarrega o conjunto demo. NNM (captação) e taxa de
-          administração não são capturados no formato de importação e aparecem zerados/uniformes nos
-          painéis de Receitas.
+          nenhum servidor. PDFs são processados localmente (pdf.js); nada sai da máquina. Atualizar a
+          página recarrega o conjunto demo. NNM (captação) e taxa de administração não são capturados
+          no formato de importação e aparecem zerados/uniformes nos painéis de Receitas.
         </div>
       </div>
     );

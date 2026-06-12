@@ -349,6 +349,364 @@
   }
 
   /* =============================================================
+     PDF — books mensais Mirabaud (SmartBrain)
+     Funções puras: recebem texto/itens já extraídos (pdf.js roda na UI).
+  ============================================================= */
+
+  // Mapa classe-do-book -> classe ATLAS (VALID_CLASSES).
+  var PDF_CLASS_MAP = {
+    'Liquidez': 'Liquidez',
+    'Pós-Fixado': 'RF Pós-Fixado',
+    'Pos-Fixado': 'RF Pós-Fixado',
+    'Prefixado': 'CDB',
+    'Inflação': 'RF Inflação',
+    'Inflacao': 'RF Inflação',
+    'Ações': 'Ações',
+    'Acoes': 'Ações',
+    'Multimercados': 'Multimercado',
+    'Multimercado': 'Multimercado',
+    'FIIs': 'FII',
+    'FII': 'FII',
+    'RV Global': 'Internacional',
+    'Internacional': 'Internacional',
+    'Previdência': 'Previdência',
+    'Previdencia': 'Previdência'
+  };
+
+  // Mapeamentos sem equivalente direto no ATLAS — geram warning informativo.
+  var PDF_CLASS_MAP_LOSSY = { 'Prefixado': true, 'RV Global': true };
+
+  // Sufixos de custodiante na coluna Instituição (removidos do nome do ativo).
+  var PDF_CUSTODY_SUFFIXES = [
+    'BTG CORRETORA', 'XP CORRETORA', 'S3 CACEIS',
+    'BTG', 'XP', 'BRADESCO', 'ITAU', 'ITAÚ', 'ICATU', 'BEM', 'S3'
+  ];
+
+  // Número em formato pt-BR ("1.234,56", "-3,54"). "--", vazio ou lixo -> null.
+  function parseBRNumber(value) {
+    if (value == null) return null;
+    var s = String(value).trim();
+    if (s === '' || s === '--' || s === '-') return null;
+    if (!/^-?\d{1,3}(\.\d{3})*(,\d+)?$/.test(s) && !/^-?\d+(,\d+)?$/.test(s)) return null;
+    return Number(s.replace(/\./g, '').replace(',', '.'));
+  }
+
+  // Reconstrói linhas visuais a partir dos itens de texto de UMA página.
+  // items: [{ str, x, y, rot }] — x/y = transform[4]/[5] do getTextContent,
+  // rot = atan2(transform[1], transform[0]) (radianos). Páginas dos books têm
+  // matriz de rotação 90°; des-rotaciona pelo quarto de volta dominante,
+  // agrupa por linha (tolerância 2.5pt) e ordena pela direção de leitura.
+  function reconstructPdfLines(items) {
+    var valid = (Array.isArray(items) ? items : []).filter(function (it) {
+      return it && String(it.str == null ? '' : it.str).trim() !== '';
+    });
+    if (valid.length === 0) return [];
+
+    var counts = {};
+    valid.forEach(function (it) {
+      var q = Math.round((it.rot || 0) / (Math.PI / 2));
+      q = ((q % 4) + 4) % 4;
+      counts[q] = (counts[q] || 0) + 1;
+    });
+    var domQ = 0, best = -1;
+    Object.keys(counts).forEach(function (k) {
+      if (counts[k] > best) { best = counts[k]; domQ = Number(k); }
+    });
+
+    function unrot(x, y) {
+      switch (domQ) {
+        case 1:  return { u: y,  v: -x };
+        case 2:  return { u: -x, v: -y };
+        case 3:  return { u: -y, v: x };
+        default: return { u: x,  v: y };
+      }
+    }
+
+    var rows = [];
+    valid.forEach(function (it) {
+      var pt = unrot(it.x || 0, it.y || 0);
+      var row = null;
+      for (var i = 0; i < rows.length; i++) {
+        if (Math.abs(rows[i].v - pt.v) <= 2.5) { row = rows[i]; break; }
+      }
+      if (!row) { row = { v: pt.v, items: [] }; rows.push(row); }
+      row.items.push({ u: pt.u, str: String(it.str).trim() });
+    });
+
+    rows.sort(function (a, b) { return b.v - a.v; });
+    return rows.map(function (r) {
+      r.items.sort(function (a, b) { return a.u - b.u; });
+      return r.items.map(function (i) { return i.str; }).join(' ');
+    });
+  }
+
+  // Divide uma linha em prefixo textual + números pt-BR no final.
+  function tokenizeBookLine(line) {
+    var parts = String(line == null ? '' : line).trim().split(/\s+/).filter(function (t) { return t !== ''; });
+    var nums = [];
+    var i = parts.length - 1;
+    while (i >= 0) {
+      var v = parseBRNumber(parts[i]);
+      if (v == null) break;
+      nums.unshift(v);
+      i--;
+    }
+    return { text: parts.slice(0, i + 1).join(' '), nums: nums };
+  }
+
+  // Parser do layout dos books mensais (SmartBrain / Mirabaud).
+  // pagesLines: array de páginas, cada uma um array de linhas (reconstruídas).
+  // options: { validMonths, fileName }
+  // Saída: { portfolio|null, errors, warnings, confidence: 'alta'|'baixa' }.
+  // Baixa confiança => portfolio null e erro "revisão manual necessária".
+  function parseMirabaudBook(pagesLines, options) {
+    options = options || {};
+    var validMonths = options.validMonths || null;
+    var fileName = options.fileName || '';
+    var label = fileName || 'PDF';
+
+    var errors = [];
+    var warnings = [];
+    var reasons = [];
+
+    pagesLines = Array.isArray(pagesLines) ? pagesLines : [];
+    var p, l;
+
+    // ── código da carteira (capa; fallback: nome do arquivo) ──
+    var code = null;
+    var cover = pagesLines[0] || [];
+    for (l = 0; l < cover.length; l++) {
+      var ln = String(cover[l]).trim();
+      if (!ln) continue;
+      if (/relat[óo]rio\s+mensal/i.test(ln)) continue;
+      if (/^\d{2}\/\d{2}\/\d{4}$/.test(ln)) continue;
+      if (ln.length > 40) continue;
+      code = ln.replace(/\s+/g, '_').toUpperCase();
+      break;
+    }
+    if (!code) {
+      var fm = fileName.match(/book[_\s-]+([A-Za-z0-9]+)/i);
+      if (fm) code = fm[1].toUpperCase();
+    }
+    if (!code) reasons.push('código da carteira não identificado (capa/nome do arquivo)');
+
+    // ── mês de referência ("Data Extrato: DD/MM/AAAA"; fallback: data da capa) ──
+    var mes = null;
+    for (p = 0; p < pagesLines.length && !mes; p++) {
+      for (l = 0; l < pagesLines[p].length; l++) {
+        var dm = String(pagesLines[p][l]).match(/Data\s+(?:do\s+)?Extrato:?\s*(\d{2})\/(\d{2})\/(\d{4})/i);
+        if (dm) { mes = dm[3] + '-' + dm[2]; break; }
+      }
+    }
+    if (!mes) {
+      for (l = 0; l < cover.length; l++) {
+        var cdm = String(cover[l]).trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+        if (cdm) { mes = cdm[3] + '-' + cdm[2]; break; }
+      }
+    }
+    if (!mes) {
+      reasons.push('mês de referência não identificado ("Data Extrato")');
+    } else if (validMonths && validMonths.indexOf(mes) === -1) {
+      errors.push(label + ': mês "' + mes + '" fora da faixa suportada. Meses suportados: ' +
+        validMonths.join(', ') + '.');
+    }
+
+    // ── PL total + alocação por classe (seção Asset Allocation) ──
+    // Linha "TOTAL <pl> 100,00" (2 números, segundo ~100).
+    var pl = null;
+    var classAlloc = [];
+    for (p = 0; p < pagesLines.length && pl == null; p++) {
+      var page = pagesLines[p];
+      var hasAA = page.some(function (s) { return /Asset\s+Allocation/i.test(s); });
+      if (!hasAA) continue;
+      var pageAlloc = [];
+      for (l = 0; l < page.length; l++) {
+        var tk = tokenizeBookLine(page[l]);
+        if (tk.nums.length !== 2) continue;
+        if (/^TOTAL$/i.test(tk.text) && Math.abs(tk.nums[1] - 100) <= 0.5) {
+          pl = tk.nums[0];
+          classAlloc = pageAlloc;
+          break;
+        }
+        if (PDF_CLASS_MAP[tk.text] !== undefined) {
+          pageAlloc.push({ cls: tk.text, valor: tk.nums[0], pct: tk.nums[1] });
+        }
+      }
+    }
+    if (pl == null || !(pl > 0)) {
+      reasons.push('PL total não identificado (linha TOTAL do Asset Allocation)');
+    }
+
+    // ── rentabilidade do mês (seção "Rentabilidades Mensais da Carteira") ──
+    var ret = 0;
+    var retFound = false;
+    if (mes) {
+      var ano = mes.slice(0, 4);
+      var mnum = parseInt(mes.slice(5, 7), 10);
+      for (p = 0; p < pagesLines.length && !retFound; p++) {
+        var hasRM = pagesLines[p].some(function (s) { return /Rentabilidades\s+Mensais/i.test(s); });
+        if (!hasRM) continue;
+        for (l = 0; l < pagesLines[p].length; l++) {
+          var parts = String(pagesLines[p][l]).trim().split(/\s+/);
+          if (parts[0] !== ano) continue;
+          var rv = parseBRNumber(parts[mnum]);
+          if (rv != null) { ret = rv / 100; retFound = true; }
+          break;
+        }
+      }
+    }
+    if (!retFound) {
+      warnings.push(label + ': rentabilidade do mês não localizada no book; aplicada 0%.');
+    }
+
+    // ── composição por ativo (seção de conciliação: "Saldo Anterior ... Part.%") ──
+    var SKIP_RE = /Saldo\s+Anterior|Compras\s+Vendas|IR\+IOF|Provis[ãa]o|Ativos\s+Institui|Saldo\s+Bruto|Custodiante|Powered\s+by|Data\s+(?:do\s+)?Extrato|GrossUp\*\s+ativos|Cálculos\s+de|Títulos\s+com|Este\s+relatório|administradoras/i;
+    var composition = [];
+    var sumPart = 0;
+    var sumSaldo = 0;
+    var lossyWarned = {};
+    var skippedNoClass = false;
+
+    for (p = 0; p < pagesLines.length; p++) {
+      var cpage = pagesLines[p];
+      var isConc = cpage.some(function (s) { return /Saldo\s+Anterior/i.test(s); }) &&
+                   cpage.some(function (s) { return /Part\.?\s*%/i.test(s); });
+      if (!isConc) continue;
+
+      var currentCls = null;
+      var pending = [];
+      var lastAsset = null;
+
+      for (l = 0; l < cpage.length; l++) {
+        var cline = String(cpage[l]).trim();
+        if (!cline) continue;
+        if (SKIP_RE.test(cline)) { pending = []; continue; }
+
+        var ct = tokenizeBookLine(cline);
+
+        if (ct.nums.length >= 8) {
+          if (/^TOTAL$/i.test(ct.text)) { currentCls = null; pending = []; lastAsset = null; continue; }
+          if (PDF_CLASS_MAP[ct.text] !== undefined) {
+            // linha de grupo (classe)
+            currentCls = ct.text;
+            if (PDF_CLASS_MAP_LOSSY[ct.text] && !lossyWarned[ct.text]) {
+              lossyWarned[ct.text] = true;
+              warnings.push(label + ': classe "' + ct.text + '" do book mapeada para "' +
+                PDF_CLASS_MAP[ct.text] + '".');
+            }
+            pending = [];
+            lastAsset = null;
+            continue;
+          }
+          // linha de ativo: [saldoAnt, aplic, resg, eventos, imposto, saldoBruto, provisao, saldoLiq, part]
+          var nums = ct.nums;
+          var part = nums[nums.length - 1];
+          var saldoBruto = nums.length >= 4 ? nums[nums.length - 4] : null;
+          var name = (pending.join(' ') + ' ' + ct.text).trim();
+          pending = [];
+
+          var upper = name.toUpperCase();
+          for (var s2 = 0; s2 < PDF_CUSTODY_SUFFIXES.length; s2++) {
+            var suf = PDF_CUSTODY_SUFFIXES[s2];
+            if (upper === suf) { name = ''; break; }
+            if (upper.lastIndexOf(' ' + suf) === upper.length - suf.length - 1 && upper.length > suf.length) {
+              name = name.slice(0, name.length - suf.length - 1).trim();
+              break;
+            }
+          }
+
+          if (part == null || part <= 0) { lastAsset = null; continue; }  // zerado/vendido
+          if (!currentCls) { skippedNoClass = true; lastAsset = null; continue; }
+
+          var asset = {
+            cls: PDF_CLASS_MAP[currentCls],
+            name: name || ('Ativo ' + (composition.length + 1)),
+            pct: part / 100
+          };
+          composition.push(asset);
+          lastAsset = asset;
+          sumPart += part;
+          if (saldoBruto != null) sumSaldo += saldoBruto;
+          continue;
+        }
+
+        if (ct.nums.length === 0) {
+          // fragmento de nome (quebra de linha do book)
+          if (lastAsset && pending.length === 0 && /^(Vencto|GrossUp|\d{2}\/\d{2}\/\d{4})/i.test(cline)) {
+            lastAsset.name = (lastAsset.name + ' ' + cline).trim();
+          } else {
+            pending.push(cline);
+          }
+          continue;
+        }
+
+        // 1-7 números: linha de tabela auxiliar (índices, custodiante etc.)
+        pending = [];
+        lastAsset = null;
+      }
+    }
+
+    if (skippedNoClass) {
+      warnings.push(label + ': linhas de ativo fora de um grupo de classe foram ignoradas.');
+    }
+
+    // Fallback: sem ativos individuais, usa a alocação por classe.
+    if (composition.length === 0 && classAlloc.length > 0) {
+      classAlloc.forEach(function (ca) {
+        if (!(ca.pct > 0)) return;
+        composition.push({ cls: PDF_CLASS_MAP[ca.cls], name: ca.cls, pct: ca.pct / 100 });
+        sumPart += ca.pct;
+        sumSaldo += ca.valor;
+      });
+      if (composition.length > 0) {
+        warnings.push(label + ': composição por ativo não extraída; usando alocação por classe.');
+      }
+    }
+
+    // ── confiança ──
+    if (composition.length === 0) {
+      reasons.push('nenhum ativo extraído da seção de conciliação');
+    } else {
+      if (Math.abs(sumPart - 100) > 2) {
+        reasons.push('participações somam ' + sumPart.toFixed(2) + '% (esperado ~100%)');
+      }
+      if (pl > 0 && sumSaldo > 0 && Math.abs(sumSaldo - pl) / pl > 0.02) {
+        reasons.push('soma dos saldos dos ativos diverge do PL total em mais de 2%');
+      }
+    }
+
+    if (reasons.length > 0) {
+      errors.push(label + ': revisão manual necessária — ' + reasons.join('; ') + '.');
+      return { portfolio: null, errors: errors, warnings: warnings, confidence: 'baixa' };
+    }
+    if (errors.length > 0) {
+      return { portfolio: null, errors: errors, warnings: warnings, confidence: 'alta' };
+    }
+
+    // ── normalização da soma de pct (mesma regra do CSV) ──
+    var sumPct = 0;
+    composition.forEach(function (cmp) { sumPct += cmp.pct; });
+    if (composition.length > 0 && Math.abs(sumPct - 1) > 0.01 && sumPct > 0) {
+      warnings.push(label + ': soma das alocações é ' + sumPct.toFixed(4) +
+        ' (esperado ~1); normalizando automaticamente.');
+      composition.forEach(function (cmp) { cmp.pct = cmp.pct / sumPct; });
+    }
+
+    warnings.push(label + ': status não consta no PDF; aplicado COM ALERTA.');
+    warnings.push(label + ': perfil de risco não consta no PDF; aplicado "moderado" (ajuste na pré-visualização).');
+
+    var portfolio = { code: code, name: code, risk: 'moderado', months: {} };
+    portfolio.months[mes] = {
+      pl: pl,
+      ret: ret,
+      status: 'COM ALERTA',
+      composition: composition
+    };
+
+    return { portfolio: portfolio, errors: errors, warnings: warnings, confidence: 'alta' };
+  }
+
+  /* =============================================================
      EXPORTAÇÃO (navegador + Node)
   ============================================================= */
 
@@ -357,8 +715,12 @@
     VALID_PERFIS: VALID_PERFIS,
     VALID_STATUS: VALID_STATUS,
     REQUIRED_COLUMNS: REQUIRED_COLUMNS,
+    PDF_CLASS_MAP: PDF_CLASS_MAP,
     parseCSV: parseCSV,
-    parseImportRows: parseImportRows
+    parseImportRows: parseImportRows,
+    parseBRNumber: parseBRNumber,
+    reconstructPdfLines: reconstructPdfLines,
+    parseMirabaudBook: parseMirabaudBook
   };
 
   if (typeof window !== 'undefined') {

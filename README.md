@@ -41,58 +41,34 @@ A senha `atlas2026` é verificada no lado cliente via localStorage. Não há bac
 - **Dados demo/sintéticos**: os arquivos do repositório contêm estruturas de exemplo sem dados pessoais reais.
 - **Dados reais ficam fora do Git**: a pasta `Verificação Mensal de Carteiras Mirabaud/` contém dados operacionais reais (PDFs, relatórios, dados de clientes / LGPD) e está explicitamente ignorada pelo `.gitignore`. Nunca deve ser commitada.
 
-## Próxima etapa: parser de arquivos
+## Importação de arquivos
 
-A tela `#/importar` já existe, mas hoje é apenas um stub visual. O próximo desenvolvimento deve implementar um parser local/seguro para transformar arquivos de carteira em dados estruturados antes de qualquer gravação no sistema.
+A tela `#/importar` está implementada. Os dados importados substituem o conjunto
+demo em todas as telas e vivem **somente em memória do navegador** (atualizar a
+página recarrega o demo); nada é persistido nem enviado a serviços externos.
 
-Formatos desejados:
+Formatos suportados:
 
-- **PDF**: extratos ou books mensais emitidos por custodiante/gestor.
-- **XLSX/XLS**: planilhas de posições, movimentações, receitas ou conciliações.
-- **CSV/TSV**: arquivos tabulares exportados por sistemas internos.
-- **Markdown (`.md`)**: tabelas simples ou notas estruturadas de conferência.
-- **JSON**: opcional, útil para integrações futuras e testes automatizados.
+- **CSV** (estável): formato tabular próprio — uma linha por ativo, 10 colunas
+  obrigatórias. Template em `docs/templates/atlas_template.csv`.
+- **XLSX** (estável): primeira aba, mesmas colunas do CSV. Leitor SheetJS
+  carregado sob demanda via CDN com SRI.
+- **PDF** (**beta/experimental**): books mensais no layout "Relatório Mensal"
+  (SmartBrain/Mirabaud). Extração de texto local via pdf.js (lazy-load com SRI,
+  processamento no main thread — nenhum dado sai do navegador). Aceita vários
+  arquivos de uma vez (1 book = 1 carteira/mês; meses do mesmo código são
+  agregados). A UI exibe a prévia do texto extraído, página a página, antes da
+  confirmação.
 
-Contrato mínimo de saída do parser:
+Regras do fluxo de PDF:
 
-```js
-{
-  fileName: "Book_Cliente_2026_04.pdf",
-  month: "2026-04",
-  portfolio: {
-    code: "CLIENTE_01",
-    name: "Cliente 01",
-    currency: "BRL"
-  },
-  positions: [
-    {
-      name: "Ativo ou Produto",
-      cls: "RF Pós-Fixado",
-      institution: "Custodiante",
-      quantity: 1000,
-      saldoFinal: 123456.78,
-      pct: 0.1234
-    }
-  ],
-  totals: {
-    pl: 1000000,
-    positions: 12
-  },
-  warnings: [
-    "Percentuais não somam 100%; revisar arredondamento ou caixa."
-  ]
-}
-```
-
-Regras funcionais esperadas:
-
-- O parser deve rodar no navegador ou em backend controlado, sem enviar dados reais para serviços externos.
-- A importação deve primeiro mostrar uma prévia auditável, com posições, classes, PL total e alertas.
-- O usuário deve confirmar antes de incorporar os dados à base da plataforma.
-- PDF e Excel precisam de parsers específicos; não assumir que todo PDF terá tabela limpa.
-- Campos financeiros devem aceitar formato brasileiro (`1.234.567,89`) e internacional (`1,234,567.89`).
-- O parser deve identificar colunas comuns: ativo/produto, classe, custodiante/instituição, quantidade, saldo/valor financeiro e percentual.
-- Arquivos com baixa confiança devem ser marcados para revisão manual, não importados automaticamente.
+- Carteiras de PDF entram sempre com status `COM ALERTA` (o book não traz o
+  campo) e perfil de risco default `moderado`, ajustável na pré-visualização.
+- Books que não atingem a confiança mínima de extração (código, mês, PL,
+  ativos e somas consistentes) **não são importados**: entram no bloco
+  "Revisão manual necessária" com os motivos. CSV/XLSX seguem como alternativa.
+- Classes do book são mapeadas para as classes da plataforma
+  (ex.: `Prefixado` → `CDB`, `RV Global` → `Internacional`), com aviso.
 - Dados reais de clientes não devem ser commitados nem adicionados ao Git.
 
 ## Riscos conhecidos
