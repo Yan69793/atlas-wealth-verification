@@ -16,6 +16,7 @@
   ============================================================ */
   function TabComposicao({ code, month, row }) {
     const comp = useMemo(() => D.getComposition(code, month), [code, month]);
+    const [expandedIdx, setExpandedIdx] = useState(null);
 
     if (!comp || !comp.length || !row || row.plCurr <= 0) {
       return <EmptyState title="Sem composição" sub="Carteira sem posições neste mês." icon="search" />;
@@ -30,8 +31,6 @@
 
     const hasVencto = comp.some(a => a.vencto);
     const colCount  = 8 + (hasVencto ? 1 : 0);
-
-    const [expandedIdx, setExpandedIdx] = useState(null);
 
     const {
       PieChart, Pie, Cell,
