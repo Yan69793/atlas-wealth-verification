@@ -31,6 +31,9 @@ desktop.ini
 # LGPD — pasta com dados operacionais reais (PDFs, relatórios, dados de clientes)
 Verificação Mensal de Carteiras Mirabaud/
 
+# LGPD — dados reais de clientes embutidos no JS (não versionar)
+platform-data-real.js
+
 # Binários e arquivos grandes
 *.pdf
 *.docx

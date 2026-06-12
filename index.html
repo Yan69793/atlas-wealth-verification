@@ -49,8 +49,11 @@
   <!-- Parser de importação (CSV/Excel) — JS puro, sem Babel -->
   <script src="platform-parsers.js?v=20260611e"></script>
 
-  <!-- 1. Dados (script normal — sem Babel, sem JSX) -->
-  <script src="platform-data.js?v=20260611c"></script>
+  <!-- 1a. Dados reais (LGPD, gitignored — opcional; sem ele só demo ativo) -->
+  <script src="platform-data-real.js" onerror="void(0)"></script>
+
+  <!-- 1b. Dados (script normal — sem Babel, sem JSX) -->
+  <script src="platform-data.js?v=20260611f"></script>
 
   <!-- 2. Utilitários, ícones, gráficos (Babel JSX) -->
   <script type="text/babel" src="platform-utils.jsx?v=20260611"></script>

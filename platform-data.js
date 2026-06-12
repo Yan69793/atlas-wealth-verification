@@ -1,4 +1,4 @@
-/* platform-data.js — ATLAS Wealth Verification
+﻿/* platform-data.js — ATLAS Wealth Verification
    Gerador determinístico de dados fictícios.
    Seed: 20260411  |  Não contém dados reais. */
 
@@ -350,6 +350,88 @@
 
   var _importCompositions = {};   // chave "code|month" -> array de linhas de composição
   var _dataMode = 'demo';
+
+  /* =============================================================
+     4c. INJETOR DE CARTEIRAS REAIS (lê window._MirabaudRealData)
+     O arquivo platform-data-real.js (gitignored) define esse objeto.
+     Sem ele, apenas as 40 carteiras demo ficam ativas.
+  ============================================================= */
+
+  function injectMirabaud() {
+    var D = window._MirabaudRealData;
+    if (!D || !D.portfolios || !D.portfolios.length) return;
+
+    var FEV = 13, MAR = 14, ABR = 15;
+    var MFEE = D.mfee || 0.0004;
+    var CDI_FEV = D.cdiRates['2026-02'];
+    var CDI_MAR = D.cdiRates['2026-03'];
+    var CDI_ABR = D.cdiRates['2026-04'];
+    var codes = D.portfolios.map(function(p) { return p.code; });
+
+    // Limpar entradas anteriores (idempotência)
+    for (var i = CATALOG.length - 1; i >= 0; i--) {
+      if (codes.indexOf(CATALOG[i].code) >= 0) CATALOG.splice(i, 1);
+    }
+    codes.forEach(function(c) {
+      delete _portfolioData[c]; delete _codeMap[c];
+      if (_compCache) {
+        ['2026-02','2026-03','2026-04'].forEach(function(m) { delete _compCache[c+'|'+m]; });
+      }
+      delete _importCompositions[c+'|2026-02'];
+    });
+    var ss = D.statusScript || {};
+    for (var sk in ss) { if (ss.hasOwnProperty(sk)) delete STATUS_SCRIPT[sk]; }
+    for (var j = MANAGERS.length - 1; j >= 0; j--) {
+      if (MANAGERS[j].id === 'MIRABAUD') MANAGERS.splice(j, 1);
+    }
+
+    // CATALOG + _codeMap
+    D.portfolios.forEach(function(p) {
+      var entry = { code:p.code, name:p.name, risk:p.risk, inception:p.inception };
+      CATALOG.push(entry); _codeMap[p.code] = entry;
+    });
+
+    MANAGERS.push({ id:'MIRABAUD', name:'Mirabaud Advisory', codes:codes.slice(), roaTarget:0.0050 });
+
+    // _portfolioData
+    function realPd(pl) {
+      var n = MONTHS.length;
+      var z = function() { return new Array(n).fill(0); };
+      var plArr = z(); plArr[FEV]=pl; plArr[MAR]=pl; plArr[ABR]=pl;
+      var retArr = z(); retArr[FEV]=CDI_FEV; retArr[MAR]=CDI_MAR; retArr[ABR]=CDI_ABR;
+      var feeArr = z(); feeArr[FEV]=pl*MFEE; feeArr[MAR]=pl*MFEE; feeArr[ABR]=pl*MFEE;
+      var rpp = z(); rpp[MAR]=pl; rpp[ABR]=pl;
+      return { fee:MFEE, plArr:plArr, nnmArr:z(), retArr:retArr, feeArr:feeArr, reportedPlPrevArr:rpp };
+    }
+
+    D.portfolios.forEach(function(p) { _portfolioData[p.code] = realPd(p.pl); });
+
+    // STATUS_SCRIPT
+    for (var sk2 in ss) { if (ss.hasOwnProperty(sk2)) STATUS_SCRIPT[sk2] = ss[sk2]; }
+
+    // _importCompositions
+    var comps = D.compositions || {};
+    var compKeys = Object.keys(comps);
+    for (var ki = 0; ki < compKeys.length; ki++) {
+      var ckey = compKeys[ki];
+      var ccode = ckey.split('|')[0];
+      var cpl = 1;
+      for (var pi = 0; pi < D.portfolios.length; pi++) {
+        if (D.portfolios[pi].code === ccode) { cpl = D.portfolios[pi].pl; break; }
+      }
+      _importCompositions[ckey] = comps[ckey].map(function(r) {
+        var pct = cpl > 0 ? r.saldoFinal / cpl : 0;
+        return { name:r.name, cls:r.cls, institution:r.inst, vencto:r.vencto,
+                 saldoInicial:r.saldoFinal, saldoFinal:r.saldoFinal,
+                 varBRL:0, retAtivo:0, contrib:0, pct:pct };
+      });
+    }
+
+    // Dados injetados via window._MirabaudRealData (platform-data-real.js)
+
+  }
+
+  injectMirabaud();
 
   /* =============================================================
      5. GERADOR DE ACHADOS
@@ -1289,15 +1371,20 @@
   function validate() {
     var errs = 0;
 
-    // I1: 40 carteiras
-    console.assert(CATALOG.length === 40, 'I1: esperado 40 carteiras, obtido ' + CATALOG.length);
-    if (CATALOG.length !== 40) errs++;
+    // I1: 40 fictícias + N reais (depende de window._MirabaudRealData)
+    var _realN = (typeof window !== 'undefined' && window._MirabaudRealData && window._MirabaudRealData.portfolios)
+      ? window._MirabaudRealData.portfolios.length : 0;
+    var _expectedCat = 40 + _realN;
+    console.assert(CATALOG.length === _expectedCat, 'I1: esperado ' + _expectedCat + ' carteiras, obtido ' + CATALOG.length);
+    if (CATALOG.length !== _expectedCat) errs++;
 
-    // I2: PL total Abr/2026 em [1.1bi, 1.3bi]
+    // I2: PL total Abr/2026 — range adapta ao número de carteiras reais
     var stats = dashboardStats('2026-04');
-    console.assert(stats.plTotal >= 1.1e9 && stats.plTotal <= 1.3e9,
+    var _plMin = _realN > 0 ? 1.4e9 : 1.0e9;
+    var _plMax = _realN > 0 ? 2.0e9 : 1.6e9;
+    console.assert(stats.plTotal >= _plMin && stats.plTotal <= _plMax,
       'I2: PL Abr/2026 fora do intervalo: ' + (stats.plTotal/1e9).toFixed(3) + ' bi');
-    if (stats.plTotal < 1.1e9 || stats.plTotal > 1.3e9) errs++;
+    if (stats.plTotal < _plMin || stats.plTotal > _plMax) errs++;
 
     // I3: Abr/2026 → exatamente 2 CORRIGIR, 5 COM ALERTA
     console.assert(stats.corrigir === 2, 'I3: esperado 2 CORRIGIR em Abr/2026, obtido ' + stats.corrigir);
@@ -1327,9 +1414,10 @@
     console.assert(plFail === 0, 'I6: ' + plFail + ' PLs negativos ou zero após inception');
     if (plFail > 0) errs++;
 
-    // I7: 4 gestores definidos
-    console.assert(MANAGERS.length === 4, 'I7: esperado 4 gestores, obtido ' + MANAGERS.length);
-    if (MANAGERS.length !== 4) errs++;
+    // I7: gestores — 4 fictícios + 1 Mirabaud se dados reais carregados
+    var _expectedMgr = _realN > 0 ? 5 : 4;
+    console.assert(MANAGERS.length === _expectedMgr, 'I7: esperado ' + _expectedMgr + ' gestores, obtido ' + MANAGERS.length);
+    if (MANAGERS.length !== _expectedMgr) errs++;
 
     // I8: anomalia de fee presente em Out/2025
     var anomOut = anomalias('2025-10');
@@ -1508,6 +1596,7 @@
     });
 
     _dataMode = 'demo';
+    injectMirabaud();
     return { ok: true, mode: 'demo' };
   }
 
