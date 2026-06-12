@@ -23,11 +23,11 @@
     }
 
     // Aggregate by class for HBar
-    const clsMap = {};
-    comp.forEach(a => { clsMap[a.cls] = (clsMap[a.cls] || 0) + a.pct; });
-    const hbarItems = Object.entries(clsMap)
-      .map(([label, pct]) => ({ label, pct }))
-      .sort((a, b) => b.pct - a.pct);
+    const hbarItems = useMemo(() => {
+      const clsMap = {};
+      comp.forEach(a => { clsMap[a.cls] = (clsMap[a.cls] || 0) + a.pct; });
+      return Object.entries(clsMap).map(([label, pct]) => ({ label, pct })).sort((a, b) => b.pct - a.pct);
+    }, [comp]);
 
     const hasVencto = comp.some(a => a.vencto);
     const colCount  = 8 + (hasVencto ? 1 : 0);
@@ -637,13 +637,13 @@
     const prevMonthIdx = D.MONTHS.indexOf(selectedMonth) - 1;
     const prevMonthLabel = prevMonthIdx >= 0 ? fmtMonthLabel(D.MONTHS[prevMonthIdx]) : '—';
 
-    const TABS = [
+    const TABS = useMemo(() => [
       { key: 'composicao',    label: 'Composição' },
       { key: 'achados',       label: `Achados${row && row.nAchados > 0 ? ` (${row.nAchados})` : ''}` },
       { key: 'historico',     label: 'Histórico' },
       { key: 'receita',       label: 'Receita' },
       { key: 'contacorrente', label: 'Conta Corrente' },
-    ];
+    ], [row && row.nAchados]);
 
     function handleExport() {
       window.open(window.location.origin + window.location.pathname + '#/dev/relatorio/' + code, '_blank');

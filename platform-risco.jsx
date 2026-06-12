@@ -29,14 +29,15 @@
      BARRA DE SCORE
   ============================================================ */
   function ScoreBar({ score }) {
-    const color = score >= 70 ? 'var(--red)' : score >= 40 ? 'var(--amber)' : 'var(--green)';
+    const safe  = Number.isFinite(score) ? Math.max(0, Math.min(100, score)) : 0;
+    const color = safe >= 70 ? 'var(--red)' : safe >= 40 ? 'var(--amber)' : 'var(--green)';
     return (
       <div style={{ display:'flex', alignItems:'center', gap:8 }}>
         <div style={{ flex:1, height:6, background:'var(--rule)', borderRadius:3, overflow:'hidden' }}>
-          <div style={{ width:score + '%', height:'100%', background:color, borderRadius:3 }} />
+          <div style={{ width:safe + '%', height:'100%', background:color, borderRadius:3 }} />
         </div>
         <span style={{ fontSize:'0.857rem', fontWeight:600, color, minWidth:28, textAlign:'right' }}>
-          {score}
+          {Number.isFinite(score) ? score : '—'}
         </span>
       </div>
     );
@@ -336,6 +337,11 @@
   function RiscoHeatmap({ carteiras, selectedCode, onSelect }) {
     const [sortKey, setSortKey] = useState('score');
     const [asc, setAsc]         = useState(false);
+
+    if (!carteiras || !carteiras.length) {
+      const { EmptyState } = window.AtlasUI;
+      return <EmptyState title="Sem carteiras" sub="Nenhuma carteira com score disponível para o mês selecionado." icon="search" />;
+    }
 
     const sorted = useMemo(() => {
       const arr = [...carteiras];

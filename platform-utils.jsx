@@ -508,12 +508,12 @@
 
   window.AtlasUtils = {
     fmt, fmtBRL, fmtCompactBRL, fmtPct, fmtPctRaw, fmtMonthLabel,
-    signClass, storage, navigate, useRouter, linePath,
+    signClass, storage, navigate, useRouter,
   };
 
   window.AtlasIcons = { Icon };
 
-  window.AtlasCharts = { LineChart, HBar, niceScale, linePath };
+  window.AtlasCharts = { LineChart, HBar, niceScale };
 
   window.AtlasUI = {
     Badge, StatusDot, SeverityBadge, Chip, KPITile,

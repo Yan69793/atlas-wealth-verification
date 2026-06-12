@@ -68,6 +68,8 @@
 
   var CURRENT_MONTH = '2026-04';
 
+  function getCDI(month) { return CDI[month] || 0; }
+
   var CATALOG = [
     // AXIOM_AM (14 carteiras)
     { code:'ALPHA_01', name:'Alpha Gestão I',          risk:'conservador',         inception:'2022-01' },
@@ -485,7 +487,7 @@
     var plCurr = pd.plArr[mi] || 0;
     var ret = pd.retArr[mi] || 0;
     var rpl = pd.reportedPlPrevArr[mi] || plPrev;
-    var cdi = CDI[month] || 0.009;
+    var cdi = getCDI(month);
     var classes = ['Liquidez','RF Pós-Fixado','RF Inflação','Multimercado','Ações'];
     var clsRng = subRng('cls|' + code + '|' + month);
     var cls1 = classes[Math.floor(clsRng() * classes.length)];
@@ -703,7 +705,7 @@
     var nnm = pd.nnmArr[mi] || 0;
     var revenue = pd.feeArr[mi] || 0;
     var status = getStatus(code, month);
-    var cdi = CDI[month] || 0;
+    var cdi = getCDI(month);
 
     // Continuidade: |plCurr - (reportedPlPrev*(1+ret)+nnm)| / reportedPlPrev
     var expected = reportedPlPrev * (1 + ret) + nnm;
@@ -1263,7 +1265,7 @@
     var monthsBelowCDI = 0, plPeak = 0;
     for (var j = last6Start; j <= mi; j++) {
       if (MONTHS[j] < p.inception) continue;
-      if ((pd.retArr[j] || 0) < (CDI[MONTHS[j]] || 0)) monthsBelowCDI++;
+      if ((pd.retArr[j] || 0) < getCDI(MONTHS[j])) monthsBelowCDI++;
       var pl6 = pd.plArr[j] || 0;
       if (pl6 > plPeak) plPeak = pl6;
     }
@@ -1397,6 +1399,9 @@
   }
 
   function riskStress(month, scenario) {
+    if (scenario && !STRESS_SHOCKS[scenario]) {
+      console.warn('[riskStress] cenário desconhecido "' + scenario + '", usando "combinado".');
+    }
     var shocks = STRESS_SHOCKS[scenario] || STRESS_SHOCKS['combinado'];
     var totalLoss = 0, totalAUM = 0;
     var portfolioLosses = [];
@@ -1423,6 +1428,9 @@
 
   function validate() {
     var errs = 0;
+    console.assert(MONTHS.length === MONTH_LABELS.length,
+      'I0: MONTHS e MONTH_LABELS fora de sync: ' + MONTHS.length + ' vs ' + MONTH_LABELS.length);
+    if (MONTHS.length !== MONTH_LABELS.length) errs++;
 
     // I1: 40 fictícias + N reais (depende de window._MirabaudRealData)
     var _realN = (typeof window !== 'undefined' && window._MirabaudRealData && window._MirabaudRealData.portfolios)

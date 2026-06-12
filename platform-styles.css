@@ -34,6 +34,8 @@
   --r-sm: 4px;
   --r-md: 8px;
   --r-lg: 12px;
+
+  --font-mono: var(--font-mono);
 }
 
 /* =========================================================
@@ -637,7 +639,7 @@ tbody td.sticky-col {
 tbody tr:hover td.sticky-col { background: var(--paper-mid); }
 
 td.num, th.num {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
@@ -813,7 +815,7 @@ th.sort-asc .th-sort-icon, th.sort-desc .th-sort-icon { opacity: 1; }
 .hbar-pct {
   width: 48px;
   text-align: right;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   color: var(--muted);
   font-size: 0.786rem;
@@ -1019,7 +1021,7 @@ th.sort-asc .th-sort-icon, th.sort-desc .th-sort-icon { opacity: 1; }
   writing-mode: vertical-rl;
   text-orientation: mixed;
   transform: rotate(180deg);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.571rem;
   letter-spacing: 0.22em;
   color: rgba(196,162,40,0.45);
@@ -1027,7 +1029,7 @@ th.sort-asc .th-sort-icon, th.sort-desc .th-sort-icon { opacity: 1; }
 }
 
 .login-strip-year {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.571rem;
   color: rgba(255,255,255,0.12);
   letter-spacing: 0.12em;
@@ -1089,7 +1091,7 @@ th.sort-asc .th-sort-icon, th.sort-desc .th-sort-icon { opacity: 1; }
 }
 
 .login-firm {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.643rem;
   color: rgba(196,162,40,0.65);
   letter-spacing: 0.14em;
@@ -1108,7 +1110,7 @@ th.sort-asc .th-sort-icon, th.sort-desc .th-sort-icon { opacity: 1; }
 
 .login-field-label {
   display: block;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.571rem;
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -1124,7 +1126,7 @@ th.sort-asc .th-sort-icon, th.sort-desc .th-sort-icon { opacity: 1; }
   border-bottom: 1px solid rgba(255,255,255,0.14);
   border-radius: 0;
   padding: 8px 0 10px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 1rem;
   color: #EDE8E0;
   outline: none;
@@ -1146,7 +1148,7 @@ th.sort-asc .th-sort-icon, th.sort-desc .th-sort-icon { opacity: 1; }
   width: 100%;
   max-width: 300px;
   padding: 15px 0;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.714rem;
   font-weight: 600;
   letter-spacing: 0.2em;
@@ -1165,7 +1167,7 @@ th.sort-asc .th-sort-icon, th.sort-desc .th-sort-icon { opacity: 1; }
 
 /* Error */
 .login-error {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.643rem;
   color: #F87171;
   letter-spacing: 0.06em;
@@ -1178,7 +1180,7 @@ th.sort-asc .th-sort-icon, th.sort-desc .th-sort-icon { opacity: 1; }
 /* Note */
 .login-note {
   margin-top: 48px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.5rem;
   color: rgba(255,255,255,0.13);
   letter-spacing: 0.1em;
@@ -1219,7 +1221,7 @@ th.sort-asc .th-sort-icon, th.sort-desc .th-sort-icon { opacity: 1; }
 }
 
 .summary-item-value {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   font-weight: 500;
   color: var(--heading);
@@ -1251,7 +1253,7 @@ th.sort-asc .th-sort-icon, th.sort-desc .th-sort-icon { opacity: 1; }
   align-items: center;
   justify-content: center;
   min-height: 300px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.857rem;
   color: var(--muted);
   border: 1px dashed var(--rule-strong);
@@ -1349,7 +1351,7 @@ th.sort-asc .th-sort-icon, th.sort-desc .th-sort-icon { opacity: 1; }
    UTILITIES
 ========================================================= */
 .num {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
@@ -1360,7 +1362,7 @@ th.sort-asc .th-sort-icon, th.sort-desc .th-sort-icon { opacity: 1; }
 .text-muted { color: var(--muted); }
 .text-sm { font-size: 0.786rem; }
 .text-xs { font-size: 0.714rem; }
-.font-mono { font-family: 'JetBrains Mono', monospace; }
+.font-mono { font-family: var(--font-mono); }
 
 .truncate {
   overflow: hidden;

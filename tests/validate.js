@@ -70,6 +70,14 @@ ok('platform-data.js exporta validate', dataContent.includes('validate: validate
 ok('validate() é função em platform-data.js',
   /function validate\s*\(/.test(dataContent));
 
+// Verifica que MONTHS e MONTH_LABELS têm check de sync dentro do validate()
+ok('validate() verifica sync MONTHS vs MONTH_LABELS',
+  dataContent.includes('MONTHS.length === MONTH_LABELS.length'));
+
+// Verifica que getCDI helper existe
+ok('getCDI() definida em platform-data.js',
+  /function getCDI\s*\(/.test(dataContent));
+
 // ─── 4. platform-app.jsx — estrutura mínima ────────────────────────────────
 
 const appContent = fs.readFileSync(path.join(ROOT, 'platform-app.jsx'), 'utf8');

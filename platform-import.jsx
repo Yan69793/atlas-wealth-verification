@@ -54,21 +54,29 @@
     });
   }
 
+  function _withTimeout(promise, ms, label) {
+    const timeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(label + ': timeout após ' + ms + 'ms')), ms)
+    );
+    return Promise.race([promise, timeout]);
+  }
+
   // Lazy-load do pdf.js (worker primeiro, depois a lib).
   function loadPdfJs() {
     if (window.pdfjsLib && window.pdfjsWorker) return Promise.resolve(window.pdfjsLib);
     if (_pdfjsPromise) return _pdfjsPromise;
 
-    _pdfjsPromise = Promise.all([
-      window.pdfjsWorker ? Promise.resolve() : loadScriptSRI(PDFJS_WORKER_URL, PDFJS_WORKER_SRI),
-      window.pdfjsLib ? Promise.resolve() : loadScriptSRI(PDFJS_URL, PDFJS_SRI),
-    ]).then(() => {
-      if (!window.pdfjsLib) throw new Error('pdfjsLib não disponível após carga.');
-      // Fallback: se a detecção do worker em main thread falhar, o pdf.js
-      // recorre ao workerSrc abaixo.
-      window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_URL;
-      return window.pdfjsLib;
-    }).catch((err) => {
+    _pdfjsPromise = _withTimeout(
+      Promise.all([
+        window.pdfjsWorker ? Promise.resolve() : loadScriptSRI(PDFJS_WORKER_URL, PDFJS_WORKER_SRI),
+        window.pdfjsLib ? Promise.resolve() : loadScriptSRI(PDFJS_URL, PDFJS_SRI),
+      ]).then(() => {
+        if (!window.pdfjsLib) throw new Error('pdfjsLib não disponível após carga.');
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_URL;
+        return window.pdfjsLib;
+      }),
+      15000, 'pdf.js CDN'
+    ).catch((err) => {
       _pdfjsPromise = null;
       throw err;
     });
@@ -400,7 +408,7 @@
             onDragLeave={handleDragLeave}
             style={{
               border: '2px dashed ' + (dragging ? 'var(--navy)' : 'var(--rule-strong)'),
-              borderRadius: 'var(--r)',
+              borderRadius: 'var(--r-md)',
               padding: '48px 32px',
               textAlign: 'center',
               background: dragging ? 'var(--paper-mid)' : 'transparent',
