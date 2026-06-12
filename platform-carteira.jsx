@@ -97,6 +97,10 @@
                 <React.Fragment key={i}>
                   <tr
                     onClick={() => setExpandedIdx(expandedIdx === i ? null : i)}
+                    onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && setExpandedIdx(expandedIdx === i ? null : i)}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Detalhar ativo ${a.name}`}
                     style={{ cursor: 'pointer', background: expandedIdx === i ? 'var(--paper-mid)' : undefined }}
                   >
                     <td>
@@ -530,15 +534,17 @@
 
     return (
       <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--rule)' }}>
-        <div style={{
+        <label htmlFor="obs-textarea" style={{
+          display: 'block',
           fontSize: '0.786rem', fontWeight: 600, color: 'var(--muted)',
           textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8,
         }}>
           Observação do Analista
-        </div>
+        </label>
         {editing ? (
           <div>
             <textarea
+              id="obs-textarea"
               className="form-input"
               rows={3}
               value={text}

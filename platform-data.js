@@ -72,56 +72,56 @@
 
   var CATALOG = [
     // AXIOM_AM (14 carteiras)
-    { code:'ALPHA_01', name:'Alpha Gestão I',          risk:'conservador',         inception:'2022-01' },
-    { code:'ALPHA_02', name:'Alpha Gestão II',         risk:'moderado',            inception:'2022-03' },
-    { code:'ALPHA_03', name:'Alpha Gestão III',        risk:'agressivo',           inception:'2022-06' },
-    { code:'BRAVO_FAM', name:'Bravo Family Office',    risk:'moderado',            inception:'2021-07' },
-    { code:'BRAVO_PV',  name:'Bravo Patrimonial',      risk:'conservador',         inception:'2023-01' },
-    { code:'CEDRO_HLD', name:'Cedro Holding',          risk:'moderado-agressivo',  inception:'2020-04' },
-    { code:'CEDRO_CAP', name:'Cedro Capital',          risk:'moderado',            inception:'2021-11' },
-    { code:'DUNAS_CAP', name:'Dunas Capital',          risk:'moderado-agressivo',  inception:'2022-08' },
-    { code:'DUNAS_FAM', name:'Dunas Family',           risk:'conservador',         inception:'2023-03' },
-    { code:'ESTRELA_PV', name:'Estrela Patrimonial',   risk:'moderado',            inception:'2021-05' },
-    { code:'ESTRELA_HLD', name:'Estrela Holding',      risk:'agressivo',           inception:'2020-09' },
-    { code:'FAROL_INV', name:'Farol Investimentos',    risk:'moderado',            inception:'2023-06' },
-    { code:'FAROL_FAM', name:'Farol Family',           risk:'conservador',         inception:'2022-11' },
-    { code:'GAMMA_MID', name:'Gamma Mid-Cap',          risk:'moderado-agressivo',  inception:'2021-02' },
+    { code:'ALPHA_01', name:'Alpha Gestão I',          risk:'conservador',         inception:'2022-01', mgr:'AXIOM_AM' },
+    { code:'ALPHA_02', name:'Alpha Gestão II',         risk:'moderado',            inception:'2022-03', mgr:'AXIOM_AM' },
+    { code:'ALPHA_03', name:'Alpha Gestão III',        risk:'agressivo',           inception:'2022-06', mgr:'AXIOM_AM' },
+    { code:'BRAVO_FAM', name:'Bravo Family Office',    risk:'moderado',            inception:'2021-07', mgr:'AXIOM_AM' },
+    { code:'BRAVO_PV',  name:'Bravo Patrimonial',      risk:'conservador',         inception:'2023-01', mgr:'AXIOM_AM' },
+    { code:'CEDRO_HLD', name:'Cedro Holding',          risk:'moderado-agressivo',  inception:'2020-04', mgr:'AXIOM_AM' },
+    { code:'CEDRO_CAP', name:'Cedro Capital',          risk:'moderado',            inception:'2021-11', mgr:'AXIOM_AM' },
+    { code:'DUNAS_CAP', name:'Dunas Capital',          risk:'moderado-agressivo',  inception:'2022-08', mgr:'AXIOM_AM' },
+    { code:'DUNAS_FAM', name:'Dunas Family',           risk:'conservador',         inception:'2023-03', mgr:'AXIOM_AM' },
+    { code:'ESTRELA_PV', name:'Estrela Patrimonial',   risk:'moderado',            inception:'2021-05', mgr:'AXIOM_AM' },
+    { code:'ESTRELA_HLD', name:'Estrela Holding',      risk:'agressivo',           inception:'2020-09', mgr:'AXIOM_AM' },
+    { code:'FAROL_INV', name:'Farol Investimentos',    risk:'moderado',            inception:'2023-06', mgr:'AXIOM_AM' },
+    { code:'FAROL_FAM', name:'Farol Family',           risk:'conservador',         inception:'2022-11', mgr:'AXIOM_AM' },
+    { code:'GAMMA_MID', name:'Gamma Mid-Cap',          risk:'moderado-agressivo',  inception:'2021-02', mgr:'AXIOM_AM' },
     // BEACON_WM (12 carteiras)
-    { code:'GAMMA_LRG', name:'Gamma Large-Cap',        risk:'agressivo',           inception:'2020-11' },
-    { code:'HELIOS_01', name:'Helios Patrimonial I',   risk:'moderado',            inception:'2022-04' },
-    { code:'HELIOS_02', name:'Helios Patrimonial II',  risk:'moderado',            inception:'2022-04' },
-    { code:'INDIGO_CAP', name:'Indigo Capital',        risk:'conservador',         inception:'2023-09' },
-    { code:'JOIA_FAM',  name:'Joia Family Office',     risk:'moderado-agressivo',  inception:'2021-08' },
-    { code:'JOIA_HLD',  name:'Joia Holding',           risk:'moderado',            inception:'2022-02' },
-    { code:'KAPPA_PV',  name:'Kappa Patrimonial',      risk:'moderado',            inception:'2022-07' },
-    { code:'KAPPA_INV', name:'Kappa Investimentos',    risk:'conservador',         inception:'2023-04' },
-    { code:'LUMIA_01',  name:'Lumia Gestão I',         risk:'agressivo',           inception:'2021-10' },
-    { code:'LUMIA_02',  name:'Lumia Gestão II',        risk:'moderado',            inception:'2022-09' },
-    { code:'MARTE_FAM', name:'Marte Family',           risk:'conservador',         inception:'2023-07' },
-    { code:'NOVA_CAP',  name:'Nova Capital',           risk:'moderado-agressivo',  inception:'2021-06' },
+    { code:'GAMMA_LRG', name:'Gamma Large-Cap',        risk:'agressivo',           inception:'2020-11', mgr:'BEACON_WM' },
+    { code:'HELIOS_01', name:'Helios Patrimonial I',   risk:'moderado',            inception:'2022-04', mgr:'BEACON_WM' },
+    { code:'HELIOS_02', name:'Helios Patrimonial II',  risk:'moderado',            inception:'2022-04', mgr:'BEACON_WM' },
+    { code:'INDIGO_CAP', name:'Indigo Capital',        risk:'conservador',         inception:'2023-09', mgr:'BEACON_WM' },
+    { code:'JOIA_FAM',  name:'Joia Family Office',     risk:'moderado-agressivo',  inception:'2021-08', mgr:'BEACON_WM' },
+    { code:'JOIA_HLD',  name:'Joia Holding',           risk:'moderado',            inception:'2022-02', mgr:'BEACON_WM' },
+    { code:'KAPPA_PV',  name:'Kappa Patrimonial',      risk:'moderado',            inception:'2022-07', mgr:'BEACON_WM' },
+    { code:'KAPPA_INV', name:'Kappa Investimentos',    risk:'conservador',         inception:'2023-04', mgr:'BEACON_WM' },
+    { code:'LUMIA_01',  name:'Lumia Gestão I',         risk:'agressivo',           inception:'2021-10', mgr:'BEACON_WM' },
+    { code:'LUMIA_02',  name:'Lumia Gestão II',        risk:'moderado',            inception:'2022-09', mgr:'BEACON_WM' },
+    { code:'MARTE_FAM', name:'Marte Family',           risk:'conservador',         inception:'2023-07', mgr:'BEACON_WM' },
+    { code:'NOVA_CAP',  name:'Nova Capital',           risk:'moderado-agressivo',  inception:'2021-06', mgr:'BEACON_WM' },
     // CREST_FO (9 carteiras)
-    { code:'NOVA_PV',   name:'Nova Patrimonial',       risk:'moderado',            inception:'2023-02' },
-    { code:'ORION_01',  name:'Orion Gestão I',         risk:'conservador',         inception:'2022-01' },
-    { code:'ORION_02',  name:'Orion Gestão II',        risk:'moderado-agressivo',  inception:'2022-05' },
-    { code:'PRADO_HLD', name:'Prado Holding',          risk:'moderado',            inception:'2020-12' },
-    { code:'PRADO_FAM', name:'Prado Family',           risk:'conservador',         inception:'2023-05' },
-    { code:'QUASAR_CAP', name:'Quasar Capital',        risk:'agressivo',           inception:'2021-03' },
-    { code:'RIO_01',    name:'Rio Patrimonial I',      risk:'moderado',            inception:'2022-10' },
-    { code:'RIO_02',    name:'Rio Patrimonial II',     risk:'moderado',            inception:'2023-08' },
-    { code:'SOLAR_PV',  name:'Solar Patrimonial',      risk:'conservador',         inception:'2021-12' },
+    { code:'NOVA_PV',   name:'Nova Patrimonial',       risk:'moderado',            inception:'2023-02', mgr:'CREST_FO' },
+    { code:'ORION_01',  name:'Orion Gestão I',         risk:'conservador',         inception:'2022-01', mgr:'CREST_FO' },
+    { code:'ORION_02',  name:'Orion Gestão II',        risk:'moderado-agressivo',  inception:'2022-05', mgr:'CREST_FO' },
+    { code:'PRADO_HLD', name:'Prado Holding',          risk:'moderado',            inception:'2020-12', mgr:'CREST_FO' },
+    { code:'PRADO_FAM', name:'Prado Family',           risk:'conservador',         inception:'2023-05', mgr:'CREST_FO' },
+    { code:'QUASAR_CAP', name:'Quasar Capital',        risk:'agressivo',           inception:'2021-03', mgr:'CREST_FO' },
+    { code:'RIO_01',    name:'Rio Patrimonial I',      risk:'moderado',            inception:'2022-10', mgr:'CREST_FO' },
+    { code:'RIO_02',    name:'Rio Patrimonial II',     risk:'moderado',            inception:'2023-08', mgr:'CREST_FO' },
+    { code:'SOLAR_PV',  name:'Solar Patrimonial',      risk:'conservador',         inception:'2021-12', mgr:'CREST_FO' },
     // DELTA_PB (5 carteiras)
-    { code:'SOLAR_INV', name:'Solar Investimentos',    risk:'moderado',            inception:'2022-06' },
-    { code:'TIGRE_FAM', name:'Tigre Family Office',    risk:'moderado-agressivo',  inception:'2021-04' },
-    { code:'UMBRA_01',  name:'Umbra Gestão I',         risk:'moderado',            inception:'2026-03' },
-    { code:'UMBRA_02',  name:'Umbra Gestão II',        risk:'conservador',         inception:'2026-03' },
-    { code:'COMETA_FAM', name:'Cometa Family',         risk:'moderado',            inception:'2026-02' },
+    { code:'SOLAR_INV', name:'Solar Investimentos',    risk:'moderado',            inception:'2022-06', mgr:'DELTA_PB' },
+    { code:'TIGRE_FAM', name:'Tigre Family Office',    risk:'moderado-agressivo',  inception:'2021-04', mgr:'DELTA_PB' },
+    { code:'UMBRA_01',  name:'Umbra Gestão I',         risk:'moderado',            inception:'2026-03', mgr:'DELTA_PB' },
+    { code:'UMBRA_02',  name:'Umbra Gestão II',        risk:'conservador',         inception:'2026-03', mgr:'DELTA_PB' },
+    { code:'COMETA_FAM', name:'Cometa Family',         risk:'moderado',            inception:'2026-02', mgr:'DELTA_PB' },
   ];
 
   var MANAGERS = [
-    { id:'AXIOM_AM',  name:'Axiom Asset Management',  codes:CATALOG.slice(0,14).map(function(p){return p.code;}), roaTarget:0.0052 },
-    { id:'BEACON_WM', name:'Beacon Wealth Management', codes:CATALOG.slice(14,26).map(function(p){return p.code;}), roaTarget:0.0048 },
-    { id:'CREST_FO',  name:'Crest Family Office',     codes:CATALOG.slice(26,35).map(function(p){return p.code;}), roaTarget:0.0055 },
-    { id:'DELTA_PB',  name:'Delta Private Banking',   codes:CATALOG.slice(35,40).map(function(p){return p.code;}), roaTarget:0.0043 },
+    { id:'AXIOM_AM',  name:'Axiom Asset Management',  codes:CATALOG.filter(function(p){return p.mgr==='AXIOM_AM';}).map(function(p){return p.code;}), roaTarget:0.0052 },
+    { id:'BEACON_WM', name:'Beacon Wealth Management', codes:CATALOG.filter(function(p){return p.mgr==='BEACON_WM';}).map(function(p){return p.code;}), roaTarget:0.0048 },
+    { id:'CREST_FO',  name:'Crest Family Office',     codes:CATALOG.filter(function(p){return p.mgr==='CREST_FO';}).map(function(p){return p.code;}), roaTarget:0.0055 },
+    { id:'DELTA_PB',  name:'Delta Private Banking',   codes:CATALOG.filter(function(p){return p.mgr==='DELTA_PB';}).map(function(p){return p.code;}), roaTarget:0.0043 },
   ];
 
   // beta e sigma por perfil de risco
@@ -493,6 +493,14 @@
     var cls1 = classes[Math.floor(clsRng() * classes.length)];
     var pct1 = (10 + clsRng() * 20).toFixed(1);
     var pct2 = (parseFloat(pct1) + 3 + clsRng() * 6).toFixed(1);
+    if (_dataMode === 'imported') {
+      var realComp = getComposition(code, month);
+      if (realComp && realComp.length >= 2) {
+        cls1 = realComp[0].cls;
+        pct1 = (realComp[0].pct * 100).toFixed(1);
+        pct2 = (realComp[1].pct * 100).toFixed(1);
+      }
+    }
     var insts = ['Banco Mercantil Plus','XQ Investimentos','DTVM Pampulha'];
     var inst = insts[Math.floor(clsRng() * insts.length)];
     var ctx = {
@@ -524,6 +532,8 @@
 
   var _compCache = {};
 
+  // Contrato: SEMPRE retorna array (nunca null). Retorna [] quando não há dados de composição.
+  // Difere de getRow() que retorna null para código/mês inválido.
   function getComposition(code, month) {
     var cacheKey = code + '|' + month;
     if (_importCompositions[cacheKey]) return _importCompositions[cacheKey];
@@ -691,6 +701,9 @@
     return MANAGERS[0];
   }
 
+  // Contrato: retorna null se código/mês desconhecido ou _portfolioData ausente.
+  // Retorna objeto mesmo quando plCurr = 0 (carteira sem PL no mês).
+  // plPrev = reportedPlPrev (PL ajustado); use plPrevTrue para PL real do array.
   function getRow(code, month) {
     var pd = _portfolioData[code];
     var p = _codeMap[code];
@@ -744,8 +757,9 @@
       inception: p.inception,
       manager: getManagerForCode(code),
       plCurr: plCurr,
-      plPrev: reportedPlPrev,
-      plPrevTrue: plPrev,
+      plPrev: reportedPlPrev,         // PL reportado (pode incluir ajuste)
+      plPrevReported: reportedPlPrev,  // alias explícito para clareza
+      plPrevTrue: plPrev,             // PL real (plArr[mi-1])
       varBRL: plCurr - reportedPlPrev,
       varPct: reportedPlPrev > 0 ? (plCurr - reportedPlPrev) / reportedPlPrev : 0,
       rent: ret,
@@ -1196,236 +1210,6 @@
     };
   }
 
-  /* ================================================================
-     8b. RISK SCORING
-  ================================================================ */
-
-  var LESS_LIQUID_CLS = ['FII', 'Previdência', 'Internacional'];
-  var RISKY_CLS       = ['Ações', 'Multimercado', 'FII', 'Internacional'];
-
-  var STRESS_SHOCKS = {
-    juros200: {
-      'RF Pós-Fixado':  0.000, 'RF Inflação':  -0.080, 'CDB':  0.000,
-      'Multimercado':  -0.030, 'Ações':         -0.040, 'FII': -0.070,
-      'Previdência':   -0.050, 'Internacional': -0.020, 'Liquidez': 0,
-    },
-    bolsa15: {
-      'RF Pós-Fixado':  0.000, 'RF Inflação':  -0.010, 'CDB':  0.000,
-      'Multimercado':  -0.080, 'Ações':         -0.150, 'FII': -0.080,
-      'Previdência':   -0.060, 'Internacional': -0.050, 'Liquidez': 0,
-    },
-    liquidez: {
-      'RF Pós-Fixado': -0.010, 'RF Inflação':  -0.020, 'CDB': -0.030,
-      'Multimercado':  -0.050, 'Ações':         -0.070, 'FII': -0.120,
-      'Previdência':   -0.080, 'Internacional': -0.060, 'Liquidez': 0,
-    },
-    combinado: {
-      'RF Pós-Fixado': -0.010, 'RF Inflação':  -0.100, 'CDB': -0.030,
-      'Multimercado':  -0.140, 'Ações':         -0.220, 'FII': -0.200,
-      'Previdência':   -0.150, 'Internacional': -0.120, 'Liquidez': 0,
-    },
-  };
-
-  /* ----------------------------------------------------------------
-     RISK_CONFIG — parâmetros centrais do scoring de risco
-     Edite este bloco para calibrar limiares sem tocar nas funções
-  ---------------------------------------------------------------- */
-  var RISK_CONFIG = {
-    /* Dimensões e pesos máximos (soma = 100) */
-    max: { mercado: 30, concentracao: 25, liquidez: 20, suitability: 15, operacional: 10 },
-
-    /* Faixas de nível de risco (score total 0–100) */
-    nivel: { alto: 70, atencao: 40 },
-
-    /* Thresholds de ativação da fila de ação (score por dimensão) */
-    filaAcao: {
-      scoreMinimo:  40,  /* score total mínimo para entrar na fila */
-      operacional:   6,
-      mercado:      15,
-      concentracao: 12,
-      suitability:   8,
-      liquidez:     10,
-    },
-  };
-
-  function riskScore(code, month) {
-    var p = _codeMap[code];
-    if (!p) return null;
-    var row = getRow(code, month);
-    if (!row || row.plCurr <= 0) return null;
-    var mi = MONTHS.indexOf(month);
-    var pd = _portfolioData[code];
-    var comp = getComposition(code, month);
-    var classPcts = {};
-    comp.forEach(function(item) { classPcts[item.cls] = (classPcts[item.cls] || 0) + item.pct; });
-
-    // MERCADO (0-30)
-    var mercado = 0;
-    var last6Start = Math.max(0, mi - 5);
-    var monthsBelowCDI = 0, plPeak = 0;
-    for (var j = last6Start; j <= mi; j++) {
-      if (MONTHS[j] < p.inception) continue;
-      if ((pd.retArr[j] || 0) < getCDI(MONTHS[j])) monthsBelowCDI++;
-      var pl6 = pd.plArr[j] || 0;
-      if (pl6 > plPeak) plPeak = pl6;
-    }
-    mercado += Math.min(18, monthsBelowCDI * 3);
-    var drawdown6M = plPeak > 0 ? Math.max(0, (plPeak - row.plCurr) / plPeak) : 0;
-    if      (drawdown6M > 0.05) mercado += 12;
-    else if (drawdown6M > 0.02) mercado += 6;
-    else if (drawdown6M > 0.01) mercado += 3;
-    if      (p.risk === 'agressivo'          && row.rent < -0.01)  mercado += 5;
-    else if (p.risk === 'moderado-agressivo' && row.rent < -0.005) mercado += 3;
-    mercado = Math.min(30, mercado);
-
-    // CONCENTRACAO (0-25)
-    var conc = 0;
-    var maxClsPct = 0;
-    Object.keys(classPcts).forEach(function(cls) { if (classPcts[cls] > maxClsPct) maxClsPct = classPcts[cls]; });
-    if      (maxClsPct > 0.70) conc += 15;
-    else if (maxClsPct > 0.60) conc += 10;
-    else if (maxClsPct > 0.50) conc += 5;
-    var maxAssetPct = 0;
-    comp.forEach(function(item) { if (item.cls !== 'Liquidez' && item.pct > maxAssetPct) maxAssetPct = item.pct; });
-    if      (maxAssetPct > 0.30) conc += 7;
-    else if (maxAssetPct > 0.25) conc += 4;
-    var hhi = 0;
-    Object.keys(classPcts).forEach(function(cls) { if (cls !== 'Liquidez') hhi += classPcts[cls] * classPcts[cls]; });
-    if      (hhi > 0.40) conc += 5;
-    else if (hhi > 0.25) conc += 3;
-    conc = Math.min(25, conc);
-
-    // LIQUIDEZ (0-20)
-    var liq = 0;
-    var liqPct = classPcts['Liquidez'] || 0;
-    var lessLiqPct = 0;
-    LESS_LIQUID_CLS.forEach(function(cls) { lessLiqPct += (classPcts[cls] || 0); });
-    if      (liqPct < 0.03) liq += 12;
-    else if (liqPct < 0.05) liq += 7;
-    else if (liqPct < 0.08) liq += 3;
-    if      (lessLiqPct > 0.40) liq += 8;
-    else if (lessLiqPct > 0.30) liq += 5;
-    else if (lessLiqPct > 0.20) liq += 2;
-    liq = Math.min(20, liq);
-
-    // SUITABILITY (0-15)
-    var suit = 0;
-    var riskyPct = 0;
-    RISKY_CLS.forEach(function(cls) { riskyPct += (classPcts[cls] || 0); });
-    if (p.risk === 'conservador') {
-      if      (riskyPct > 0.30) suit += 15;
-      else if (riskyPct > 0.15) suit += 8;
-      else if (riskyPct > 0.05) suit += 3;
-    } else if (p.risk === 'moderado') {
-      if      (riskyPct > 0.60) suit += 10;
-      else if (riskyPct > 0.45) suit += 5;
-    } else if (p.risk === 'moderado-agressivo') {
-      if      (riskyPct > 0.80) suit += 8;
-      else if (riskyPct > 0.70) suit += 3;
-    }
-    suit = Math.min(15, suit);
-
-    // OPERACIONAL (0-10)
-    var op = 0;
-    if      (row.status === 'CORRIGIR')   op += 6;
-    else if (row.status === 'COM ALERTA') op += 3;
-    if      (row.nAchados >= 2) op += 2;
-    else if (row.nAchados >= 1) op += 1;
-    if (RECIDIVA_CODES.indexOf(code) >= 0) op += 2;
-    if      (row.continuidade > 0.005) op += 2;
-    else if (row.continuidade > 0.001) op += 1;
-    op = Math.min(10, op);
-
-    var total = Math.min(100, Math.round(mercado + conc + liq + suit + op));
-    var nivel = total >= RISK_CONFIG.nivel.alto ? 'Alto' : total >= RISK_CONFIG.nivel.atencao ? 'Atenção' : 'Baixo';
-
-    var components = [
-      { label:'Mercado',      value:mercado, max:30 },
-      { label:'Concentração', value:conc,    max:25 },
-      { label:'Liquidez',     value:liq,     max:20 },
-      { label:'Suitability',  value:suit,    max:15 },
-      { label:'Operacional',  value:op,      max:10 },
-    ];
-    components.sort(function(a,b) { return (b.value/b.max) - (a.value/a.max); });
-    var drivers = components.filter(function(c){ return c.value > 0; }).slice(0,3).map(function(c){ return c.label; });
-
-    return {
-      code:code, name:p.name, risk:p.risk,
-      manager: getManagerForCode(code),
-      score:total, nivel:nivel,
-      components:{ mercado:mercado, concentracao:conc, liquidez:liq, suitability:suit, operacional:op },
-      drivers:drivers,
-      drawdown6M:drawdown6M, monthsBelowCDI:monthsBelowCDI,
-      classPcts:classPcts, riskyPct:riskyPct, liqPct:liqPct,
-      plCurr:row.plCurr, status:row.status,
-    };
-  }
-
-  function riskDashboard(month) {
-    var scores = [];
-    CATALOG.forEach(function(p) {
-      var s = riskScore(p.code, month);
-      if (s) scores.push(s);
-    });
-    scores.sort(function(a,b){ return b.score - a.score; });
-    var alto    = scores.filter(function(s){ return s.nivel === 'Alto'; }).length;
-    var atencao = scores.filter(function(s){ return s.nivel === 'Atenção'; }).length;
-    var scoreMedia = scores.length > 0
-      ? Math.round(scores.reduce(function(acc,s){ return acc+s.score; },0) / scores.length) : 0;
-    var filaAcao = [];
-    var FA = RISK_CONFIG.filaAcao;
-    scores.filter(function(s){ return s.score >= FA.scoreMinimo; }).forEach(function(s) {
-      var pares = [
-        { ativo: s.components.operacional  >= FA.operacional,   peso: s.components.operacional  / RISK_CONFIG.max.operacional,   motivo:'Status CORRIGIR ativo',              rec:'Bloquear liberação até resolução dos achados' },
-        { ativo: s.components.mercado      >= FA.mercado,       peso: s.components.mercado      / RISK_CONFIG.max.mercado,       motivo:'Underperformance persistente vs CDI', rec:'Solicitar relatório de atribuição ao gestor' },
-        { ativo: s.components.concentracao >= FA.concentracao,  peso: s.components.concentracao / RISK_CONFIG.max.concentracao,  motivo:'Concentração acima do limite',        rec:'Revisar política de diversificação' },
-        { ativo: s.components.suitability  >= FA.suitability,   peso: s.components.suitability  / RISK_CONFIG.max.suitability,   motivo:'Exposição incompatível com perfil',   rec:'Análise de adequação (suitability)' },
-        { ativo: s.components.liquidez     >= FA.liquidez,      peso: s.components.liquidez     / RISK_CONFIG.max.liquidez,      motivo:'Liquidez abaixo do mínimo',           rec:'Rever janela de resgate e buffer de caixa' },
-        { ativo: RECIDIVA_CODES.indexOf(s.code) >= 0,  peso: 1,                         motivo:'Recidiva de alertas (4+ meses)',      rec:'Escalar para comitê de risco' },
-      ];
-      pares = pares.filter(function(p){ return p.ativo; });
-      pares.sort(function(a, b){ return b.peso - a.peso; });
-      var motivos = pares.map(function(p){ return p.motivo; });
-      var recs    = pares.map(function(p){ return p.rec; });
-      if (motivos.length === 0) { motivos.push('Score elevado (' + s.score + '/100)'); recs.push('Revisão de monitoramento mensal'); }
-      filaAcao.push({
-        code:s.code, name:s.name, score:s.score, nivel:s.nivel,
-        motivo:motivos.slice(0,2).join('; '),
-        recomendacao:recs[0] || '—',
-        severidade:s.nivel === 'Alto' ? 'CORRIGIR' : 'COM ALERTA',
-      });
-    });
-    return { kpis:{alto:alto, atencao:atencao, scoreMedia:scoreMedia}, carteiras:scores, filaAcao:filaAcao };
-  }
-
-  function riskStress(month, scenario) {
-    if (scenario && !STRESS_SHOCKS[scenario]) {
-      console.warn('[riskStress] cenário desconhecido "' + scenario + '", usando "combinado".');
-    }
-    var shocks = STRESS_SHOCKS[scenario] || STRESS_SHOCKS['combinado'];
-    var totalLoss = 0, totalAUM = 0;
-    var portfolioLosses = [];
-    CATALOG.forEach(function(p) {
-      var mi = MONTHS.indexOf(month);
-      if (mi < 0) return;
-      var plCurr = _portfolioData[p.code].plArr[mi] || 0;
-      if (plCurr <= 0) return;
-      totalAUM += plCurr;
-      var comp = getComposition(p.code, month);
-      var loss = 0;
-      comp.forEach(function(item) { loss += (shocks[item.cls] || 0) * item.pct * plCurr; });
-      totalLoss += loss;
-      portfolioLosses.push({ code:p.code, name:p.name, plCurr:plCurr, loss:loss, lossPct:plCurr > 0 ? loss/plCurr : 0 });
-    });
-    portfolioLosses.sort(function(a,b){ return a.loss - b.loss; });
-    return {
-      scenario:scenario, totalLoss:totalLoss,
-      totalLossPct: totalAUM > 0 ? totalLoss / totalAUM : 0,
-      portfolioLosses:portfolioLosses,
-      top5Stressed:portfolioLosses.slice(0,5),
-    };
-  }
-
   function validate() {
     var errs = 0;
     console.assert(MONTHS.length === MONTH_LABELS.length,
@@ -1700,11 +1484,13 @@
     searchAssets: searchAssets,
     portfolioReportData: portfolioReportData,
     exportMonthlySnapshot: exportMonthlySnapshot,
-    STRESS_SHOCKS: STRESS_SHOCKS,
-    RISK_CONFIG:   RISK_CONFIG,
-    riskScore:     riskScore,
-    riskDashboard: riskDashboard,
-    riskStress:    riskStress,
+    getCDI: getCDI,
+    _internal: {
+      _codeMap: _codeMap,
+      _portfolioData: _portfolioData,
+      RECIDIVA_CODES: RECIDIVA_CODES,
+      getManagerForCode: getManagerForCode,
+    },
     importPortfolioData: importPortfolioData,
     restoreDemo: restoreDemo,
     getDataMode: getDataMode,

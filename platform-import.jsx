@@ -96,6 +96,7 @@
     const [fileName, setFileName] = useState('');
     const [busy, setBusy] = useState(false);
     const [pdfPreviews, setPdfPreviews] = useState([]);   // [{ fileName, pages: [[linha]] }]
+    const [pdfProgress, setPdfProgress] = useState(0);   // páginas PDF processadas
     const [perfilOverrides, setPerfilOverrides] = useState({});  // code -> perfil
     const fileInputRef = useRef(null);
 
@@ -174,7 +175,7 @@
     // --- PDF (books Mirabaud) ---
 
     // Extrai o texto de um PDF página a página e interpreta o layout do book.
-    function parsePdfFile(pdfjsLib, file) {
+    function parsePdfFile(pdfjsLib, file, onPageDone) {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => {
@@ -190,7 +191,9 @@
                     y: it.transform[5],
                     rot: Math.atan2(it.transform[1], it.transform[0]),
                   }));
-                  return P.reconstructPdfLines(items);
+                  const lines = P.reconstructPdfLines(items);
+                  if (onPageDone) onPageDone();
+                  return lines;
                 })
               );
             }
@@ -208,9 +211,20 @@
     }
 
     function handlePDFs(files) {
+      let isMounted = true;
+      let pagesCompleted = 0;
+      setPdfProgress(0);
+
+      const onPageDone = () => {
+        if (!isMounted) return;
+        pagesCompleted++;
+        setPdfProgress(pagesCompleted);
+      };
+
       loadPdfJs().then(pdfjsLib => {
-        return Promise.all(files.map(f => parsePdfFile(pdfjsLib, f)));
+        return Promise.all(files.map(f => parsePdfFile(pdfjsLib, f, onPageDone)));
       }).then(results => {
+        if (!isMounted) return;
         // Merge: 1 book = 1 carteira/1 mês; mesmo código em arquivos
         // diferentes agrega meses na mesma carteira.
         const byCode = {};
@@ -260,9 +274,12 @@
           addToast(result.portfolios.length + ' carteira(s) prontas para confirmação.', 'info');
         }
       }).catch(() => {
+        if (!isMounted) return;
         addToast('Falha ao processar o PDF. Verifique o arquivo ou use CSV/XLSX.', 'error');
         setBusy(false);
       });
+
+      return () => { isMounted = false; };
     }
 
     function handleFiles(fileList) {
@@ -427,7 +444,9 @@
             </div>
             {fileName && (
               <div style={{ marginTop: 12, fontSize: '0.786rem', color: 'var(--navy)', fontFamily: 'var(--font-mono)' }}>
-                {busy ? 'Processando ' : 'Arquivo: '}{fileName}
+                {busy
+                  ? 'Processando ' + fileName + (pdfProgress > 0 ? ' — ' + pdfProgress + ' pág.' : '...')
+                  : 'Arquivo: ' + fileName}
               </div>
             )}
             <input

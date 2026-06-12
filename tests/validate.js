@@ -137,10 +137,17 @@ ok('rota /risco em platform-app.jsx',
   /['"]\/risco['"]/.test(appContent));
 ok('navegação contém Risco em platform-app.jsx',
   /label:\s*['"]Radar de Risco['"]/.test(appContent));
-ok('AtlasData.riskDashboard exportado',
-  dataContent.includes('riskDashboard:'));
-ok('AtlasData.riskStress exportado',
-  dataContent.includes('riskStress:'));
+const riskFilePath = path.join(ROOT, 'platform-data-risk.js');
+const riskFileContent = fs.existsSync(riskFilePath) ? fs.readFileSync(riskFilePath, 'utf8') : '';
+ok('platform-data-risk.js existe', fs.existsSync(riskFilePath));
+ok('AtlasData.riskDashboard definido em platform-data-risk.js',
+  riskFileContent.includes('riskDashboard'));
+ok('AtlasData.riskStress definido em platform-data-risk.js',
+  riskFileContent.includes('riskStress'));
+ok('AtlasData.getCDI exportado em platform-data.js',
+  dataContent.includes('getCDI:'));
+ok('AtlasData._internal exportado em platform-data.js',
+  dataContent.includes('_internal:'));
 ok('AtlasData.importPortfolioData exportado',
   dataContent.includes('importPortfolioData:'));
 ok('AtlasData.restoreDemo exportado',

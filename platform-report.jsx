@@ -113,19 +113,16 @@
   }
 
   /* ============================================================
-     buildReportHTML — HTML autossuficiente para popup/iframe
+     calcReportData — cálculos puros sem HTML
   ============================================================ */
 
-  function buildReportHTML(code, month) {
+  function calcReportData(code, month) {
     const row = D.getRow(code, month);
-    if (!row) {
-      return `<html><body style="font-family:Arial;padding:32px;color:#1A1A1A;">Dados não encontrados: ${escH(code)} / ${escH(month)}.</body></html>`;
-    }
+    if (!row) return null;
 
     const cat  = D.CATALOG.find(c => c.code === code) || {};
     const comp = D.getComposition(code, month);
     const obs  = storage.getObs(code, month);
-    const DEFAULT_OBS = 'Conciliação aprovada sem ressalvas.';
 
     const inception  = cat.inception || D.MONTHS[0];
     const histMonths = D.MONTHS.filter(m => m >= inception && m <= month);
@@ -133,7 +130,6 @@
     const firstRow = histMonths.length ? D.getRow(code, histMonths[0]) : null;
     const plBase   = firstRow && firstRow.plPrev > 0 ? firstRow.plPrev : (firstRow ? firstRow.plCurr : 1);
 
-    // Retorno acumulado (money-weighted aprox.): (plCurr - plBase) / plBase
     const accumData = histMonths.map(m => {
       const r = D.getRow(code, m);
       return { month: m, value: r ? (r.plCurr - plBase) / plBase : 0 };
@@ -148,7 +144,6 @@
     });
     const twrTotal = twrAcc - 1;
 
-    // CDI acumulado
     let cdiAcc = 1;
     const cdiData = histMonths.map(m => {
       cdiAcc *= (1 + (D.CDI[m] || 0));
@@ -156,21 +151,41 @@
     });
     const cdiTotal = cdiAcc - 1;
 
+    const varPat      = plBase > 0 ? (row.plCurr - plBase) / plBase : 0;
+    const concentrated = comp.filter(a => a.pct >= 0.25).slice(0, 3);
+    const hasVencto    = comp.some(a => a.vencto);
+    const statusSlug   = row.status === 'COM ALERTA' ? 'alerta' : (row.status || '').toLowerCase();
+    const monthLabel   = rFmtMonth(month);
+    const today        = new Date().toLocaleDateString('pt-BR');
+    const managerName  = row.manager ? row.manager.name : '';
+
+    return {
+      row, cat, comp, obs, inception, histMonths,
+      plBase, varPat, accumData, twrData, twrTotal,
+      cdiData, cdiTotal, concentrated, hasVencto,
+      statusSlug, monthLabel, today, managerName,
+    };
+  }
+
+  /* ============================================================
+     renderReportHTML — constrói HTML a partir dos dados calculados
+  ============================================================ */
+
+  function renderReportHTML(data) {
+    const {
+      row, cat, comp, obs, inception, histMonths,
+      varPat, accumData, twrData, twrTotal, cdiData, cdiTotal,
+      concentrated, hasVencto, statusSlug, monthLabel, today, managerName,
+    } = data;
+    const code = row.code || cat.code || '';
+    const DEFAULT_OBS = 'Conciliação aprovada sem ressalvas.';
+
     const chartSVG = linePath([
       { color: '#05305F', width: 2,   data: accumData },
       { color: '#05305F', width: 1.5, dash: '5,3', data: twrData },
       { color: '#9A9188', width: 1.5, dash: '3,3', data: cdiData },
     ], { w: 680, h: 190, maxLabels: 7 });
 
-    const concentrated = comp.filter(a => a.pct >= 0.25).slice(0, 3);
-    const hasVencto    = comp.some(a => a.vencto);
-
-    const statusSlug  = row.status === 'COM ALERTA' ? 'alerta' : (row.status || '').toLowerCase();
-    const monthLabel  = rFmtMonth(month);
-    const today       = new Date().toLocaleDateString('pt-BR');
-    const managerName = row.manager ? row.manager.name : '';
-
-    // Linhas da tabela de composição
     const compRows = comp.map(a => {
       const isConc = a.pct >= 0.25;
       const rBg    = isConc ? ' style="background:#FFFBEB;"' : '';
@@ -190,10 +205,6 @@
       ].join('');
     }).join('');
 
-    // Var. Patrimonial para o histórico
-    const varPat = plBase > 0 ? (row.plCurr - plBase) / plBase : 0;
-
-    // Seção de histórico: summary 3-col + tabela mensal
     const histRows = histMonths.map(m => {
       const r = D.getRow(code, m);
       if (!r) return '';
@@ -218,7 +229,7 @@
   <div style="background:#fff;padding:9px 12px;">
     <div style="font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:#9A9188;margin-bottom:4px;">Var. Patrimonial</div>
     <div style="font-size:15px;font-weight:700;font-family:'Courier New',monospace;color:${varPat >= 0 ? '#065F46' : '#991B1B'};">${rFmtPct(varPat)}</div>
-    <div style="font-size:10px;color:#9A9188;margin-top:2px;">PL₁ / PL₀ − 1</div>
+    <div style="font-size:10px;color:#9A9188;margin-top:2px;">PL&#8321; / PL&#8320; &#8722; 1</div>
   </div>
   <div style="background:#fff;padding:9px 12px;">
     <div style="font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:#9A9188;margin-bottom:4px;">Retorno TWR</div>
@@ -245,7 +256,6 @@
 </table>
 </section>` : '';
 
-    // Seção de achados
     const findingsHTML = row.findings && row.findings.length
       ? `<section class="section">
 <div class="section-title">Achados (${row.findings.length})</div>
@@ -258,7 +268,6 @@ ${row.findings.map(f => {
 </tbody></table></section>`
       : '';
 
-    // Seção de observação (só se não-vazia e não-default)
     const obsHTML = obs && obs.trim() && obs.trim() !== DEFAULT_OBS
       ? `<section class="section">
 <div class="section-title">Observação do Analista</div>
@@ -359,7 +368,7 @@ ${findingsHTML}
 ${obsHTML}
 <div class="footnotes">
   (*) Retorno Acumulado: variação patrimonial relativa ao PL no início do período, inclui efeito de aportes e resgates.<br>
-  (**) TWR: método CFA/GIPS — ∏(1 + rₙ) − 1, elimina distorções por aportes e resgates.<br>
+  (**) TWR: método CFA/GIPS — &#8719;(1 + r&#8345;) &#8722; 1, elimina distorções por aportes e resgates.<br>
   Dados sintéticos — ATLAS Wealth Verification · Meridian Advisory (uso interno).
 </div>
 
@@ -369,6 +378,18 @@ ${obsHTML}
 </footer>
 </body>
 </html>`;
+  }
+
+  /* ============================================================
+     buildReportHTML — API pública: wrapper calc + render
+  ============================================================ */
+
+  function buildReportHTML(code, month) {
+    const data = calcReportData(code, month);
+    if (!data) {
+      return `<html><body style="font-family:Arial;padding:32px;color:#1A1A1A;">Dados não encontrados: ${escH(code)} / ${escH(month)}.</body></html>`;
+    }
+    return renderReportHTML(data);
   }
 
   /* ============================================================

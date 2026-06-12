@@ -413,6 +413,10 @@
             {sorted.map(s => (
               <tr key={s.code}
                 onClick={() => onSelect(s.code)}
+                onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && onSelect(s.code)}
+                role="button"
+                tabIndex={0}
+                aria-label={`Selecionar carteira ${s.code}`}
                 style={{
                   cursor:'pointer',
                   background: s.code === selectedCode ? 'var(--paper-mid)' : undefined,
