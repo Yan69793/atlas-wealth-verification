@@ -95,7 +95,7 @@
                     <div style={{ fontSize: '0.714rem', color: 'var(--muted)' }}>{f.name}</div>
                   </td>
                   <td><SeverityBadge severity={f.finding.severity} /></td>
-                  <td style={{ fontSize: '0.857rem', color: 'var(--body)', maxWidth: 460 }}>
+                  <td style={{ fontSize: '0.857rem', color: 'var(--body)', maxWidth: 460, wordBreak: 'break-word' }}>
                     {f.finding.text}
                   </td>
                   <td style={{ fontSize: '0.786rem', color: 'var(--muted)' }}>

@@ -45,7 +45,7 @@
           <div className="card-title" style={{ marginBottom: 12 }}>Asset Allocation</div>
           <div style={{ display: 'flex', gap: 24, alignItems: 'center', flexWrap: 'wrap' }}>
             <div style={{ width: 220, height: 220, flexShrink: 0 }}>
-              <PResponsive width="100%" height="100%">
+              <PResponsive width={220} height={220}>
                 <PieChart>
                   <Pie
                     data={pieData}
@@ -646,7 +646,7 @@
     ];
 
     function handleExport() {
-      navigate('#/dev/relatorio/' + code);
+      window.open(window.location.origin + window.location.pathname + '#/dev/relatorio/' + code, '_blank');
     }
 
     return (
