@@ -190,6 +190,61 @@
       ].join('');
     }).join('');
 
+    // Var. Patrimonial para o histórico
+    const varPat = plBase > 0 ? (row.plCurr - plBase) / plBase : 0;
+
+    // Seção de histórico: summary 3-col + tabela mensal
+    const histRows = histMonths.map(m => {
+      const r = D.getRow(code, m);
+      if (!r) return '';
+      const apResg = r.plCurr - r.plPrev - r.plPrev * r.rent;
+      const apStr  = Math.abs(apResg) < 1000 ? '—' : rFmtBRL(apResg);
+      const rc = r.rent >= 0 ? '#065F46' : '#991B1B';
+      const vc = (r.rent - (r.cdi || 0)) >= 0 ? '#065F46' : '#991B1B';
+      return `<tr>
+        <td style="font-family:'Courier New',monospace;font-size:11px;">${rFmtMonth(m)}</td>
+        <td class="num">${rFmtBRL(r.plPrev)}</td>
+        <td class="num">${rFmtBRL(r.plCurr)}</td>
+        <td class="num" style="color:${rc};">${rFmtPct(r.rent)}</td>
+        <td class="num">${rFmtPct(r.cdi || 0, 3)}</td>
+        <td class="num" style="color:${vc};">${rFmtPct(r.rent - (r.cdi || 0))}</td>
+        <td class="num" style="color:#9A9188;">${apStr}</td>
+      </tr>`;
+    }).join('');
+
+    const historicoHTML = histMonths.length ? `<section class="section">
+<div class="section-title">Histórico mensal — desde ${rFmtMonth(histMonths[0])}</div>
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:#DDD8D0;border:1px solid #DDD8D0;border-radius:4px;overflow:hidden;margin-bottom:14px;">
+  <div style="background:#fff;padding:9px 12px;">
+    <div style="font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:#9A9188;margin-bottom:4px;">Var. Patrimonial</div>
+    <div style="font-size:15px;font-weight:700;font-family:'Courier New',monospace;color:${varPat >= 0 ? '#065F46' : '#991B1B'};">${rFmtPct(varPat)}</div>
+    <div style="font-size:10px;color:#9A9188;margin-top:2px;">PL₁ / PL₀ − 1</div>
+  </div>
+  <div style="background:#fff;padding:9px 12px;">
+    <div style="font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:#9A9188;margin-bottom:4px;">Retorno TWR</div>
+    <div style="font-size:15px;font-weight:700;font-family:'Courier New',monospace;color:${twrTotal >= 0 ? '#065F46' : '#991B1B'};">${rFmtPct(twrTotal)}</div>
+    <div style="font-size:10px;color:#9A9188;margin-top:2px;">&#8719;(1+r&#8345;) &#8722; 1</div>
+  </div>
+  <div style="background:#fff;padding:9px 12px;">
+    <div style="font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:#9A9188;margin-bottom:4px;">CDI Acumulado</div>
+    <div style="font-size:15px;font-weight:700;font-family:'Courier New',monospace;color:#0D1520;">${rFmtPct(cdiTotal)}</div>
+    <div style="font-size:10px;color:#9A9188;margin-top:2px;">Período inteiro</div>
+  </div>
+</div>
+<table>
+  <thead><tr>
+    <th>Mês</th>
+    <th class="num">PL Anterior</th>
+    <th class="num">PL Atual</th>
+    <th class="num">Rent.</th>
+    <th class="num">CDI</th>
+    <th class="num">vs CDI</th>
+    <th class="num">Aporte/Resg. Est.</th>
+  </tr></thead>
+  <tbody>${histRows}</tbody>
+</table>
+</section>` : '';
+
     // Seção de achados
     const findingsHTML = row.findings && row.findings.length
       ? `<section class="section">
@@ -299,6 +354,7 @@ td { padding: 5px 7px; border-bottom: 1px solid #E3DDD5; color: #3C3830; vertica
     : ''}
 </section>
 
+${historicoHTML}
 ${findingsHTML}
 ${obsHTML}
 <div class="footnotes">

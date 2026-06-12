@@ -106,13 +106,14 @@ Classe `.num` aplica mono tabular right em qualquer elemento.
 
 ## Proibições absolutas
 
-1. Nenhum emoji ou dingbat em qualquer arquivo
-2. Nenhum hex literal em arquivo de componente — só `var(--token)`
-3. Gradientes coloridos proibidos (só `--gold` sutil no item ativo da sidebar)
-4. Cor nunca única portadora de informação — sempre texto/ícone também
-5. `new Date()` sem argumento e `Date.now()` proibidos — usar array literal de meses
-6. `NaN` e `undefined` nunca chegam ao DOM — formatters defensivos retornam `"—"`
-7. Raio máximo 12px
+1. **Nenhum emoji ou dingbat** em qualquer arquivo — ícones semânticos (✓ ⚠ ✗) devem ser SVG inline com `aria-hidden="true"`
+2. **Nenhum hex literal** em arquivo de componente — só `var(--token)` (exceção: HTML gerado para exportação, que é autossuficiente)
+3. **Gradientes coloridos proibidos** — única exceção: gradiente dourado sutil no item ativo da sidebar
+4. **`--gold` nunca como fundo de página** — uso restrito a acentos, bordas de foco e item ativo da sidebar
+5. Cor nunca única portadora de informação — sempre texto/ícone também
+6. `new Date()` sem argumento e `Date.now()` proibidos — usar array literal de meses
+7. `NaN` e `undefined` nunca chegam ao DOM — formatters defensivos retornam `"—"`
+8. Raio máximo `12px` — proibido `border-radius: 9999px` exceto em chips de filtro pequenos
 
 ---
 

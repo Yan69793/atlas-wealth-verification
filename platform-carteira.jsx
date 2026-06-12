@@ -6,6 +6,7 @@
   const { fmtCompactBRL, fmtPct, fmtMonthLabel, signClass, navigate, storage } = window.AtlasUtils;
   const { Icon }            = window.AtlasIcons;
   const { Badge, SeverityBadge, KPITile, EmptyState } = window.AtlasUI;
+  const { LineChart } = window.AtlasCharts;
   const D = window.AtlasData;
 
   const OBS_DEFAULT = 'Conciliação aprovada sem ressalvas.';
@@ -179,7 +180,7 @@
     const cdiAcc = history.reduce((acc, r) => acc * (1 + r.cdi),  1) - 1;
     const plFirst   = history[0].plPrev;
     const plLast    = history[history.length - 1].plCurr;
-    const varPatrimonial = plLast - plFirst;
+    const varPatrimonial = plFirst > 0 ? (plLast - plFirst) / plFirst : 0;
 
     // Accumulated series for chart
     let twrRun = 1, cdiRun = 1;
@@ -204,7 +205,7 @@
           <KPITile label="CDI Período"      value={fmtPct(cdiAcc, 2)}           sub="Acumulado" />
           <KPITile label="vs CDI"           value={(twr - cdiAcc >= 0 ? '+' : '') + fmtPct(twr - cdiAcc, 2)}
             sub="TWR – CDI" variant={twr < cdiAcc ? 'amber' : undefined} />
-          <KPITile label="Var. Patrimonial" value={fmtCompactBRL(varPatrimonial)} sub="PL atual – PL inicial" />
+          <KPITile label="Var. Patrimonial" value={fmtPct(varPatrimonial, 2)} sub="PL final / PL inicial - 1" />
         </div>
 
         {/* Chart */}
