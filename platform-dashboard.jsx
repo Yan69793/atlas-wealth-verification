@@ -6,8 +6,7 @@
   // AtlasContexts é definido por platform-app.jsx (último) — acessar só dentro do componente.
   const { fmtCompactBRL, fmtPct, fmtMonthLabel, signClass, navigate } = window.AtlasUtils;
   const { Icon }      = window.AtlasIcons;
-  const { Badge, Chip, KPITile, EmptyState, AuditScoreBadge, AuditScoreLegend } = window.AtlasUI;
-  const { auditScoreTier } = window.AtlasUtils;
+  const { Badge, Chip, KPITile, EmptyState } = window.AtlasUI;
   const D = window.AtlasData;
 
   /* ============================================================
@@ -29,12 +28,8 @@
   ============================================================ */
   function KpiRow({ stats, onFilterChange, activeFilter, month }) {
     const cdi = stats.cdi;
-    const scoreVariant = stats.auditScoreMedia == null ? undefined
-      : stats.auditScoreMedia >= 40 ? (stats.auditScoreMedia >= 70 ? undefined : 'amber')
-      : 'red';
-
     return (
-      <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(7, 1fr)' }}>
+      <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(6, 1fr)' }}>
         <KPITile
           label="Carteiras"
           value={stats.total}
@@ -61,12 +56,6 @@
           sub={stats.corrigir > 0 ? 'Bloqueia liberação' : 'Nenhuma'}
           variant={stats.corrigir > 0 ? 'red' : undefined}
           onClick={() => onFilterChange('CORRIGIR')}
-        />
-        <KPITile
-          label="Score médio"
-          value={stats.auditScoreMedia ?? '—'}
-          sub="0–100 qualidade"
-          variant={scoreVariant}
         />
         <KPITile
           label="PL do Mês"
@@ -194,7 +183,6 @@
             <tr>
               <ThSort col="code"    label="Carteira"   className="sticky-col" />
               <ThSort col="status"  label="Status"     />
-              <ThSort col="auditScore" label="Score"   className="num col-audit-score" />
               <ThSort col="plCurr"  label="PL Atual"   className="num" />
               <ThSort col="varPct"  label="Variação"   className="num" />
               <ThSort col="plPrev"  label="PL Anterior" className="num" />
@@ -217,9 +205,6 @@
                   <div style={{ fontSize: '0.714rem', color: 'var(--muted)' }}>{r.name}</div>
                 </td>
                 <td><Badge status={r.status} /></td>
-                <td className={`num col-audit-score audit-score-cell--${auditScoreTier(r.auditScore)}`}>
-                  <AuditScoreBadge score={r.auditScore} />
-                </td>
                 <td className="num">{fmtCompactBRL(r.plCurr)}</td>
                 <td className={`num ${signClass(r.varPct)}`}>
                   {r.varPct > 0 ? '+' : ''}{fmtPct(r.varPct, 2)}
@@ -404,8 +389,6 @@
           activeFilter={filter}
           month={selectedMonth}
         />
-
-        <AuditScoreLegend />
 
         <BlockedBanner
           rows={allRows}

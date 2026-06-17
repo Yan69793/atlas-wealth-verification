@@ -503,118 +503,12 @@
   }
 
   /* ===========================================================
-     AUDIT SCORE (qualidade da verificação — audit-engine)
-  =========================================================== */
-
-  function auditScoreTier(score) {
-    if (score == null || isNaN(score)) return '';
-    if (score >= 70) return 'ok';
-    if (score >= 40) return 'warn';
-    return 'bad';
-  }
-
-  function buildAuditScoreBreakdown(row) {
-    const items = [{ label: 'Base de partida', delta: 0, note: '100 pontos' }];
-    if (!row) return { items, final: null };
-
-    const findings = row.findings || [];
-    const erros = findings.filter(f => f.severity === 'CORRIGIR').length + (row.status === 'CORRIGIR' && !findings.some(f => f.severity === 'CORRIGIR') ? 1 : 0);
-    const alertas = findings.filter(f => f.severity === 'COM ALERTA').length + (row.status === 'COM ALERTA' && erros === 0 && !findings.some(f => f.severity === 'COM ALERTA') ? 1 : 0);
-
-    if (erros > 0) items.push({ label: `${erros} erro(s) bloqueante(s)`, delta: erros * -40, note: '−40 pts cada' });
-    if (alertas > 0) items.push({ label: `${alertas} alerta(s)`, delta: alertas * -10, note: '−10 pts cada' });
-    if ((row.continuidade || 0) > 0.003) {
-      items.push({ label: 'Descontinuidade acima de 0,30% do PL', delta: -15, note: `${((row.continuidade || 0) * 100).toFixed(3)}%` });
-    }
-    if (row.rent === 0 && row.plCurr > 0) {
-      items.push({ label: 'Rentabilidade zerada com PL ativo', delta: -40, note: 'Erro bloqueante' });
-    }
-
-    const computed = Math.max(0, Math.min(100, items.reduce((s, i) => s + i.delta, 100)));
-    return { items, final: row.auditScore ?? computed };
-  }
-
-  function AuditScoreBadge({ score, size = 'md' }) {
-    if (score == null) return <span style={{ color: 'var(--muted)' }}>—</span>;
-    const tier = auditScoreTier(score);
-    return (
-      <span className={`audit-score-badge audit-score-badge--${tier} audit-score-badge--${size}`} title={`Score de qualidade: ${score}/100`}>
-        {score}
-      </span>
-    );
-  }
-
-  function AuditScoreBar({ score }) {
-    if (score == null) return null;
-    const tier = auditScoreTier(score);
-    const safe = Math.max(0, Math.min(100, score));
-    return (
-      <div className={`audit-score-bar audit-score-bar--${tier}`}>
-        <div className="audit-score-bar__fill" style={{ width: `${safe}%` }} />
-      </div>
-    );
-  }
-
-  function AuditScoreLegend() {
-    return (
-      <div className="audit-score-legend">
-        <div className="audit-score-legend__title">Score de qualidade da verificação (0–100)</div>
-        <p className="audit-score-legend__text">
-          Calculado pelo motor de auditoria a partir dos achados. Parte de 100 e subtrai penalidades — não substitui o status Liberar / Com Alerta / Corrigir.
-        </p>
-        <ul className="audit-score-legend__list">
-          <li><strong>−40</strong> por erro bloqueante</li>
-          <li><strong>−10</strong> por alerta</li>
-          <li><strong>−15</strong> se descontinuidade &gt; 0,30% do PL</li>
-          <li><strong>−40</strong> se rentabilidade zerada com PL ativo</li>
-        </ul>
-        <div className="audit-score-legend__tiers">
-          <span className="audit-score-tier audit-score-tier--ok">70–100 · sólido</span>
-          <span className="audit-score-tier audit-score-tier--warn">40–69 · atenção</span>
-          <span className="audit-score-tier audit-score-tier--bad">0–39 · crítico</span>
-        </div>
-      </div>
-    );
-  }
-
-  function AuditScorePanel({ row }) {
-    const breakdown = buildAuditScoreBreakdown(row);
-    if (!row) return null;
-    return (
-      <div className="audit-score-panel">
-        <div className="audit-score-panel__head">
-          <div>
-            <div className="audit-score-panel__title">Score de qualidade</div>
-            <div className="audit-score-panel__sub">Baseado nos achados e métricas desta carteira no mês.</div>
-          </div>
-          <AuditScoreBadge score={breakdown.final} size="lg" />
-        </div>
-        <AuditScoreBar score={breakdown.final} />
-        <ul className="audit-score-breakdown">
-          {breakdown.items.map((item, i) => (
-            <li key={i} className={item.delta < 0 ? 'penalty' : ''}>
-              <span className="audit-score-breakdown__label">{item.label}</span>
-              <span className="audit-score-breakdown__meta">{item.note}</span>
-              <span className="audit-score-breakdown__delta">{item.delta === 0 ? '100' : item.delta}</span>
-            </li>
-          ))}
-          <li className="total">
-            <span className="audit-score-breakdown__label">Score final</span>
-            <span className="audit-score-breakdown__delta">{breakdown.final}</span>
-          </li>
-        </ul>
-      </div>
-    );
-  }
-
-  /* ===========================================================
      EXPORTS
   =========================================================== */
 
   window.AtlasUtils = {
     fmt, fmtBRL, fmtCompactBRL, fmtPct, fmtPctRaw, fmtMonthLabel,
     signClass, storage, navigate, useRouter,
-    auditScoreTier, buildAuditScoreBreakdown,
   };
 
   window.AtlasIcons = { Icon };
@@ -624,7 +518,6 @@
   window.AtlasUI = {
     Badge, StatusDot, SeverityBadge, Chip, KPITile,
     EmptyState, Spinner, Tooltip, ToastContainer, useToast,
-    AuditScoreBadge, AuditScoreBar, AuditScoreLegend, AuditScorePanel,
   };
 
 })();

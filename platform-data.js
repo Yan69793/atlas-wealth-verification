@@ -691,27 +691,6 @@
     return MANAGERS[0];
   }
 
-  /* Score de qualidade da verificação (audit-engine) — 0–100 */
-  function computeAuditScore(row) {
-    var score = 100;
-    var findings = row.findings || [];
-    var erros = 0;
-    var alertas = 0;
-    findings.forEach(function(f) {
-      if (f.severity === 'CORRIGIR') erros++;
-      else if (f.severity === 'COM ALERTA') alertas++;
-    });
-    if (row.status === 'CORRIGIR' && erros === 0) erros = 1;
-    else if (row.status === 'COM ALERTA' && alertas === 0 && erros === 0) alertas = 1;
-
-    score -= erros * 40;
-    score -= alertas * 10;
-    if ((row.continuidade || 0) > 0.003) score -= 15;
-    if (row.rent === 0 && row.plCurr > 0) score -= 40;
-
-    return Math.max(0, Math.min(100, score));
-  }
-
   function getRow(code, month) {
     var pd = _portfolioData[code];
     var p = _codeMap[code];
@@ -758,7 +737,7 @@
     var nAtivos = plCurr > 0 ? 5 + Math.floor(hashStr(code + month) % 5) : 0;
     var nAtivosPrev = plPrev > 0 ? 5 + Math.floor(hashStr(code + (MONTHS[mi-1]||month)) % 5) : 0;
 
-    var row = {
+    return {
       code: code,
       name: p.name,
       risk: p.risk,
@@ -783,12 +762,10 @@
       nAtivosPrev: nAtivosPrev,
       cdi: cdi,
     };
-    row.auditScore = computeAuditScore(row);
-    return row;
   }
 
   function dashboardStats(month) {
-    var liberar = 0, alerta = 0, corrigir = 0, plTotal = 0, auditScores = [];
+    var liberar = 0, alerta = 0, corrigir = 0, plTotal = 0;
     CATALOG.forEach(function(p) {
       var s = getStatus(p.code, month);
       if (s === 'LIBERAR')      liberar++;
@@ -796,12 +773,7 @@
       else if (s === 'CORRIGIR')   corrigir++;
       var mi = MONTHS.indexOf(month);
       if (mi >= 0) plTotal += (_portfolioData[p.code].plArr[mi] || 0);
-      var row = getRow(p.code, month);
-      if (row && row.auditScore != null) auditScores.push(row.auditScore);
     });
-    var auditScoreMedia = auditScores.length
-      ? Math.round(auditScores.reduce(function(a, b) { return a + b; }, 0) / auditScores.length)
-      : null;
     return {
       total: CATALOG.length,
       liberar: liberar,
@@ -809,7 +781,6 @@
       corrigir: corrigir,
       plTotal: plTotal,
       cdi: CDI[month] || 0,
-      auditScoreMedia: auditScoreMedia,
     };
   }
 
@@ -1707,7 +1678,6 @@
     MANAGERS: MANAGERS,
     ASSETS: ASSETS,
     getRow: getRow,
-    computeAuditScore: computeAuditScore,
     getComposition: getComposition,
     dashboardStats: dashboardStats,
     plTotalSeries: plTotalSeries,
