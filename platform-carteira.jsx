@@ -5,7 +5,7 @@
   // Safe IIFE-level destructuring (carregam antes das páginas)
   const { fmtBRL, fmtCompactBRL, fmtPct, fmtMonthLabel, signClass, navigate, storage } = window.AtlasUtils;
   const { Icon }            = window.AtlasIcons;
-  const { Badge, SeverityBadge, KPITile, EmptyState } = window.AtlasUI;
+  const { Badge, SeverityBadge, KPITile, EmptyState, AuditScoreBadge, AuditScorePanel } = window.AtlasUI;
   const { LineChart } = window.AtlasCharts;
   const D = window.AtlasData;
 
@@ -666,6 +666,9 @@
             </h1>
             <div className="page-subtitle" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               {row && <Badge status={row.status} />}
+              {row && row.auditScore != null && (
+                <AuditScoreBadge score={row.auditScore} size="lg" />
+              )}
               <span>Extrato {fmtMonthLabel(selectedMonth)}</span>
               {mgr && <span style={{ color: 'var(--muted)' }}>· {mgr.name}</span>}
             </div>
@@ -732,7 +735,7 @@
             </div>
 
             {/* KPI row 3 */}
-            <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', marginBottom: 24 }}>
+            <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', marginBottom: 16 }}>
               <KPITile label="CDI Mês"       value={fmtPct(row.cdi, 3)} sub="Taxa mês" />
               <KPITile label="TWR Acumulado" value={fmtPct(twr, 2)}     sub={`desde ${fmtMonthLabel(p.inception || D.MONTHS[0])}`} />
               <KPITile
@@ -741,7 +744,15 @@
                 sub="Período"
                 variant={twr < cdiAcc ? 'amber' : undefined}
               />
+              <KPITile
+                label="Score qualidade"
+                value={row.auditScore ?? '—'}
+                sub="0–100 verificação"
+                variant={row.auditScore == null ? undefined : row.auditScore >= 40 ? (row.auditScore >= 70 ? undefined : 'amber') : 'red'}
+              />
             </div>
+
+            <AuditScorePanel row={row} />
           </>
         ) : (
           <div style={{
