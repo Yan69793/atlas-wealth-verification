@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "maverick-mcp": {
+      "command": "uv",
+      "args": [
+        "run",
+        "python",
+        "-m",
+        "maverick_mcp.api.server",
+        "--transport",
+        "stdio"
+      ],
+      "cwd": "${MAVERICK_MCP_DIR}",
+      "env": {
+        "TIINGO_API_KEY": "${TIINGO_API_KEY}"
+      }
+    }
+  }
+}
