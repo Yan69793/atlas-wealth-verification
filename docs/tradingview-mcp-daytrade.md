@@ -1,4 +1,19 @@
-# MCP para TradingView / Daytrade — Maverick MCP
+# MCP para TradingView / Daytrade
+
+Stack recomendada de **3 MCPs** que cobrem o ciclo completo de daytrade:
+
+| Camada | MCP | Função |
+|--------|-----|--------|
+| 1. Análise/decisão | **[maverick-mcp](https://github.com/wshobson/maverick-mcp)** | Análise técnica, screening, backtesting |
+| 2. Operar no TradingView | **[tradingview-mcp](https://github.com/tradesdontlie/tradingview-mcp)** | Lê charts ao vivo, indicadores, alertas, Pine Script |
+| 3. Execução de ordens | **[bybit trading-mcp](https://github.com/bybit-exchange/trading-mcp)** | Executa trades na corretora |
+
+O [`mcp.example.json`](../mcp.example.json) já traz os três configurados.
+Ative apenas os que for usar.
+
+---
+
+## 1. Maverick MCP — análise técnica e daytrade
 
 Guia de configuração do **[maverick-mcp](https://github.com/wshobson/maverick-mcp)**
 (sucessor do arquivado `wshobson/mcp-trader`), o MCP recomendado para análise
@@ -20,11 +35,8 @@ analisar → decidir que daytrade exige.
 | Validar estratégia      | `run_backtest`, `compare_strategies`, `optimize_strategy` |
 | Acompanhar carteira     | `portfolio_add_position`, `portfolio_get_my_portfolio` (P&L ao vivo) |
 
-> Para **operar dentro do TradingView** (ler suas charts ao vivo, aplicar
-> indicadores, criar alertas, escrever Pine Script), combine este MCP com o
-> bridge open-source para o **TradingView Desktop**. Para **execução automática
-> de ordens**, use o MCP da sua corretora (ex.: Bybit, ThinkMarkets — prefira
-> os que executam trades mas **não acessam fundos**).
+> Para **operar dentro do TradingView**, veja a seção 2. Para **execução de
+> ordens**, veja a seção 3.
 
 ## Instalação
 
@@ -90,6 +102,86 @@ Alternativa via HTTP (rode `make dev` no maverick-mcp; sobe em `http://localhost
   }
 }
 ```
+
+---
+
+## 2. TradingView Desktop bridge — operar nas suas charts
+
+**[tradesdontlie/tradingview-mcp](https://github.com/tradesdontlie/tradingview-mcp)**
+(MIT) conecta o Claude ao **TradingView Desktop** rodando localmente via Chrome
+DevTools Protocol (CDP). 78 ferramentas — tudo roda local, os dados das charts
+não saem da sua máquina.
+
+**Capacidades:** mudar símbolo/timeframe, ler valores de indicadores e OHLCV,
+screenshots, escrever/injetar/compilar **Pine Script** com visão da chart aberta,
+desenhar (linhas, retângulos, anotações), criar/listar/apagar alertas, layouts
+multi-painel e **replay mode** para treinar.
+
+### Instalação
+
+```bash
+# 1. Clonar e instalar
+git clone https://github.com/tradesdontlie/tradingview-mcp.git
+cd tradingview-mcp
+npm install
+
+# 2. Abrir o TradingView Desktop com debug habilitado (porta 9222)
+#    macOS:   ./scripts/launch_tv_debug_mac.sh
+#    Windows: scripts\launch_tv_debug.bat
+#    Linux:   ./scripts/launch_tv_debug_linux.sh
+#    Manual:  /caminho/do/TradingView --remote-debugging-port=9222
+```
+
+Sem variáveis de ambiente — só o caminho do servidor no `mcp.example.json`
+(`TRADINGVIEW_MCP_DIR`). Verifique a conexão com `tv_health_check` no Claude
+ou `node src/cli/index.js status`.
+
+```json
+{
+  "mcpServers": {
+    "tradingview": {
+      "command": "node",
+      "args": ["${TRADINGVIEW_MCP_DIR}/src/server.js"]
+    }
+  }
+}
+```
+
+---
+
+## 3. Bybit — execução de ordens
+
+MCP oficial **[bybit-exchange/trading-mcp](https://github.com/bybit-exchange/trading-mcp)**
+(206 ferramentas: market data, trading, posições, conta, WebSocket). As 22
+ferramentas de market data funcionam **sem chave de API**.
+
+### Configuração
+
+```json
+{
+  "mcpServers": {
+    "bybit": {
+      "command": "npx",
+      "args": ["-y", "bybit-official-trading-server@latest"],
+      "env": {
+        "BYBIT_API_KEY": "${BYBIT_API_KEY}",
+        "BYBIT_API_SECRET": "${BYBIT_API_SECRET}",
+        "BYBIT_TESTNET": "true"
+      }
+    }
+  }
+}
+```
+
+- Alternativa ao secret: `BYBIT_API_PRIVATE_KEY_PATH` apontando para um PEM RSA.
+- Comece sempre com `BYBIT_TESTNET=true` e só passe para produção depois de validar.
+- **Crie a chave de API SEM permissão de saque/transferência** — execução de
+  ordens não precisa disso.
+
+> ThinkMarkets também tem MCP oficial (a IA executa trades mas **não acessa
+> fundos**), uma boa alternativa se você opera CFDs/forex em vez de cripto.
+
+---
 
 ## Aviso
 
