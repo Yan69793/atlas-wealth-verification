@@ -39,7 +39,7 @@ A senha `atlas2026` é verificada no lado cliente via localStorage. Não há bac
 ## Dados
 
 - **Dados demo/sintéticos**: os arquivos do repositório contêm estruturas de exemplo sem dados pessoais reais.
-- **Dados reais ficam fora do Git**: a pasta `Verificação Mensal de Carteiras Mirabaud/` contém dados operacionais reais (PDFs, relatórios, dados de clientes / LGPD) e está explicitamente ignorada pelo `.gitignore`. Nunca deve ser commitada.
+- **Dados reais ficam fora do Git**: a pasta `Verificação Mensal de Carteiras/` contém dados operacionais reais (PDFs, relatórios, dados de clientes / LGPD) e está explicitamente ignorada pelo `.gitignore`. Nunca deve ser commitada.
 
 ## Importação de arquivos
 
@@ -54,7 +54,7 @@ Formatos suportados:
 - **XLSX** (estável): primeira aba, mesmas colunas do CSV. Leitor SheetJS
   carregado sob demanda via CDN com SRI.
 - **PDF** (**beta/experimental**): books mensais no layout "Relatório Mensal"
-  (SmartBrain/Mirabaud). Extração de texto local via pdf.js (lazy-load com SRI,
+  (SmartBrain). Extração de texto local via pdf.js (lazy-load com SRI,
   processamento no main thread — nenhum dado sai do navegador). Aceita vários
   arquivos de uma vez (1 book = 1 carteira/mês; meses do mesmo código são
   agregados). A UI exibe a prévia do texto extraído, página a página, antes da
