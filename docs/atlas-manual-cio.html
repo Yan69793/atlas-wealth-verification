@@ -1,0 +1,1242 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ATLAS Wealth Verification — Manual para o CIO</title>
+<style>
+  :root {
+    --navy: #0d1b2a;
+    --navy-mid: #1a2e42;
+    --gold: #c4a228;
+    --gold-light: #e8c84a;
+    --body: #2c3e50;
+    --muted: #6b7c8d;
+    --rule: #dde3ea;
+    --bg: #f7f9fb;
+    --paper: #ffffff;
+    --red: #8b1a1a;
+    --amber: #7a5c00;
+    --green: #1a5c2e;
+    --red-bg: #fdf2f2;
+    --amber-bg: #fdf8ec;
+    --green-bg: #f0f8f3;
+    --font: 'Georgia', serif;
+    --mono: 'Courier New', monospace;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--body);
+    background: var(--bg);
+  }
+
+  /* ── COVER ── */
+  .cover {
+    background: var(--navy);
+    color: #fff;
+    padding: 72px 80px 64px;
+    page-break-after: always;
+  }
+
+  .cover-logo {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 64px;
+  }
+
+  .cover-logo svg { width: 40px; height: 40px; }
+
+  .cover-logotype {
+    font-family: var(--font);
+    font-size: 22px;
+    letter-spacing: 0.18em;
+    color: var(--gold);
+    font-weight: normal;
+  }
+
+  .cover-logotype span {
+    display: block;
+    font-family: var(--sans);
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    color: rgba(255,255,255,0.45);
+    font-weight: 400;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  .cover h1 {
+    font-family: var(--font);
+    font-size: 38px;
+    font-weight: normal;
+    line-height: 1.2;
+    color: #fff;
+    margin-bottom: 16px;
+    max-width: 560px;
+  }
+
+  .cover-sub {
+    font-size: 16px;
+    color: rgba(255,255,255,0.55);
+    margin-bottom: 48px;
+    font-style: italic;
+  }
+
+  .cover-meta {
+    display: flex;
+    gap: 40px;
+    border-top: 1px solid rgba(196,162,40,0.3);
+    padding-top: 28px;
+  }
+
+  .cover-meta-item { flex: 1; }
+
+  .cover-meta-label {
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.4);
+    margin-bottom: 4px;
+  }
+
+  .cover-meta-value {
+    font-size: 13px;
+    color: rgba(255,255,255,0.85);
+    font-family: var(--mono);
+  }
+
+  /* ── LAYOUT ── */
+  .page { max-width: 860px; margin: 0 auto; padding: 48px 48px 64px; }
+
+  /* ── CHAPTER HEADERS ── */
+  .chapter {
+    border-left: 3px solid var(--gold);
+    padding-left: 18px;
+    margin: 56px 0 28px;
+  }
+
+  .chapter-eyebrow {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--gold);
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+
+  .chapter h2 {
+    font-family: var(--font);
+    font-size: 24px;
+    font-weight: normal;
+    color: var(--navy);
+    line-height: 1.25;
+  }
+
+  .chapter p {
+    margin-top: 8px;
+    font-size: 13px;
+    color: var(--muted);
+    font-style: italic;
+  }
+
+  /* ── SECTION ── */
+  h3 {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--navy);
+    margin: 32px 0 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  h4 {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--navy-mid);
+    margin: 20px 0 6px;
+  }
+
+  p { margin-bottom: 12px; }
+
+  ul, ol { padding-left: 22px; margin-bottom: 14px; }
+  li { margin-bottom: 5px; }
+
+  strong { color: var(--navy); font-weight: 600; }
+
+  /* ── CALLOUT BOXES ── */
+  .callout {
+    border-radius: 6px;
+    padding: 16px 20px;
+    margin: 18px 0;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  .callout.info {
+    background: #eef3fa;
+    border-left: 3px solid #3a7bd5;
+    color: #1a3a5c;
+  }
+
+  .callout.warning {
+    background: var(--amber-bg);
+    border-left: 3px solid var(--gold);
+    color: #4a3800;
+  }
+
+  .callout.ok {
+    background: var(--green-bg);
+    border-left: 3px solid var(--green);
+    color: #0f3d1e;
+  }
+
+  .callout.critical {
+    background: var(--red-bg);
+    border-left: 3px solid var(--red);
+    color: var(--red);
+  }
+
+  .callout strong { color: inherit; }
+
+  /* ── TABLES ── */
+  .table-wrap { overflow-x: auto; margin: 16px 0 24px; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  th {
+    background: var(--navy);
+    color: rgba(255,255,255,0.85);
+    padding: 10px 14px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  td {
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+
+  tr:nth-child(even) td { background: #fafbfc; }
+
+  /* ── STATUS BADGES ── */
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+  }
+  .badge.red    { background: var(--red-bg);    color: var(--red);   }
+  .badge.amber  { background: var(--amber-bg);  color: var(--amber); }
+  .badge.green  { background: var(--green-bg);  color: var(--green); }
+  .badge.navy   { background: #eef3fa;          color: #1a3a5c;      }
+
+  /* ── CODE ── */
+  code {
+    font-family: var(--mono);
+    font-size: 12px;
+    background: #eef0f3;
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: var(--navy-mid);
+  }
+
+  pre {
+    background: var(--navy);
+    color: #c8d8e8;
+    padding: 18px 20px;
+    border-radius: 6px;
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.6;
+    overflow-x: auto;
+    margin: 14px 0;
+  }
+
+  pre .comment { color: rgba(196,162,40,0.7); }
+  pre .key     { color: #7ec8e3; }
+  pre .val     { color: #b5e0a8; }
+
+  /* ── FLOW STEPS ── */
+  .steps { counter-reset: step; margin: 16px 0 24px; }
+
+  .step {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 14px;
+    align-items: flex-start;
+  }
+
+  .step-num {
+    counter-increment: step;
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--navy);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 2px;
+  }
+
+  .step-content { flex: 1; }
+  .step-title { font-weight: 600; color: var(--navy); font-size: 13px; }
+  .step-desc { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+
+  /* ── RISK DIMENSION GRID ── */
+  .dim-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+    margin: 16px 0 24px;
+  }
+
+  .dim-card {
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    padding: 14px 12px;
+    text-align: center;
+  }
+
+  .dim-max {
+    font-family: var(--mono);
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--navy);
+    line-height: 1;
+  }
+
+  .dim-label {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 4px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+
+  /* ── ROADMAP ── */
+  .roadmap { list-style: none; padding: 0; margin: 14px 0 24px; }
+
+  .roadmap li {
+    display: flex;
+    gap: 14px;
+    margin-bottom: 10px;
+    font-size: 13px;
+    align-items: flex-start;
+  }
+
+  .roadmap-icon {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    margin-top: 1px;
+  }
+
+  .roadmap-icon.done { background: var(--green-bg); color: var(--green); }
+  .roadmap-icon.next { background: #eef3fa; color: #1a3a5c; }
+  .roadmap-icon.later { background: #f5f5f5; color: var(--muted); }
+
+  /* ── FOOTER ── */
+  .doc-footer {
+    margin-top: 64px;
+    padding-top: 20px;
+    border-top: 1px solid var(--rule);
+    font-size: 11px;
+    color: var(--muted);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  /* ── PRINT ── */
+  @media print {
+    body { background: #fff; font-size: 12px; }
+    .cover { padding: 48px 56px; }
+    .page { padding: 32px 40px 48px; }
+    .chapter { margin: 40px 0 20px; }
+    h3 { margin: 24px 0 8px; }
+    .callout { page-break-inside: avoid; }
+    .step { page-break-inside: avoid; }
+    pre { page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<!-- COVER -->
+<div class="cover">
+  <div class="cover-logo">
+    <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <polygon points="20,4 36,34 4,34" stroke="#c4a228" stroke-width="2" fill="none"/>
+      <line x1="20" y1="14" x2="20" y2="28" stroke="#c4a228" stroke-width="1.5"/>
+    </svg>
+    <div class="cover-logotype">
+      ATLAS
+      <span>Wealth Verification</span>
+    </div>
+  </div>
+
+  <h1>Manual do Protótipo &amp; Guia de Decisão</h1>
+  <div class="cover-sub">Por que cada módulo foi construído assim — e o que ainda falta para uso produtivo</div>
+
+  <div class="cover-meta">
+    <div class="cover-meta-item">
+      <div class="cover-meta-label">Versão</div>
+      <div class="cover-meta-value">0.2 · Jun/2026</div>
+    </div>
+    <div class="cover-meta-item">
+      <div class="cover-meta-label">App online</div>
+      <div class="cover-meta-value">yan69793.github.io/atlas-wealth-verification</div>
+    </div>
+    <div class="cover-meta-item">
+      <div class="cover-meta-label">Senha demo</div>
+      <div class="cover-meta-value">atlas2026</div>
+    </div>
+    <div class="cover-meta-item">
+      <div class="cover-meta-label">Dados</div>
+      <div class="cover-meta-value">100% sintéticos — sem LGPD</div>
+    </div>
+  </div>
+</div>
+
+<!-- BODY -->
+<div class="page">
+
+  <!-- 1. O QUE É E POR QUE FOI CONSTRUÍDO ASSIM -->
+  <div class="chapter">
+    <div class="chapter-eyebrow">Capítulo 1</div>
+    <h2>O que é o ATLAS e por que foi construído assim</h2>
+    <p>Contexto de criação, decisões de arquitetura e o problema que ele tenta resolver</p>
+  </div>
+
+  <p>
+    O ATLAS nasceu de uma observação de mercado: a verificação mensal de carteiras de wealth management
+    ainda depende, na maioria das casas, de planilhas manuais, e-mails com PDF e reuniões de alinhamento
+    antes da liberação. O ciclo é lento, depende de pessoas específicas e não gera trilha de decisão rastreável.
+  </p>
+
+  <p>
+    A ideia foi construir um <strong>cockpit de verificação</strong> — uma tela única onde o CIO ou o gestor
+    abre na segunda-feira de fechamento e enxerga imediatamente quais carteiras bloqueiam a liberação,
+    quais têm alerta, qual é o risco consolidado e quais gestores estão desviando de fee.
+    Tudo isso sem abrir planilha.
+  </p>
+
+  <h4>Por que é um app estático (sem servidor)?</h4>
+  <p>
+    A escolha de não ter backend foi deliberada para esta fase. Um app estático pode ser entregue,
+    aberto e avaliado sem infraestrutura: basta abrir o link. Isso permite apresentar o conceito
+    e calibrar os módulos antes de investir em banco de dados, autenticação real e API.
+    O custo de migrar para um backend real depois de validar o modelo é muito menor do que
+    construir tudo de uma vez sem saber o que será usado.
+  </p>
+
+  <h4>Por que os dados são sintéticos?</h4>
+  <p>
+    Conformidade LGPD por design. Nenhum dado real de cliente entra no repositório em nenhuma
+    hipótese. Os dados sintéticos foram gerados com estrutura idêntica à de carteiras reais de
+    wealth — mesmas classes de ativo, mesma faixa de PL, mesmos perfis de risco — para que
+    a avaliação do sistema seja fiel mesmo sem dados reais.
+  </p>
+
+  <div class="callout warning">
+    <strong>Nota sobre autenticação:</strong> a senha <code>atlas2026</code> é verificada
+    no lado do cliente via <code>localStorage</code>. Não há controle de acesso real.
+    Qualquer pessoa com o link pode acessar inspecionando o código-fonte.
+    Para uso com dados reais, isso precisa ser substituído por autenticação de servidor.
+  </div>
+
+
+  <!-- 2. MÓDULOS E RATIONALE -->
+  <div class="chapter">
+    <div class="chapter-eyebrow">Capítulo 2</div>
+    <h2>Módulos — o que cada um faz e por que existe</h2>
+    <p>Cada funcionalidade tem uma motivação operacional específica</p>
+  </div>
+
+  <h3>Dashboard</h3>
+  <p>
+    A primeira tela ao fazer login. Exibe PL total, distribuição de status (LIBERAR / COM ALERTA / CORRIGIR)
+    e a tabela completa com todas as 40 carteiras ordenáveis por qualquer coluna.
+  </p>
+  <p>
+    <strong>Por que existe:</strong> o CIO não tem tempo de abrir carteira por carteira.
+    Ele precisa chegar na segunda de fechamento, ver em 30 segundos quantas carteiras bloqueiam
+    a liberação e priorizar o dia. O Dashboard faz exatamente isso.
+  </p>
+  <p>
+    <strong>Gráfico de evolução do PL acima da tabela:</strong> posicionado deliberadamente antes
+    da lista de carteiras para que a primeira informação visual seja a tendência do portfólio total,
+    não um problema individual.
+  </p>
+
+  <h3>Radar de Risco</h3>
+
+  <p>
+    Aba de monitoramento prudencial. Calcula um score de 0 a 100 para cada carteira em
+    5 dimensões independentes e apresenta três instrumentos em sequência: KPIs consolidados,
+    simulação de stress e heatmap completo com fila de ação priorizada.
+  </p>
+
+  <p>
+    <strong>Por que existe:</strong> uma carteira pode estar com status LIBERAR — sem nenhum
+    achado bloqueante — e ainda assim concentrar risco material que não aparece no status
+    operacional: alta alocação em ativos ilíquidos, underperformance acumulada vs CDI há
+    4 meses, ou exposição a renda variável incompatível com o perfil conservador declarado.
+    O Radar captura isso de forma quantitativa e ranqueável, independente da decisão de
+    liberação mensal.
+  </p>
+
+  <div class="callout info">
+    <strong>Lógica de separação:</strong> o <em>status</em> (LIBERAR/ALERTA/CORRIGIR) responde
+    à pergunta "posso liberar esta carteira este mês?". O <em>score de risco</em> responde
+    à pergunta "qual é o risco estrutural desta carteira independente da liberação?".
+    As duas dimensões são complementares e deliberadamente separadas.
+  </div>
+
+  <h4>As 5 dimensões do score</h4>
+
+  <div class="dim-grid">
+    <div class="dim-card">
+      <div class="dim-max">30</div>
+      <div class="dim-label">Mercado</div>
+    </div>
+    <div class="dim-card">
+      <div class="dim-max">25</div>
+      <div class="dim-label">Concentração</div>
+    </div>
+    <div class="dim-card">
+      <div class="dim-max">20</div>
+      <div class="dim-label">Liquidez</div>
+    </div>
+    <div class="dim-card">
+      <div class="dim-max">15</div>
+      <div class="dim-label">Suitability</div>
+    </div>
+    <div class="dim-card">
+      <div class="dim-max">10</div>
+      <div class="dim-label">Operacional</div>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th style="width:120px">Dimensão</th><th>O que mede</th><th>Como pontua</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Mercado</strong><br><small style="color:var(--muted)">0–30 pts</small></td>
+          <td>
+            Underperformance vs CDI nos últimos 6 meses e drawdown acumulado no período.
+            Penaliza carteiras que ficam abaixo do CDI de forma persistente ou que sofreram
+            queda relevante de PL.
+          </td>
+          <td>
+            <code>3 pts</code> por mês abaixo do CDI (cap: 18 pts)<br>
+            Drawdown &gt;5%: <code>+12</code> · &gt;2%: <code>+6</code> · &gt;1%: <code>+3</code><br>
+            Perfil agressivo com rent &lt; -1%: <code>+5</code>
+          </td>
+        </tr>
+        <tr>
+          <td><strong>Concentração</strong><br><small style="color:var(--muted)">0–25 pts</small></td>
+          <td>
+            Concentração por classe de ativo (maior alocação) e por ativo individual.
+            Usa o índice HHI para medir dispersão geral da carteira.
+            Liquidez é excluída do cálculo para não penalizar buffer de caixa.
+          </td>
+          <td>
+            Maior classe &gt;70%: <code>+15</code> · &gt;60%: <code>+10</code> · &gt;50%: <code>+5</code><br>
+            Maior ativo individual &gt;30%: <code>+7</code> · &gt;25%: <code>+4</code><br>
+            HHI &gt;0,40: <code>+5</code> · &gt;0,25: <code>+3</code>
+          </td>
+        </tr>
+        <tr>
+          <td><strong>Liquidez</strong><br><small style="color:var(--muted)">0–20 pts</small></td>
+          <td>
+            Buffer de caixa disponível e proporção de ativos ilíquidos (FII, Previdência,
+            Internacional). Carteiras com pouco caixa e alta exposição a ilíquidos são
+            vulneráveis a resgates inesperados.
+          </td>
+          <td>
+            Caixa &lt;3%: <code>+12</code> · &lt;5%: <code>+7</code> · &lt;8%: <code>+3</code><br>
+            Ilíquidos &gt;40%: <code>+8</code> · &gt;30%: <code>+5</code> · &gt;20%: <code>+2</code>
+          </td>
+        </tr>
+        <tr>
+          <td><strong>Suitability</strong><br><small style="color:var(--muted)">0–15 pts</small></td>
+          <td>
+            Adequação da exposição a classes de risco (Ações, Multimercado, FII, Internacional)
+            ao perfil declarado do cliente. Um conservador com 35% em renda variável recebe
+            pontuação máxima nesta dimensão.
+          </td>
+          <td>
+            Conservador com &gt;30% em risco: <code>+15</code> · &gt;15%: <code>+8</code> · &gt;5%: <code>+3</code><br>
+            Moderado com &gt;60%: <code>+10</code> · &gt;45%: <code>+5</code><br>
+            Mod-agressivo com &gt;80%: <code>+8</code> · &gt;70%: <code>+3</code>
+          </td>
+        </tr>
+        <tr>
+          <td><strong>Operacional</strong><br><small style="color:var(--muted)">0–10 pts</small></td>
+          <td>
+            Status da carteira, volume de achados e histórico de recidiva. Carteiras em CORRIGIR
+            há vários meses consecutivos recebem penalização adicional por recidiva.
+          </td>
+          <td>
+            Status CORRIGIR: <code>+6</code> · COM ALERTA: <code>+3</code><br>
+            2+ achados: <code>+2</code> · 1 achado: <code>+1</code><br>
+            Recidiva (4+ meses): <code>+2</code> · Divergência de PL: <code>+1 ou +2</code>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h4>Níveis de risco e fila de ação</h4>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Score</th><th>Nível</th><th>O que significa</th><th>Ação esperada</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><code>70–100</code></td>
+          <td><span class="badge red">Alto</span></td>
+          <td>Risco material em uma ou mais dimensões. Pode não estar bloqueando a liberação, mas exige atenção estrutural.</td>
+          <td>Revisão imediata antes da próxima verificação mensal</td>
+        </tr>
+        <tr>
+          <td><code>40–69</code></td>
+          <td><span class="badge amber">Atenção</span></td>
+          <td>Desvios presentes mas dentro de limites controláveis. Monitorar drivers dominantes.</td>
+          <td>Monitoramento reforçado; revisar se score aumenta mês a mês</td>
+        </tr>
+        <tr>
+          <td><code>0–39</code></td>
+          <td><span class="badge green">Baixo</span></td>
+          <td>Perfil de risco dentro dos parâmetros em todas as dimensões.</td>
+          <td>Acompanhamento regular</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>
+    A <strong>fila de ação</strong> lista automaticamente as carteiras com score ≥ 40 e exibe,
+    para cada uma, o <em>motivo dominante</em> — a dimensão que mais contribui relativamente
+    ao seu máximo — e a recomendação correspondente. A recomendação é ordenada por
+    peso relativo (componente ÷ máximo), não por valor absoluto, de modo que um score de
+    8/10 em Operacional aparece antes de um score de 14/30 em Mercado.
+  </p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Motivo dominante</th><th>Recomendação gerada automaticamente</th></tr></thead>
+      <tbody>
+        <tr><td>Status CORRIGIR ativo</td><td>Bloquear liberação até resolução dos achados</td></tr>
+        <tr><td>Underperformance persistente vs CDI</td><td>Solicitar relatório de atribuição ao gestor</td></tr>
+        <tr><td>Concentração acima do limite</td><td>Revisar política de diversificação</td></tr>
+        <tr><td>Exposição incompatível com perfil</td><td>Análise de adequação (suitability)</td></tr>
+        <tr><td>Liquidez abaixo do mínimo</td><td>Rever janela de resgate e buffer de caixa</td></tr>
+        <tr><td>Recidiva de alertas (4+ meses)</td><td>Escalar para comitê de risco</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h4>Heatmap de risco</h4>
+
+  <p>
+    Tabela com todas as carteiras, ordenável por qualquer dimensão. Cada célula usa
+    cor de fundo para indicar severidade relativa dentro da dimensão: vermelho para o
+    tercil superior, amarelo para o terço médio, transparente para o inferior.
+    Permite identificar em segundos qual dimensão concentra mais risco no portfólio total
+    e quais carteiras são outliers em cada uma.
+  </p>
+
+  <h4>Cenários de stress — metodologia detalhada</h4>
+
+  <p>
+    Cada cenário aplica choques percentuais sobre o PL de cada classe de ativo em cada
+    carteira, ponderado pela alocação atual. A perda estimada é a soma dos choques
+    aplicados sobre o PL de cada carteira e sobre o total do portfólio.
+  </p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Classe</th>
+          <th style="text-align:center">Juros +200bps</th>
+          <th style="text-align:center">Bolsa -15%</th>
+          <th style="text-align:center">Crise Liquidez</th>
+          <th style="text-align:center">Combinado</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>RF Pós-Fixado</td><td style="text-align:center">0,0%</td><td style="text-align:center">0,0%</td><td style="text-align:center; color:var(--amber)">-1,0%</td><td style="text-align:center; color:var(--amber)">-1,0%</td></tr>
+        <tr><td>RF Inflação</td><td style="text-align:center; color:var(--amber)">-8,0%</td><td style="text-align:center; color:var(--amber)">-1,0%</td><td style="text-align:center; color:var(--amber)">-2,0%</td><td style="text-align:center; color:var(--red)">-10,0%</td></tr>
+        <tr><td>CDB</td><td style="text-align:center">0,0%</td><td style="text-align:center">0,0%</td><td style="text-align:center; color:var(--amber)">-3,0%</td><td style="text-align:center; color:var(--amber)">-3,0%</td></tr>
+        <tr><td>Multimercado</td><td style="text-align:center; color:var(--amber)">-3,0%</td><td style="text-align:center; color:var(--red)">-8,0%</td><td style="text-align:center; color:var(--red)">-5,0%</td><td style="text-align:center; color:var(--red)">-14,0%</td></tr>
+        <tr><td>Ações</td><td style="text-align:center; color:var(--amber)">-4,0%</td><td style="text-align:center; color:var(--red)">-15,0%</td><td style="text-align:center; color:var(--red)">-7,0%</td><td style="text-align:center; color:var(--red)">-22,0%</td></tr>
+        <tr><td>FII</td><td style="text-align:center; color:var(--red)">-7,0%</td><td style="text-align:center; color:var(--red)">-8,0%</td><td style="text-align:center; color:var(--red)">-12,0%</td><td style="text-align:center; color:var(--red)">-20,0%</td></tr>
+        <tr><td>Previdência</td><td style="text-align:center; color:var(--red)">-5,0%</td><td style="text-align:center; color:var(--red)">-6,0%</td><td style="text-align:center; color:var(--red)">-8,0%</td><td style="text-align:center; color:var(--red)">-15,0%</td></tr>
+        <tr><td>Internacional</td><td style="text-align:center; color:var(--amber)">-2,0%</td><td style="text-align:center; color:var(--red)">-5,0%</td><td style="text-align:center; color:var(--red)">-6,0%</td><td style="text-align:center; color:var(--red)">-12,0%</td></tr>
+        <tr><td>Liquidez (caixa)</td><td style="text-align:center">0,0%</td><td style="text-align:center">0,0%</td><td style="text-align:center">0,0%</td><td style="text-align:center">0,0%</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>
+    O painel exibe o Top 5 carteiras mais impactadas no cenário ativo, com PL atual, perda
+    estimada em R$ e percentual de perda. Alternar entre cenários atualiza os KPIs,
+    o Top 5 e o card de "Perda Estimada" no topo — tudo em tempo real sem recarregar a página.
+  </p>
+
+  <h4>RISK_CONFIG — os limiares são editáveis sem tocar no código de cálculo</h4>
+  <p>
+    Todos os parâmetros que definem quando uma carteira é "Alto", quando entra na fila de ação
+    e qual motivo aparece primeiro estão em um único bloco no arquivo <code>platform-data.js</code>.
+    Alterar qualquer valor aqui propaga automaticamente para o heatmap, a fila de ação e os KPIs.
+  </p>
+
+  <pre><span class="comment">/* platform-data.js — ajuste aqui sem precisar entender o resto */</span>
+<span class="key">var RISK_CONFIG</span> = {
+  <span class="comment">/* Dimensões e pesos máximos (soma = 100) */</span>
+  <span class="key">max</span>: { <span class="key">mercado</span>: <span class="val">30</span>, <span class="key">concentracao</span>: <span class="val">25</span>, <span class="key">liquidez</span>: <span class="val">20</span>, <span class="key">suitability</span>: <span class="val">15</span>, <span class="key">operacional</span>: <span class="val">10</span> },
+
+  <span class="comment">/* Faixas de nível de risco (score total 0–100) */</span>
+  <span class="key">nivel</span>: { <span class="key">alto</span>: <span class="val">70</span>, <span class="key">atencao</span>: <span class="val">40</span> },
+
+  <span class="comment">/* Thresholds de ativação da fila de ação (score por dimensão) */</span>
+  <span class="key">filaAcao</span>: {
+    <span class="key">scoreMinimo</span>:  <span class="val">40</span>,  <span class="comment">/* score total mínimo para entrar na fila */</span>
+    <span class="key">operacional</span>:   <span class="val">6</span>,  <span class="comment">/* entra se ≥ 6/10 */</span>
+    <span class="key">mercado</span>:      <span class="val">15</span>,  <span class="comment">/* entra se ≥ 15/30 */</span>
+    <span class="key">concentracao</span>: <span class="val">12</span>,  <span class="comment">/* entra se ≥ 12/25 */</span>
+    <span class="key">suitability</span>:   <span class="val">8</span>,  <span class="comment">/* entra se ≥ 8/15 */</span>
+    <span class="key">liquidez</span>:     <span class="val">10</span>,  <span class="comment">/* entra se ≥ 10/20 */</span>
+  },
+};</pre>
+
+  <div class="callout ok">
+    <strong>Exemplo de calibração:</strong> se quiser que carteiras entrem na fila de ação
+    com um critério mais conservador de mercado (ex: a partir de 10/30 em vez de 15/30),
+    basta alterar <code>mercado: 10</code> no bloco acima. Nenhuma outra linha do código precisa
+    ser tocada.
+  </div>
+
+  <h3>Achados &amp; Exceções</h3>
+  <p>
+    Lista consolidada de todos os desvios detectados no mês: suitability fora do perfil,
+    divergência de PL, anomalia de fee, documentação ausente.
+  </p>
+  <p>
+    <strong>Por que existe:</strong> compliance e risco precisam de uma trilha de achados
+    independente do status da carteira. Uma carteira pode ser liberada com ressalva — o achado
+    fica registrado mesmo depois da aprovação.
+  </p>
+
+  <h3>Receitas &amp; ROA</h3>
+  <p>
+    Ranking de gestores por receita e ROA. Alertas de desvio de fee. Evolução mensal por carteira.
+  </p>
+  <p>
+    <strong>Por que existe:</strong> fee fora do contrato é um risco operacional e de relacionamento.
+    Um gestor com ROA sistematicamente abaixo do target pode estar com carteiras mal alocadas ou
+    com problema de precificação. Este módulo transforma o dado de receita em sinal de qualidade.
+  </p>
+
+  <h3>Comparativo</h3>
+  <p>
+    Posiciona múltiplas carteiras lado a lado. Permite comparar PL, rentabilidade, risco e
+    composição ao longo do tempo com o mesmo benchmarking.
+  </p>
+  <p>
+    <strong>Por que existe:</strong> para responder a perguntas de due diligence rápida —
+    "por que a ORION_02 rende menos que a TIGRE_FAM se têm perfil similar?" — sem precisar
+    abrir as duas telas individualmente e comparar de cabeça.
+  </p>
+
+  <h3>Busca por Ativo</h3>
+  <p>
+    Localiza todas as carteiras com exposição a um ativo ou classe específica.
+  </p>
+  <p>
+    <strong>Por que existe:</strong> risco de concentração cruzada. Se você vai aumentar posição
+    em um fundo de crédito privado, precisa saber antes quantas carteiras já têm exposição a ele —
+    individualmente cada uma pode estar dentro do limite, mas o portfólio total pode estar
+    concentrado demais naquele emissor.
+  </p>
+
+  <h3>Cadastro &amp; Compliance</h3>
+  <p>
+    Dados cadastrais das carteiras: perfil de risco, objetivo, gestor responsável, documentação
+    pendente. Alertas de vencimento e inconsistências de cadastro.
+  </p>
+  <p>
+    <strong>Por que existe:</strong> suitability começa no cadastro. Um achado de inadequação
+    de exposição só faz sentido se o perfil declarado é confiável e está atualizado.
+    Este módulo é o ponto de entrada para auditorias de compliance.
+  </p>
+
+
+  <!-- 3. ESTÁ PRONTO PARA CARTEIRAS REAIS? -->
+  <div class="chapter">
+    <div class="chapter-eyebrow">Capítulo 3 — A pergunta mais importante</div>
+    <h2>Está pronto para inputar carteiras reais?</h2>
+    <p>Resposta direta sobre o que funciona hoje e o que ainda falta</p>
+  </div>
+
+  <div class="callout critical">
+    <strong>Resposta curta: não — mas está estruturado para isso.</strong>
+    O sistema reconhece a estrutura de dados de carteiras reais. O que falta é o caminho para
+    inserir esses dados sem entrar no código.
+  </div>
+
+  <p>
+    O modelo de dados está completo: cada carteira tem código, nome, gestor, perfil de risco,
+    histórico de PL mensal, composição por classe de ativo, rentabilidade vs CDI, achados e receita.
+    É exatamente a mesma estrutura de um relatório de custodiante.
+  </p>
+
+  <p>
+    O que falta para usar com carteiras reais é <strong>o mecanismo de entrada de dados</strong>.
+    Hoje os dados estão hardcoded em <code>platform-data.js</code> como dados sintéticos.
+    Para usar com dados reais, há dois caminhos:
+  </p>
+
+  <h3>Caminho A — Entrada manual (disponível hoje, sem desenvolvimento)</h3>
+  <p>
+    É possível editar <code>platform-data.js</code> diretamente e substituir os dados sintéticos
+    pelos dados reais das carteiras. É trabalhoso e requer conhecimento mínimo de JavaScript,
+    mas tecnicamente funciona hoje.
+  </p>
+
+  <div class="callout warning">
+    <strong>Não recomendado para uso regular.</strong> Editar um arquivo JS manualmente
+    toda vez que chega um extrato novo não é operação sustentável. Serve para uma demonstração
+    com dados reais, mas não como fluxo de trabalho mensal.
+  </div>
+
+  <h3>Caminho B — Importação de extratos (implementado)</h3>
+  <p>
+    O módulo "Importar Extratos" está funcional em três formatos:
+    <strong>PDF</strong> (books mensais "Relatório Mensal" — em <em>beta</em>),
+    <strong>CSV</strong> e <strong>XLSX</strong> (formato tabular próprio — estável,
+    com template para download na própria tela). O fluxo:
+  </p>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <div class="step-title">Receber o book do custodiante</div>
+        <div class="step-desc">PDF no formato que já chega hoje — aceita vários arquivos de uma vez</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <div class="step-title">Upload no módulo de importação</div>
+        <div class="step-desc">Arrastar os arquivos ou selecionar — sem formatação manual</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <div class="step-title">Conferência da extração</div>
+        <div class="step-desc">Prévia do texto extraído página a página + carteiras detectadas (código, mês, PL, ativos); perfil de risco ajustável antes de confirmar</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-content">
+        <div class="step-title">Dashboard atualizado</div>
+        <div class="step-desc">Todos os módulos — risco, receitas, comparativo — passam a refletir as carteiras importadas; "Restaurar demo" reverte</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout warning">
+    <strong>Limites do PDF (beta).</strong> O leitor cobre o layout dos books mensais
+    ("Relatório Mensal"). Books que não atingem a confiança mínima de extração não são
+    importados — entram em "Revisão manual necessária", com os motivos listados; CSV/XLSX
+    seguem como alternativa. Carteiras importadas de PDF entram com status
+    <strong>COM ALERTA</strong> (o book não traz esse campo) e perfil default
+    "moderado", ajustável na pré-visualização. Todo o processamento ocorre no navegador —
+    nenhum dado sai da máquina.
+  </div>
+
+  <h3>Para uso produtivo real, além do parser, ainda são necessários:</h3>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Componente</th>
+          <th>Por que é necessário</th>
+          <th>Impacto sem ele</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Backend + banco de dados</strong></td>
+          <td>Persistir histórico entre sessões; dados não se perdem ao fechar o navegador</td>
+          <td>Todo dado inserido hoje some ao fechar a aba</td>
+        </tr>
+        <tr>
+          <td><strong>Autenticação real</strong></td>
+          <td>Controlar quem vê o quê; SSO corporativo ou MFA</td>
+          <td>Qualquer pessoa com o link vê tudo</td>
+        </tr>
+        <tr>
+          <td><strong>Controle de permissões</strong></td>
+          <td>CIO vê tudo; gestor vê só suas carteiras; compliance vê achados</td>
+          <td>Todos os perfis têm acesso total</td>
+        </tr>
+        <tr>
+          <td><strong>Exportação de relatórios</strong></td>
+          <td>Gerar PDF ou Excel por carteira para registro formal</td>
+          <td>Não há saída formalizada — só tela</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+
+  <!-- 4. ROADMAP -->
+  <div class="chapter">
+    <div class="chapter-eyebrow">Capítulo 4</div>
+    <h2>Roadmap de evolução</h2>
+    <p>Em ordem de prioridade para viabilizar uso operacional</p>
+  </div>
+
+  <ul class="roadmap">
+    <li>
+      <div class="roadmap-icon done">1</div>
+      <div>
+        <strong>Protótipo funcional com dados sintéticos</strong> —
+        <span class="badge green">Concluído</span><br>
+        Dashboard, risco, receitas, comparativo, busca, cadastro. Todos os módulos navegáveis.
+      </div>
+    </li>
+    <li>
+      <div class="roadmap-icon done">2</div>
+      <div>
+        <strong>Deploy online (GitHub Pages)</strong> —
+        <span class="badge green">Concluído</span><br>
+        Link único para acesso sem instalação. Atualiza automaticamente a cada commit.
+      </div>
+    </li>
+    <li>
+      <div class="roadmap-icon done">3</div>
+      <div>
+        <strong>Radar de Risco com RISK_CONFIG editável</strong> —
+        <span class="badge green">Concluído</span><br>
+        Scoring em 5 dimensões, 4 cenários de stress, limiares centralizados para calibração.
+      </div>
+    </li>
+    <li>
+      <div class="roadmap-icon done">4</div>
+      <div>
+        <strong>Parser de extratos (PDF / Excel / CSV)</strong> —
+        <span class="badge green">Concluído</span><br>
+        CSV/XLSX estável; PDF (books mensais) em beta, com prévia auditável do texto
+        extraído e bloqueio por revisão manual quando a confiança é baixa.
+      </div>
+    </li>
+    <li>
+      <div class="roadmap-icon later">5</div>
+      <div>
+        <strong>Backend + persistência de dados</strong> —
+        <span class="badge amber">Fase 2</span><br>
+        API REST, banco de dados, histórico entre sessões.
+      </div>
+    </li>
+    <li>
+      <div class="roadmap-icon later">6</div>
+      <div>
+        <strong>Autenticação real + controle de permissões</strong> —
+        <span class="badge amber">Fase 2</span><br>
+        SSO corporativo, segregação de acesso por perfil.
+      </div>
+    </li>
+    <li>
+      <div class="roadmap-icon later">7</div>
+      <div>
+        <strong>Exportação de relatórios (PDF/Excel)</strong> —
+        <span class="badge amber">Fase 2</span>
+      </div>
+    </li>
+    <li>
+      <div class="roadmap-icon later">8</div>
+      <div>
+        <strong>Integração direta com custodiante via API/SFTP</strong> —
+        <span class="badge amber">Fase 3</span><br>
+        Feed automático de dados. Elimina mesmo o upload manual.
+      </div>
+    </li>
+  </ul>
+
+
+  <!-- 5. FLUXO RECOMENDADO -->
+  <div class="chapter">
+    <div class="chapter-eyebrow">Capítulo 5</div>
+    <h2>Fluxo recomendado de uso (com dados sintéticos)</h2>
+    <p>Roteiro de 15 minutos para demonstração ou avaliação do conceito</p>
+  </div>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <div class="step-title">Abrir o app e fazer login</div>
+        <div class="step-desc">yan69793.github.io/atlas-wealth-verification · senha: atlas2026</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <div class="step-title">Dashboard — visão consolidada</div>
+        <div class="step-desc">PL total, status das 40 carteiras, carteiras bloqueantes em destaque, gráfico de evolução</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <div class="step-title">Selecionar um mês diferente</div>
+        <div class="step-desc">Usar o seletor no canto superior direito — todos os módulos atualizam simultaneamente</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-content">
+        <div class="step-title">Abrir uma carteira COM ALERTA</div>
+        <div class="step-desc">Clicar na linha da tabela — ver composição, rentabilidade vs CDI e achados do mês</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">5</div>
+      <div class="step-content">
+        <div class="step-title">Radar de Risco — score multidimensional</div>
+        <div class="step-desc">Ver heatmap por dimensão, fila de ação com recomendação dominante</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">6</div>
+      <div class="step-content">
+        <div class="step-title">Stress test — alternar entre cenários</div>
+        <div class="step-desc">Juros +200bps, Bolsa -15%, Crise de Liquidez, Combinado. Ver Top 5 mais impactadas</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">7</div>
+      <div class="step-content">
+        <div class="step-title">Receitas &amp; ROA — ranking de gestores</div>
+        <div class="step-desc">Ver desvios de fee e ROA por carteira</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">8</div>
+      <div class="step-content">
+        <div class="step-title">Busca por ativo</div>
+        <div class="step-desc">Digitar o nome de um fundo ou ação — ver todas as carteiras com exposição</div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- 6. INTERPRETAÇÃO DOS INDICADORES -->
+  <div class="chapter">
+    <div class="chapter-eyebrow">Capítulo 6</div>
+    <h2>Interpretação dos indicadores</h2>
+    <p>Referência rápida para leitura dos dados em tela</p>
+  </div>
+
+  <h3>Status das carteiras</h3>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Status</th><th>Significado</th><th>Ação</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="badge green">LIBERAR</span></td>
+          <td>Dentro dos parâmetros. Nenhum achado bloqueante.</td>
+          <td>Aprovação regular</td>
+        </tr>
+        <tr>
+          <td><span class="badge amber">COM ALERTA</span></td>
+          <td>Há desvios que exigem atenção, mas não bloqueiam.</td>
+          <td>Revisar antes de aprovar; pode aprovar com ressalva</td>
+        </tr>
+        <tr>
+          <td><span class="badge red">CORRIGIR</span></td>
+          <td>Problema bloqueante identificado.</td>
+          <td>Não liberar sem resolução formal</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Níveis de risco (score 0–100)</h3>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Score</th><th>Nível</th><th>Interpretação</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>70–100</code></td>
+          <td><span class="badge red">Alto</span></td>
+          <td>Revisão imediata — ação antes da próxima verificação</td>
+        </tr>
+        <tr>
+          <td><code>40–69</code></td>
+          <td><span class="badge amber">Atenção</span></td>
+          <td>Monitoramento reforçado — revisar drivers dominantes</td>
+        </tr>
+        <tr>
+          <td><code>0–39</code></td>
+          <td><span class="badge green">Baixo</span></td>
+          <td>Acompanhamento regular</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>
+    Os limiares 70 e 40 são configuráveis em <code>RISK_CONFIG.nivel</code> no arquivo
+    <code>platform-data.js</code>.
+  </p>
+
+  <h3>Cenários de stress</h3>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Cenário</th><th>Choque principal</th><th>Mais impacta</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Juros +200 bps</strong></td>
+          <td>Curva de juros</td>
+          <td>RF Inflação, FII, Multimercado</td>
+        </tr>
+        <tr>
+          <td><strong>Bolsa -15%</strong></td>
+          <td>Renda variável</td>
+          <td>Ações, FII, Multimercado</td>
+        </tr>
+        <tr>
+          <td><strong>Crise de Liquidez</strong></td>
+          <td>Prêmio de iliquidez generalizado</td>
+          <td>Todos os ativos não líquidos</td>
+        </tr>
+        <tr>
+          <td><strong>Cenário Combinado</strong></td>
+          <td>Convergência dos três fatores adversos</td>
+          <td>Carteiras com alta concentração em ilíquidos</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+
+  <!-- 7. LIMITAÇÕES ATUAIS -->
+  <div class="chapter">
+    <div class="chapter-eyebrow">Capítulo 7</div>
+    <h2>Limitações documentadas</h2>
+    <p>O que o sistema não faz hoje — sem omissões</p>
+  </div>
+
+  <div class="callout info">
+    Esta seção existe para garantir que não haja expectativas erradas sobre o que o protótipo
+    entrega. Transparência completa sobre o estado atual é parte do processo de avaliação.
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Limitação</th><th>Detalhe</th><th>Caminho de resolução</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Dados sintéticos</strong></td>
+          <td>Os dados exibidos por padrão foram gerados algoritmicamente. Carteiras reais
+          podem ser carregadas pelo módulo de importação (em memória, por sessão).</td>
+          <td>Backend + persistência (Fase 2)</td>
+        </tr>
+        <tr>
+          <td><strong>Autenticação cosmética</strong></td>
+          <td>Senha verificada só no cliente. Sem controle de acesso real.</td>
+          <td>Backend com autenticação (Fase 2)</td>
+        </tr>
+        <tr>
+          <td><strong>Sem persistência</strong></td>
+          <td>Sistema 100% estático. Alterações não são salvas entre sessões.</td>
+          <td>Backend + banco de dados (Fase 2)</td>
+        </tr>
+        <tr>
+          <td><strong>Sem controle de permissões</strong></td>
+          <td>Todos os usuários têm acesso total a todos os módulos.</td>
+          <td>Segregação por perfil (Fase 2)</td>
+        </tr>
+        <tr>
+          <td><strong>Importação de PDF em beta</strong></td>
+          <td>CSV/XLSX estável. PDF cobre o layout dos books mensais; outros layouts caem
+          em revisão manual. Dados importados não persistem entre sessões.</td>
+          <td>Ampliar layouts + persistência (Fase 2)</td>
+        </tr>
+        <tr>
+          <td><strong>Sem exportação</strong></td>
+          <td>Não gera PDF ou Excel. O relatório de carteira é somente exibição em tela.</td>
+          <td>Exportação (Fase 2)</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout critical" style="margin-top:24px;">
+    <strong>Não usar em ambiente produtivo</strong> com dados reais sem backend,
+    autenticação real e política de dados formal (LGPD). O protótipo foi construído
+    para avaliação de conceito e apresentação — não para operação.
+  </div>
+
+
+  <div class="doc-footer">
+    <div>ATLAS Wealth Verification · Protótipo v0.2 · Jun/2026</div>
+    <div>Dados 100% sintéticos · Sem informações reais ou LGPD</div>
+  </div>
+
+</div>
+</body>
+</html>

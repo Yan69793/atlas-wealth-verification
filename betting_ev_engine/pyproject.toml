@@ -1,0 +1,11 @@
+[project]
+name = "betting-ev-engine"
+version = "0.1.0"
+description = "Ferramenta para analisar odds de futebol e calcular valor esperado."
+requires-python = ">=3.10"
+dependencies = [
+    "openpyxl>=3.1.0"
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
