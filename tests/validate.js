@@ -334,12 +334,12 @@ ok('valores usados são os da primeira linha (nome)',
   divRes.portfolios[0] && divRes.portfolios[0].name === 'Nome Original',
   `name: ${divRes.portfolios[0] ? divRes.portfolios[0].name : ''}`);
 
-// ─── 11. platform-parsers.js — parser de PDF (books Mirabaud) ───────────────
+// ─── 11. platform-parsers.js — parser de PDF (books SmartBrain) ────────────
 
-ok('parseBRNumber/reconstructPdfLines/parseMirabaudBook exportados',
+ok('parseBRNumber/reconstructPdfLines/parseSmartBrainBook exportados',
   typeof P.parseBRNumber === 'function' &&
   typeof P.reconstructPdfLines === 'function' &&
-  typeof P.parseMirabaudBook === 'function');
+  typeof P.parseSmartBrainBook === 'function');
 
 // --- parseBRNumber ---
 ok('parseBRNumber: milhar + decimal pt-BR', P.parseBRNumber('1.234,56') === 1234.56);
@@ -368,7 +368,7 @@ ok('reconstructPdfLines: ordem de leitura dentro da linha',
 ok('reconstructPdfLines: ordem das linhas (topo primeiro)',
   recLines[0] === 'Linha1', `obtido: "${recLines[0]}"`);
 
-// --- parseMirabaudBook: fixture sintética no layout real (dados fictícios) ---
+// --- parseSmartBrainBook: fixture sintética no layout real (dados fictícios) ---
 const BOOK_OK = [
   // pág 1 — capa
   ['Relatório Mensal', '30/04/2026', 'XPTO'],
@@ -413,7 +413,7 @@ const BOOK_OK = [
   ],
 ];
 
-const bookRes = P.parseMirabaudBook(BOOK_OK, {
+const bookRes = P.parseSmartBrainBook(BOOK_OK, {
   validMonths: VALID_MONTHS, fileName: 'Book_XPTO_2026_04.pdf'
 });
 
@@ -483,7 +483,7 @@ const BOOK_MULTIPAGE = [
     'TOTAL 978.000,00 0,00 0,00 0,00 0,00 1.000.000,00 0,00 1.000.000,00 100,00',
   ],
 ];
-const mpRes = P.parseMirabaudBook(BOOK_MULTIPAGE, {
+const mpRes = P.parseSmartBrainBook(BOOK_MULTIPAGE, {
   validMonths: VALID_MONTHS, fileName: 'Book_MPAG_2026_04.pdf'
 });
 ok('grupo de classe persiste entre páginas da conciliação',
@@ -497,7 +497,7 @@ const BOOK_BAD = [
   ['Relatório Mensal', '30/04/2026', 'RUIM'],
   ['Data Extrato: 30/04/2026', 'Asset Allocation $ %', 'Liquidez 1.000,00 100,00'],
 ];
-const badBook = P.parseMirabaudBook(BOOK_BAD, {
+const badBook = P.parseSmartBrainBook(BOOK_BAD, {
   validMonths: VALID_MONTHS, fileName: 'Book_RUIM_2026_04.pdf'
 });
 ok('book degradado: confiança baixa e portfolio null',
@@ -508,7 +508,7 @@ ok('book degradado: erro pede revisão manual',
 
 // --- book com mês fora da faixa suportada → erro, sem portfolio ---
 const BOOK_OOR = BOOK_OK.map(pg => pg.map(s => s.replace(/30\/04\/2026/g, '31/07/2027')));
-const oorBook = P.parseMirabaudBook(BOOK_OOR, {
+const oorBook = P.parseSmartBrainBook(BOOK_OOR, {
   validMonths: VALID_MONTHS, fileName: 'Book_XPTO_2027_07.pdf'
 });
 ok('book com mês fora da faixa: erro e portfolio null',
@@ -522,8 +522,8 @@ ok('platform-import.jsx aceita .pdf no input',
   /accept="[^"]*\.pdf/.test(importContent));
 ok('platform-import.jsx tem loadPdfJs com SRI (integrity)',
   importContent.includes('loadPdfJs') && /PDFJS[^]*?sha512-/.test(importContent));
-ok('platform-import.jsx usa parseMirabaudBook e reconstructPdfLines',
-  importContent.includes('parseMirabaudBook') && importContent.includes('reconstructPdfLines'));
+ok('platform-import.jsx usa parseSmartBrainBook e reconstructPdfLines',
+  importContent.includes('parseSmartBrainBook') && importContent.includes('reconstructPdfLines'));
 ok('platform-import.jsx tem bloco de revisão manual',
   /[Rr]evisão manual/.test(importContent));
 ok('platform-import.jsx tem prévia do texto extraído',
