@@ -172,7 +172,7 @@
       });
     }
 
-    // --- PDF (books Mirabaud) ---
+    // --- PDF (books SmartBrain) ---
 
     // Extrai o texto de um PDF página a página e interpreta o layout do book.
     function parsePdfFile(pdfjsLib, file, onPageDone) {
@@ -199,7 +199,7 @@
             }
             return Promise.all(pagePromises);
           }).then(pagesLines => {
-            const res = P.parseMirabaudBook(pagesLines, {
+            const res = P.parseSmartBrainBook(pagesLines, {
               validMonths: D.MONTHS, fileName: file.name,
             });
             resolve({ fileName: file.name, pages: pagesLines, res });

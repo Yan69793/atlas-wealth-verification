@@ -349,7 +349,7 @@
   }
 
   /* =============================================================
-     PDF — books mensais Mirabaud (SmartBrain)
+     PDF — books mensais SmartBrain
      Funções puras: recebem texto/itens já extraídos (pdf.js roda na UI).
   ============================================================= */
 
@@ -454,12 +454,12 @@
     return { text: parts.slice(0, i + 1).join(' '), nums: nums };
   }
 
-  // Parser do layout dos books mensais (SmartBrain / Mirabaud).
+  // Parser do layout dos books mensais (SmartBrain).
   // pagesLines: array de páginas, cada uma um array de linhas (reconstruídas).
   // options: { validMonths, fileName }
   // Saída: { portfolio|null, errors, warnings, confidence: 'alta'|'baixa' }.
   // Baixa confiança => portfolio null e erro "revisão manual necessária".
-  function parseMirabaudBook(pagesLines, options) {
+  function parseSmartBrainBook(pagesLines, options) {
     options = options || {};
     var validMonths = options.validMonths || null;
     var fileName = options.fileName || '';
@@ -723,7 +723,7 @@
     parseImportRows: parseImportRows,
     parseBRNumber: parseBRNumber,
     reconstructPdfLines: reconstructPdfLines,
-    parseMirabaudBook: parseMirabaudBook
+    parseSmartBrainBook: parseSmartBrainBook
   };
 
   if (typeof window !== 'undefined') {
