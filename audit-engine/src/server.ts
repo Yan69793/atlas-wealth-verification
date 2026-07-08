@@ -11,6 +11,8 @@ import { authRateLimiter, apiRateLimiter, strictRateLimiter } from './middleware
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..', '..');
 const PORT = Number(process.env.AUDIT_PORT ?? 3456);
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH;
 
 // Initialize worker pool
 const workerPool = new WorkerPool();
@@ -91,8 +93,12 @@ const server = http.createServer(async (req, res) => {
       const { email, password } = validation.data;
       
       // TODO: Replace with actual user lookup from database
-      // For now, using a simple demo user
-      if (email === 'admin@mirabaud.com' && password === 'admin123') {
+      // Sem ADMIN_EMAIL/ADMIN_PASSWORD_HASH configurados, login falha fechado (nenhum fallback hardcoded)
+      if (
+        ADMIN_EMAIL && ADMIN_PASSWORD_HASH &&
+        email === ADMIN_EMAIL &&
+        (await AuthService.verifyPassword(password, ADMIN_PASSWORD_HASH))
+      ) {
         const tokens = AuthService.generateTokens({
           userId: '1',
           email,
