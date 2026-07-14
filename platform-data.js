@@ -50,23 +50,24 @@
   var MONTHS = [
     '2025-01','2025-02','2025-03','2025-04','2025-05','2025-06',
     '2025-07','2025-08','2025-09','2025-10','2025-11','2025-12',
-    '2026-01','2026-02','2026-03','2026-04'
+    '2026-01','2026-02','2026-03','2026-04','2026-05','2026-06'
   ];
 
   var MONTH_LABELS = [
     'Jan/25','Fev/25','Mar/25','Abr/25','Mai/25','Jun/25',
     'Jul/25','Ago/25','Set/25','Out/25','Nov/25','Dez/25',
-    'Jan/26','Fev/26','Mar/26','Abr/26'
+    'Jan/26','Fev/26','Mar/26','Abr/26','Mai/26','Jun/26'
   ];
 
   var CDI = {
     '2025-01':0.0091,'2025-02':0.0088,'2025-03':0.0093,'2025-04':0.0089,
     '2025-05':0.0095,'2025-06':0.0092,'2025-07':0.0098,'2025-08':0.0101,
     '2025-09':0.0096,'2025-10':0.0099,'2025-11':0.0097,'2025-12':0.0103,
-    '2026-01':0.0100,'2026-02':0.0094,'2026-03':0.0097,'2026-04':0.0091
+    '2026-01':0.0100,'2026-02':0.0094,'2026-03':0.0097,'2026-04':0.0091,
+    '2026-05':0.0093,'2026-06':0.0089
   };
 
-  var CURRENT_MONTH = '2026-04';
+  var CURRENT_MONTH = '2026-06';
 
   function getCDI(month) { return CDI[month] || 0; }
 
@@ -363,11 +364,9 @@
     var D = window._AtlasRealData;
     if (!D || !D.portfolios || !D.portfolios.length) return;
 
-    var FEV = 13, MAR = 14, ABR = 15;
+    var FEV = 13, MAR = 14, ABR = 15, MAI = 16, JUN = 17;
     var MFEE = D.mfee || 0.0004;
-    var CDI_FEV = D.cdiRates['2026-02'];
-    var CDI_MAR = D.cdiRates['2026-03'];
-    var CDI_ABR = D.cdiRates['2026-04'];
+    var CDI_RATES = D.cdiRates || {};
     var codes = D.portfolios.map(function(p) { return p.code; });
 
     // Limpar entradas anteriores (idempotência)
@@ -377,9 +376,9 @@
     codes.forEach(function(c) {
       delete _portfolioData[c]; delete _codeMap[c];
       if (_compCache) {
-        ['2026-02','2026-03','2026-04'].forEach(function(m) { delete _compCache[c+'|'+m]; });
+        ['2026-02','2026-03','2026-04','2026-05','2026-06'].forEach(function(m) { delete _compCache[c+'|'+m]; });
       }
-      delete _importCompositions[c+'|2026-02'];
+      ['2026-02','2026-03','2026-04','2026-05','2026-06'].forEach(function(m) { delete _importCompositions[c+'|'+m]; });
     });
     var ss = D.statusScript || {};
     for (var sk in ss) { if (ss.hasOwnProperty(sk)) delete STATUS_SCRIPT[sk]; }
@@ -395,31 +394,70 @@
 
     MANAGERS.push({ id:'REAIS', name:'Carteiras Reais', codes:codes.slice(), roaTarget:0.0050 });
 
-    // _portfolioData
-    function realPd(pl) {
+    // Mapeia mes → indice no array MONTHS
+    var REAL_MONTH_IDX = { '2026-02': FEV, '2026-03': MAR, '2026-04': ABR, '2026-05': MAI, '2026-06': JUN };
+
+    // _portfolioData com suporte a PL por mes (plByMonth) e fallback para pl unico
+    function realPd(p) {
       var n = MONTHS.length;
       var z = function() { return new Array(n).fill(0); };
-      var plArr = z(); plArr[FEV]=pl; plArr[MAR]=pl; plArr[ABR]=pl;
-      var retArr = z(); retArr[FEV]=CDI_FEV; retArr[MAR]=CDI_MAR; retArr[ABR]=CDI_ABR;
-      var feeArr = z(); feeArr[FEV]=pl*MFEE; feeArr[MAR]=pl*MFEE; feeArr[ABR]=pl*MFEE;
-      var rpp = z(); rpp[MAR]=pl; rpp[ABR]=pl;
+      var plArr = z(), retArr = z(), feeArr = z(), rpp = z();
+      var plByMonth = p.plByMonth;
+      if (plByMonth) {
+        // PL mensal individual
+        var realMonths = Object.keys(REAL_MONTH_IDX);
+        for (var mi = 0; mi < realMonths.length; mi++) {
+          var rm = realMonths[mi];
+          if (plByMonth[rm] !== undefined) {
+            var idx = REAL_MONTH_IDX[rm];
+            plArr[idx] = plByMonth[rm];
+            retArr[idx] = CDI_RATES[rm] || 0;
+            feeArr[idx] = plByMonth[rm] * MFEE;
+            if (idx > FEV) rpp[idx] = plByMonth[rm];
+          }
+        }
+      } else {
+        // Fallback: PL unico replicado nos meses reais (legado)
+        var pl = p.pl || 0;
+        for (var rk in REAL_MONTH_IDX) {
+          if (!REAL_MONTH_IDX.hasOwnProperty(rk)) continue;
+          var idx2 = REAL_MONTH_IDX[rk];
+          plArr[idx2] = pl;
+          retArr[idx2] = CDI_RATES[rk] || 0;
+          feeArr[idx2] = pl * MFEE;
+        }
+        var realKeys = Object.keys(REAL_MONTH_IDX);
+        for (var rj = 1; rj < realKeys.length; rj++) {
+          rpp[REAL_MONTH_IDX[realKeys[rj]]] = pl;
+        }
+      }
       return { fee:MFEE, plArr:plArr, nnmArr:z(), retArr:retArr, feeArr:feeArr, reportedPlPrevArr:rpp };
     }
 
-    D.portfolios.forEach(function(p) { _portfolioData[p.code] = realPd(p.pl); });
+    D.portfolios.forEach(function(p) { _portfolioData[p.code] = realPd(p); });
 
     // STATUS_SCRIPT
     for (var sk2 in ss) { if (ss.hasOwnProperty(sk2)) STATUS_SCRIPT[sk2] = ss[sk2]; }
 
-    // _importCompositions
+    // _importCompositions (usa PL do mes correspondente quando disponivel)
     var comps = D.compositions || {};
     var compKeys = Object.keys(comps);
     for (var ki = 0; ki < compKeys.length; ki++) {
       var ckey = compKeys[ki];
-      var ccode = ckey.split('|')[0];
+      var parts = ckey.split('|');
+      var ccode = parts[0];
+      var cmes = parts[1];
       var cpl = 1;
       for (var pi = 0; pi < D.portfolios.length; pi++) {
-        if (D.portfolios[pi].code === ccode) { cpl = D.portfolios[pi].pl; break; }
+        if (D.portfolios[pi].code === ccode) {
+          var pdata = D.portfolios[pi];
+          if (pdata.plByMonth && pdata.plByMonth[cmes] !== undefined) {
+            cpl = pdata.plByMonth[cmes];
+          } else {
+            cpl = pdata.pl || 1;
+          }
+          break;
+        }
       }
       _importCompositions[ckey] = comps[ckey].map(function(r) {
         var pct = cpl > 0 ? r.saldoFinal / cpl : 0;
