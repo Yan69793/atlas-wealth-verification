@@ -43,12 +43,38 @@ inventar um contrato provisório e retrabalhar depois.
 Hoje o sistema mãe está em `Verificação de carteiras/Projetos/atlas-wealth-verification/`,
 ou seja, o filho contém o pai.
 
-Move para `02_AREAS/Operacoes-Recorrentes/ATLAS/`. A pasta atual vira arquivo morto.
-O git remote (`github.com/Yan69793/atlas-wealth-verification`) não muda, porque é por repo,
-não por caminho.
+A pasta é **movida** (move físico no filesystem, não cópia) para
+`02_AREAS/Operacoes-Recorrentes/ATLAS/`. Não fica duplicata na origem. O `.git` próprio do
+ATLAS viaja junto, então o git remote (`github.com/Yan69793/atlas-wealth-verification`) não
+muda: é por repo, não por caminho.
 
-A promoção exige atualizar referências de caminho no `CLAUDE.md` do workspace e nas skills
-que apontam para o projeto antigo.
+### A2. Destino da árvore `Verificação de carteiras/`
+
+Depois de promover o ATLAS e consolidar o engine, a raiz deixa de ser sistema, mas **não é
+deletada no Projeto 1**. Ela ainda contém o dado real e o pipeline de ingestão, que só migram
+para o R2 no Projeto 3. Deletar antes disso é irreversível e sem ganho.
+
+No Projeto 1 a raiz é rebaixada a **área de staging de ingestão**: mantém os inputs
+(PDFs/Excel), o `ingest.ps1` e os `data.json`/`historico.json` locais não-versionados que
+alimentam o ATLAS até o R2 existir. Maquetes e entregas antigas (`SmartBrain/`, HTMLs de
+relatório) vão para uma subpasta `_arquivo/`. A raiz é reavaliada para arquivamento
+definitivo ao fim do Projeto 3, quando o dado passa a vir do R2 e o `ingest` sobe para lá.
+
+### A3. Referências de caminho a atualizar
+
+A promoção quebra todo apontamento para o caminho antigo. É passo verificável, não nota.
+Alvos confirmados em 14/jul:
+
+| Arquivo | Referência |
+|---|---|
+| `CLAUDE.md` do workspace | caminho do projeto ATLAS |
+| `~/.claude/skills/mirabaud-audit-engine/SKILL.md` | aponta direto para `.../Verificação de carteiras/audit-engine` |
+| `~/.claude/skills/verificacao-carteiras-v2/SKILL.md` | caminho do projeto |
+| `~/.claude/skills/vix-radar-audit/SKILL.md` | caminho do projeto |
+| `~/.claude/skills/awwwards-estudo/references/projetos.md` | caminho do projeto |
+
+Critério de pronto: `grep` recursivo pelo caminho antigo, nas skills e no workspace, retorna
+zero após a atualização.
 
 ### B. Um audit-engine só
 
