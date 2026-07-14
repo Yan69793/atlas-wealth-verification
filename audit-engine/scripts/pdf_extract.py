@@ -118,16 +118,63 @@ def get_lines(page, top_min=0, top_max=None):
 
 
 def extract_cover_name(pdf):
-    """Le o nome da carteira na capa. Nomes com espaco de verdade (ex: 'MMR 1
-    (Marta)') tokenizam em varias palavras separadas - juntar todas as da
-    mesma linha, nao so a primeira, senao 'MMR 1 (Marta)' e 'MMR 2 (Mega)'
-    colapsam para o mesmo nome 'MMR' e uma vira duplicata falsa da outra."""
+    """Le o nome da carteira na capa em 3 formatos de template (2024-2026).
+
+    Template 1 (2024-01..2024-03): nome a direita, top~373, codigo com underscore.
+    Template 2 (2024-06..2025-12): nome a esquerda, top~455, nome de exibicao.
+    Template 3 (2026-01..2026-06): nome a esquerda, top~455, codigo com underscore.
+
+    Estrategia: procura em bandas progressivas, prefere palavra com underscore
+    (codigo) sobre nome de exibicao; combina palavras da mesma linha para nomes
+    compostos com espaco (ex: 'MMR 1 (Marta)')."""
+    import re
     page = pdf.pages[0]
-    lines = get_lines(page, top_min=440, top_max=470)
-    candidatas = [ln for ln in lines if ln['words'] and ln['words'][0]['x0'] < 100]
-    if not candidatas:
+    words = page.extract_words()
+
+    # Palavras que nunca sao nome de carteira
+    SKIP = {'RELATORIO', 'RELATÓRIO', 'MENSAL', 'Relatório', 'Mensal'}
+
+    def is_portfolio_word(w):
+        t = w['text'].strip()
+        if not t or t in SKIP:
+            return False
+        if re.match(r'\d{2}/\d{2}/\d{4}', t):
+            return False
+        # Codigo: 3+ chars, uppercase + underscore (ex: ACSC_EDC, MMR_ACRB)
+        if re.match(r'^[A-Z][A-Z0-9_]{2,}$', t) and '_' in t:
+            return True
+        # Nome de exibicao: 3+ chars, comeca com uppercase, sem underscore
+        if re.match(r'^[A-Z][a-zA-Z0-9 ]{2,}$', t):
+            return True
+        # Nome com parenteses (ex: "MMR 1 (Marta)")
+        if re.match(r'^[A-Z][a-zA-Z0-9 ()\-]{2,}$', t):
+            return True
+        return False
+
+    candidates = [w for w in words if is_portfolio_word(w)]
+
+    if not candidates:
+        # Fallback: get_lines nas duas bandas conhecidas
+        for top_min, top_max in [(440, 470), (360, 420)]:
+            lines = get_lines(page, top_min=top_min, top_max=top_max)
+            for ln in lines:
+                if ln['words']:
+                    txt = ' '.join(w['text'] for w in ln['words']).strip()
+                    if txt and not any(s in txt for s in ['RELAT', 'MENSAL', '/202']):
+                        return txt
         return None
-    return ' '.join(w['text'] for w in candidatas[0]['words']).strip()
+
+    # Prefere codigo (underscore) sobre display name
+    with_underscore = [w for w in candidates if '_' in w['text']]
+    if with_underscore:
+        best = with_underscore[0]
+    else:
+        best = candidates[0]
+
+    # Junta todas as palavras da mesma linha (top igual com tolerancia)
+    same_line = [w for w in words if abs(w['top'] - best['top']) <= 4]
+    same_line.sort(key=lambda w: w['x0'])
+    return ' '.join(w['text'] for w in same_line).strip()
 
 
 def extract_asset_allocation(pdf):

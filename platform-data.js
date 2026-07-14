@@ -48,23 +48,30 @@
   ============================================================= */
 
   var MONTHS = [
+    '2024-01','2024-02','2024-03','2024-04','2024-05','2024-06',
+    '2024-07','2024-08','2024-09','2024-10','2024-11','2024-12',
     '2025-01','2025-02','2025-03','2025-04','2025-05','2025-06',
     '2025-07','2025-08','2025-09','2025-10','2025-11','2025-12',
     '2026-01','2026-02','2026-03','2026-04','2026-05','2026-06'
   ];
 
   var MONTH_LABELS = [
+    'Jan/24','Fev/24','Mar/24','Abr/24','Mai/24','Jun/24',
+    'Jul/24','Ago/24','Set/24','Out/24','Nov/24','Dez/24',
     'Jan/25','Fev/25','Mar/25','Abr/25','Mai/25','Jun/25',
     'Jul/25','Ago/25','Set/25','Out/25','Nov/25','Dez/25',
     'Jan/26','Fev/26','Mar/26','Abr/26','Mai/26','Jun/26'
   ];
 
   var CDI = {
-    '2025-01':0.0091,'2025-02':0.0088,'2025-03':0.0093,'2025-04':0.0089,
-    '2025-05':0.0095,'2025-06':0.0092,'2025-07':0.0098,'2025-08':0.0101,
-    '2025-09':0.0096,'2025-10':0.0099,'2025-11':0.0097,'2025-12':0.0103,
-    '2026-01':0.0100,'2026-02':0.0094,'2026-03':0.0097,'2026-04':0.0091,
-    '2026-05':0.0093,'2026-06':0.0089
+    '2024-01':0.0092,'2024-02':0.0088,'2024-03':0.0085,'2024-04':0.0085,
+    '2024-05':0.0083,'2024-06':0.0083,'2024-07':0.0083,'2024-08':0.0083,
+    '2024-09':0.0085,'2024-10':0.0085,'2024-11':0.0088,'2024-12':0.0096,
+    '2025-01':0.0103,'2025-02':0.0103,'2025-03':0.0111,'2025-04':0.0111,
+    '2025-05':0.0115,'2025-06':0.0116,'2025-07':0.0116,'2025-08':0.0116,
+    '2025-09':0.0116,'2025-10':0.0116,'2025-11':0.0116,'2025-12':0.0116,
+    '2026-01':0.0116,'2026-02':0.0116,'2026-03':0.0115,'2026-04':0.0113,
+    '2026-05':0.0113,'2026-06':0.0111
   };
 
   var CURRENT_MONTH = '2026-06';
@@ -364,21 +371,23 @@
     var D = window._AtlasRealData;
     if (!D || !D.portfolios || !D.portfolios.length) return;
 
-    var FEV = 13, MAR = 14, ABR = 15, MAI = 16, JUN = 17;
     var MFEE = D.mfee || 0.0004;
     var CDI_RATES = D.cdiRates || {};
     var codes = D.portfolios.map(function(p) { return p.code; });
 
-    // Limpar entradas anteriores (idempotência)
+    // Conjunto real de meses: todos os meses com dados reais (cdiRates cobre 30 meses)
+    var REAL_MONTHS = Object.keys(CDI_RATES).sort();
+
+    // Limpar entradas anteriores (idempotencia)
     for (var i = CATALOG.length - 1; i >= 0; i--) {
       if (codes.indexOf(CATALOG[i].code) >= 0) CATALOG.splice(i, 1);
     }
     codes.forEach(function(c) {
       delete _portfolioData[c]; delete _codeMap[c];
       if (_compCache) {
-        ['2026-02','2026-03','2026-04','2026-05','2026-06'].forEach(function(m) { delete _compCache[c+'|'+m]; });
+        REAL_MONTHS.forEach(function(m) { delete _compCache[c+'|'+m]; });
       }
-      ['2026-02','2026-03','2026-04','2026-05','2026-06'].forEach(function(m) { delete _importCompositions[c+'|'+m]; });
+      REAL_MONTHS.forEach(function(m) { delete _importCompositions[c+'|'+m]; });
     });
     var ss = D.statusScript || {};
     for (var sk in ss) { if (ss.hasOwnProperty(sk)) delete STATUS_SCRIPT[sk]; }
@@ -394,30 +403,37 @@
 
     MANAGERS.push({ id:'REAIS', name:'Carteiras Reais', codes:codes.slice(), roaTarget:0.0050 });
 
-    // Mapeia mes → indice no array MONTHS
-    var REAL_MONTH_IDX = { '2026-02': FEV, '2026-03': MAR, '2026-04': ABR, '2026-05': MAI, '2026-06': JUN };
+    // Mapeia mes → indice no array MONTHS (dinamico, cobre 30 meses)
+    var REAL_MONTH_IDX = {};
+    REAL_MONTHS.forEach(function(rm) {
+      var idx = MONTHS.indexOf(rm);
+      if (idx >= 0) REAL_MONTH_IDX[rm] = idx;
+    });
 
-    // _portfolioData com suporte a PL por mes (plByMonth) e fallback para pl unico
+    // _portfolioData com PL e rentabilidade reais por mes
     function realPd(p) {
       var n = MONTHS.length;
       var z = function() { return new Array(n).fill(0); };
       var plArr = z(), retArr = z(), feeArr = z(), rpp = z();
       var plByMonth = p.plByMonth;
+      var rentByMonth = p.rentByMonth;
       if (plByMonth) {
-        // PL mensal individual
-        var realMonths = Object.keys(REAL_MONTH_IDX);
-        for (var mi = 0; mi < realMonths.length; mi++) {
-          var rm = realMonths[mi];
+        REAL_MONTHS.forEach(function(rm) {
+          var idx = REAL_MONTH_IDX[rm];
+          if (idx === undefined) return;
           if (plByMonth[rm] !== undefined) {
-            var idx = REAL_MONTH_IDX[rm];
             plArr[idx] = plByMonth[rm];
-            retArr[idx] = CDI_RATES[rm] || 0;
+            // rentRef real da carteira (null = offshore, sem dado)
+            var rent = (rentByMonth && rentByMonth[rm] != null) ? rentByMonth[rm] : null;
+            // Fallback para CDI quando rentRef e null (offshore)
+            retArr[idx] = (rent != null) ? rent : (CDI_RATES[rm] || 0);
             feeArr[idx] = plByMonth[rm] * MFEE;
-            if (idx > FEV) rpp[idx] = plByMonth[rm];
+            // rpp: reported PL do mes anterior (para verificacao de conciliacao)
+            if (idx > 0) rpp[idx] = plByMonth[rm];
           }
-        }
+        });
       } else {
-        // Fallback: PL unico replicado nos meses reais (legado)
+        // Fallback: PL unico replicado (legado, nao deve acontecer com dados novos)
         var pl = p.pl || 0;
         for (var rk in REAL_MONTH_IDX) {
           if (!REAL_MONTH_IDX.hasOwnProperty(rk)) continue;
@@ -425,10 +441,7 @@
           plArr[idx2] = pl;
           retArr[idx2] = CDI_RATES[rk] || 0;
           feeArr[idx2] = pl * MFEE;
-        }
-        var realKeys = Object.keys(REAL_MONTH_IDX);
-        for (var rj = 1; rj < realKeys.length; rj++) {
-          rpp[REAL_MONTH_IDX[realKeys[rj]]] = pl;
+          if (idx2 > 0) rpp[idx2] = pl;
         }
       }
       return { fee:MFEE, plArr:plArr, nnmArr:z(), retArr:retArr, feeArr:feeArr, reportedPlPrevArr:rpp };

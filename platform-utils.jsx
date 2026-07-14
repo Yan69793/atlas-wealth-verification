@@ -64,6 +64,46 @@
   }
 
   /* ===========================================================
+     COMPUTE DRAWDOWN — curva underwater sobre TWR composto
+  =========================================================== */
+
+  function computeDrawdown(returns) {
+    // returns: [{month, rent}] onde rent e decimal (ex: 0.0097) ou null
+    if (!returns || !returns.length) {
+      return { series: [], maxDD: 0, maxDDMonth: null, currentDD: 0, validCount: 0, missingCount: 0 };
+    }
+
+    const total = returns.length;
+    let peak = 1;
+    let twr = 1;
+    const series = [];
+    let maxDD = 0;
+    let maxDDMonth = null;
+    let validCount = 0;
+
+    for (const r of returns) {
+      if (r.rent == null) continue;
+      validCount++;
+      twr *= (1 + r.rent);
+      if (twr > peak) peak = twr;
+
+      const dd = (twr / peak) - 1; // <= 0
+      series.push({ month: r.month, value: dd });
+
+      const ddPositive = -dd; // positivo para tracking do maximo
+      if (ddPositive > maxDD) {
+        maxDD = ddPositive;
+        maxDDMonth = r.month;
+      }
+    }
+
+    const currentDD = series.length > 0 ? Math.max(0, -series[series.length - 1].value) : 0;
+    const missingCount = total - validCount;
+
+    return { series, maxDD, maxDDMonth, currentDD, validCount, missingCount };
+  }
+
+  /* ===========================================================
      STORAGE (localStorage com versão)
   =========================================================== */
 
@@ -509,7 +549,7 @@
 
   window.AtlasUtils = {
     fmt, fmtBRL, fmtCompactBRL, fmtPct, fmtPctRaw, fmtMonthLabel,
-    signClass, storage, navigate, useRouter,
+    signClass, computeDrawdown, storage, navigate, useRouter,
   };
 
   window.AtlasIcons = { Icon };

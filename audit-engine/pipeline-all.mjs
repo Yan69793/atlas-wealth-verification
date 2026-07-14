@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 /**
- * Pipeline completo Fev-Mai/2026:
- *   1. Extrai PDFs de cada mês (parsePdfBookFolder)
+ * Pipeline completo 2024-01 a 2026-06 (30 meses):
+ *   1. Extrai PDFs de cada mes (parsePdfBookFolder)
  *   2. Roda audit-engine
- *   3. Escreve audit.json por mês
- *   4. Gera data.js / data.json multi-mês (dashboard)
+ *   3. Escreve audit.json por mes
  *
- * Uso: node pipeline-all.mjs
+ * Idempotente: pula mes que ja tem audit.json valido.
+ * Uso: node pipeline-all.mjs [--force] [--only 2024-03]
  */
 
 import fs from 'node:fs';
@@ -19,28 +19,68 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
 const AUDITS_DIR = path.join(ROOT, 'audits');
 
-const MONTHS = [
-  { mes: '2026-02', baseline: '2026-01' },
-  { mes: '2026-03', baseline: '2026-02' },
-  { mes: '2026-04', baseline: '2026-03' },
-  { mes: '2026-05', baseline: '2026-04' },
-];
+const args = process.argv.slice(2);
+const FORCE = args.includes('--force');
+const ONLY = args.includes('--only') ? args[args.indexOf('--only') + 1] : null;
+
+function generateMonths() {
+  const months = [];
+  for (let y = 2024; y <= 2026; y++) {
+    const end = (y === 2026) ? 6 : 12;
+    for (let m = 1; m <= end; m++) {
+      const mes = `${y}-${String(m).padStart(2, '0')}`;
+      let baseline;
+      if (m === 1) {
+        baseline = `${y - 1}-12`;
+      } else {
+        baseline = `${y}-${String(m - 1).padStart(2, '0')}`;
+      }
+      months.push({ mes, baseline });
+    }
+  }
+  return months;
+}
+
+const MONTHS = ONLY
+  ? [{ mes: ONLY, baseline: (() => {
+      const [y, m] = ONLY.split('-').map(Number);
+      if (m === 1) return `${y-1}-12`;
+      return `${y}-${String(m-1).padStart(2,'0')}`;
+    })() }]
+  : generateMonths();
 
 function getEditadosDir(mes) {
   return path.join(AUDITS_DIR, mes, 'input', 'Editados');
 }
 
+function getAuditPath(mes) {
+  return path.join(AUDITS_DIR, mes, 'audit.json');
+}
+
 async function processMonth({ mes, baseline }) {
   const editadosDir = getEditadosDir(mes);
+  const auditPath = getAuditPath(mes);
+
   if (!fs.existsSync(editadosDir)) {
     console.log(`[${mes}] Pasta Editados nao encontrada: ${editadosDir} — pulando.`);
-    return null;
+    return { mes, status: 'SKIP', reason: 'sem Editados' };
   }
 
   const pdfs = fs.readdirSync(editadosDir).filter(f => /^Book_.*\.pdf$/i.test(f));
   if (pdfs.length === 0) {
-    console.log(`[${mes}] Nenhum PDF encontrado em ${editadosDir} — pulando.`);
-    return null;
+    console.log(`[${mes}] Nenhum Book_*.pdf encontrado — pulando.`);
+    return { mes, status: 'SKIP', reason: 'sem PDFs' };
+  }
+
+  // Idempotencia: pula se audit.json existe e nao estamos forcando
+  if (!FORCE && fs.existsSync(auditPath)) {
+    try {
+      const existing = JSON.parse(fs.readFileSync(auditPath, 'utf-8'));
+      if (existing.carteiras && existing.carteiras.length > 0) {
+        console.log(`[${mes}] audit.json ja existe com ${existing.carteiras.length} carteiras — pulando.`);
+        return { mes, status: 'SKIP', reason: 'ja processado' };
+      }
+    } catch { /* arquivo corrompido, reprocessar */ }
   }
 
   console.log(`[${mes}] Iniciando extracao de ${pdfs.length} PDFs...`);
@@ -55,117 +95,66 @@ async function processMonth({ mes, baseline }) {
     });
   } catch (err) {
     console.error(`[${mes}] ERRO na extracao PDF: ${err.message}`);
-    return null;
+    return { mes, status: 'ERROR', reason: err.message };
   }
 
   const meta = {
     mes,
     baseline,
-    arquivo: `Book_*_${mes.replace('-', '_')}.pdf (${carteiras.length} PDFs)`,
+    arquivo: `Book_*_${mes.replace('-', '_')}.pdf (${pdfs.length} PDFs)`,
     processadoEm: new Date().toISOString(),
   };
 
   const output = runEngine(carteiras, { meta });
 
   // Escreve audit.json
-  const auditDir = path.join(AUDITS_DIR, mes);
-  fs.mkdirSync(auditDir, { recursive: true });
-  const auditPath = path.join(auditDir, 'audit.json');
+  fs.mkdirSync(path.dirname(auditPath), { recursive: true });
   fs.writeFileSync(auditPath, JSON.stringify(output, null, 2), 'utf-8');
 
   const elapsed = ((Date.now() - start) / 1000).toFixed(1);
-  console.log(`[${mes}] OK — ${carteiras.length} carteiras | LIBERAR ${output.dashboard.summary.totals.liberar} | ALERTA ${output.dashboard.summary.totals.alerta} | CORRIGIR ${output.dashboard.summary.totals.corrigir} | ${elapsed}s`);
+  const t = output.dashboard.summary.totals;
+  console.log(`[${mes}] OK — ${carteiras.length} carteiras extraidas | LIBERAR ${t.liberar} | ALERTA ${t.alerta} | CORRIGIR ${t.corrigir} | ${elapsed}s`);
   console.log(`[${mes}] audit.json → ${auditPath}`);
 
-  return { mes, output };
-}
-
-function buildMultiMonthDashboard(allResults) {
-  // Pega o último mês como base principal para o dashboard
-  const valid = allResults.filter(Boolean);
-  if (valid.length === 0) throw new Error('Nenhum mes processado com sucesso');
-
-  const last = valid[valid.length - 1];
-  const dashboard = last.output.dashboard;
-
-  // Adiciona navegação entre meses
-  dashboard.multiMonth = {
-    available: valid.map(v => v.mes),
-    current: last.mes,
-  };
-
-  // Sumário multi-mês: para cada mês, totais agregados
-  dashboard.multiMonthSummary = valid.map(v => {
-    const s = v.output.dashboard.summary;
-    return {
-      mes: v.mes,
-      label: s.periodo.referenciaLabel,
-      total: s.totals.total,
-      liberar: s.totals.liberar,
-      alerta: s.totals.alerta,
-      corrigir: s.totals.corrigir,
-    };
-  });
-
-  // Para cada carteira no dashboard, adiciona série temporal se disponível
-  const historicalPL = {};
-  for (const v of valid) {
-    for (const c of v.output.carteiras) {
-      if (!historicalPL[c.nome]) historicalPL[c.nome] = [];
-      historicalPL[c.nome].push({
-        mes: v.mes,
-        label: v.output.periodo.referenciaLabel,
-        plRef: c.plRef,
-        rentRef: c.rentRef,
-        status: (v.output.results.find(r => r.nome === c.nome) || {}).status,
-      });
-    }
-  }
-  dashboard.historicalPL = historicalPL;
-
-  return dashboard;
+  return { mes, status: 'OK', pdfs: pdfs.length, carteiras: carteiras.length, totals: t, elapsed };
 }
 
 async function main() {
-  console.log('=== PIPELINE FEV-MAI/2026 ===');
+  console.log('=== PIPELINE 2024-01 a 2026-06 ===');
   console.log(`Root: ${ROOT}`);
+  console.log(`Meses: ${MONTHS.length} (${MONTHS[0].mes} a ${MONTHS[MONTHS.length-1].mes})`);
+  if (FORCE) console.log('Modo: FORCE (reprocessa todos)');
+  if (ONLY) console.log(`Modo: ONLY ${ONLY}`);
   console.log('');
 
-  const allResults = [];
+  const results = [];
   for (const cfg of MONTHS) {
     const result = await processMonth(cfg);
-    allResults.push(result);
+    results.push(result);
   }
-
-  const valid = allResults.filter(Boolean);
-  if (valid.length === 0) {
-    console.error('NENHUM MES PROCESSADO. Abortando.');
-    process.exit(1);
-  }
-
-  // Dashboard multi-mês
-  console.log('');
-  console.log('=== GERANDO DASHBOARD MULTI-MES ===');
-  const dashboard = buildMultiMonthDashboard(allResults);
-
-  const dataJsonPath = path.join(ROOT, 'data.json');
-  const dataJsPath = path.join(ROOT, 'data.js');
-
-  fs.writeFileSync(dataJsonPath, JSON.stringify(dashboard, null, 2), 'utf-8');
-  fs.writeFileSync(dataJsPath, `window.AUDIT_DATA = ${JSON.stringify(dashboard)};`, 'utf-8');
-
-  console.log(`data.json → ${dataJsonPath}`);
-  console.log(`data.js  → ${dataJsPath}`);
 
   // Resumo final
   console.log('');
   console.log('=== RESUMO FINAL ===');
-  for (const v of valid) {
-    const t = v.output.dashboard.summary.totals;
-    console.log(`${v.mes}: ${t.total} carteiras | LIBERAR ${t.liberar} | ALERTA ${t.alerta} | CORRIGIR ${t.corrigir}`);
+  const ok = results.filter(r => r.status === 'OK');
+  const skipped = results.filter(r => r.status === 'SKIP');
+  const errors = results.filter(r => r.status === 'ERROR');
+
+  for (const r of ok) {
+    console.log(`${r.mes}: ${r.carteiras} carteiras | LIBERAR ${r.totals.liberar} | ALERTA ${r.totals.alerta} | CORRIGIR ${r.totals.corrigir} | ${r.elapsed}s`);
   }
+  for (const r of skipped) {
+    console.log(`${r.mes}: SKIP — ${r.reason}`);
+  }
+  for (const r of errors) {
+    console.log(`${r.mes}: ERROR — ${r.reason}`);
+  }
+
   console.log('');
-  console.log('Pipeline concluído.');
+  console.log(`Total: ${ok.length} OK, ${skipped.length} skip, ${errors.length} erro`);
+  console.log('Pipeline concluido.');
+
+  if (errors.length > 0) process.exit(1);
 }
 
 main().catch(err => {

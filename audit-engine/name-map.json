@@ -1,0 +1,12 @@
+{
+  "_description": "Mapa de equivalencia de nomes de carteira. Nome extraido do PDF (chave) → nome canonico (valor). Versionado, revisado caso a caso. Nunca resolvido por adivinhacao.",
+  "_updated": "2026-07-14",
+  "mappings": {
+    "MMR_ACRB 1 (Marta)": "MMR 1 (Marta)",
+    "MMR_ACRB 2 (Mega)": "MMR 2 (Mega)",
+    "MMR_ACRB 3 (Mae)": "MMR 3 (Mae)",
+    "Fênix": "Fenix",
+    "CFIS": "CFIS_KBV",
+    "FCS": "FCS_CLCS"
+  }
+}

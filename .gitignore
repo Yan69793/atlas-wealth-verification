@@ -53,6 +53,8 @@ node_modules/
 dist/
 build/
 .cache/
+__pycache__/
+*.pyc
 
 # --- 4b) LGPD: dado real de cliente ----------------------------------
 # Pastas de dado operacional real (PDFs, relatórios, dados de clientes)

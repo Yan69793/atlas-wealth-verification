@@ -3,7 +3,7 @@
   const { useState, useMemo, useEffect } = React;
 
   // Safe IIFE-level destructuring (carregam antes das páginas)
-  const { fmtBRL, fmtCompactBRL, fmtPct, fmtMonthLabel, signClass, navigate, storage } = window.AtlasUtils;
+  const { fmtBRL, fmtCompactBRL, fmtPct, fmtMonthLabel, signClass, computeDrawdown, navigate, storage } = window.AtlasUtils;
   const { Icon }            = window.AtlasIcons;
   const { Badge, SeverityBadge, KPITile, EmptyState } = window.AtlasUI;
   const { LineChart } = window.AtlasCharts;
@@ -224,6 +224,7 @@
     const plFirst   = history[0].plPrev;
     const plLast    = history[history.length - 1].plCurr;
     const varPatrimonial = plFirst > 0 ? (plLast - plFirst) / plFirst : 0;
+    const dd = useMemo(() => computeDrawdown(history), [history]);
 
     // Accumulated series for chart
     let twrRun = 1, cdiRun = 1;
@@ -243,12 +244,22 @@
     return (
       <div>
         {/* Summary */}
-        <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 20 }}>
+        <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(6, 1fr)', marginBottom: 20 }}>
           <KPITile label="TWR Período"      value={fmtPct(twr, 2)}              sub={`desde ${fmtMonthLabel(inception)}`} />
           <KPITile label="CDI Período"      value={fmtPct(cdiAcc, 2)}           sub="Acumulado" />
           <KPITile label="vs CDI"           value={(twr - cdiAcc >= 0 ? '+' : '') + fmtPct(twr - cdiAcc, 2)}
             sub="TWR – CDI" variant={twr < cdiAcc ? 'amber' : undefined} />
           <KPITile label="Var. Patrimonial" value={fmtPct(varPatrimonial, 2)} sub="PL final / PL inicial - 1" />
+          <KPITile
+            label="Max Drawdown"
+            value={dd.validCount > 0 && !isNaN(dd.maxDD) && dd.maxDD > 0 ? '-' + fmtPct(dd.maxDD, 1) : dd.validCount > 0 ? '0%' : '—'}
+            sub={dd.maxDDMonth ? fmtMonthLabel(dd.maxDDMonth) : ''}
+          />
+          <KPITile
+            label="Drawdown Atual"
+            value={dd.validCount > 0 ? (dd.currentDD > 0 ? '-' + fmtPct(dd.currentDD, 1) : '0%') : '—'}
+            sub={dd.missingCount > 0 ? `Baseado em ${dd.validCount} de ${history.length} meses` : ''}
+          />
         </div>
 
         {/* Chart */}
@@ -258,6 +269,19 @@
           </div>
           <LineChart series={chartSeries} height={200} />
         </div>
+
+        {/* Underwater chart */}
+        {dd.series && dd.series.length > 0 && (
+          <div className="chart-wrap" style={{ marginBottom: 20 }}>
+            <div className="card-header">
+              <div className="card-title">Drawdown</div>
+            </div>
+            <LineChart
+              series={[{ label: 'Drawdown', color: 'var(--red)', width: 2, data: dd.series }]}
+              height={150}
+            />
+          </div>
+        )}
 
         {/* Monthly table */}
         <div className="table-wrap">
