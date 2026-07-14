@@ -30,6 +30,7 @@ desktop.ini
 
 # LGPD — pastas com dados operacionais reais (PDFs, relatórios, dados de clientes)
 Verificação Mensal de Carteiras Mirabaud/
+Verificação Mensal de Carteiras/
 Verificação de carteiras/
 SmartBrain/
 
@@ -65,6 +66,5 @@ historico.json
 historico.js
 audits/*/input/
 
-# Terminais (dados efemeros de sessao)
-terminals/
+# Terminais e docs de sessao (dados efemeros)
 docs/terminal*/

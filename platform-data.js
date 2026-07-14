@@ -354,13 +354,13 @@
   var _dataMode = 'demo';
 
   /* =============================================================
-     4c. INJETOR DE CARTEIRAS REAIS (lê window._MirabaudRealData)
+     4c. INJETOR DE CARTEIRAS REAIS (lê window._AtlasRealData)
      O arquivo platform-data-real.js (gitignored) define esse objeto.
      Sem ele, apenas as 40 carteiras demo ficam ativas.
   ============================================================= */
 
-  function injectMirabaud() {
-    var D = window._MirabaudRealData;
+  function injectRealData() {
+    var D = window._AtlasRealData;
     if (!D || !D.portfolios || !D.portfolios.length) return;
 
     var FEV = 13, MAR = 14, ABR = 15;
@@ -384,7 +384,7 @@
     var ss = D.statusScript || {};
     for (var sk in ss) { if (ss.hasOwnProperty(sk)) delete STATUS_SCRIPT[sk]; }
     for (var j = MANAGERS.length - 1; j >= 0; j--) {
-      if (MANAGERS[j].id === 'MIRABAUD') MANAGERS.splice(j, 1);
+      if (MANAGERS[j].id === 'REAIS') MANAGERS.splice(j, 1);
     }
 
     // CATALOG + _codeMap
@@ -393,7 +393,7 @@
       CATALOG.push(entry); _codeMap[p.code] = entry;
     });
 
-    MANAGERS.push({ id:'MIRABAUD', name:'Mirabaud Advisory', codes:codes.slice(), roaTarget:0.0050 });
+    MANAGERS.push({ id:'REAIS', name:'Carteiras Reais', codes:codes.slice(), roaTarget:0.0050 });
 
     // _portfolioData
     function realPd(pl) {
@@ -429,11 +429,11 @@
       });
     }
 
-    // Dados injetados via window._MirabaudRealData (platform-data-real.js)
+    // Dados injetados via window._AtlasRealData (platform-data-real.js)
 
   }
 
-  injectMirabaud();
+  injectRealData();
 
   /* =============================================================
      5. GERADOR DE ACHADOS
@@ -1216,9 +1216,9 @@
       'I0: MONTHS e MONTH_LABELS fora de sync: ' + MONTHS.length + ' vs ' + MONTH_LABELS.length);
     if (MONTHS.length !== MONTH_LABELS.length) errs++;
 
-    // I1: 40 fictícias + N reais (depende de window._MirabaudRealData)
-    var _realN = (typeof window !== 'undefined' && window._MirabaudRealData && window._MirabaudRealData.portfolios)
-      ? window._MirabaudRealData.portfolios.length : 0;
+    // I1: 40 fictícias + N reais (depende de window._AtlasRealData)
+    var _realN = (typeof window !== 'undefined' && window._AtlasRealData && window._AtlasRealData.portfolios)
+      ? window._AtlasRealData.portfolios.length : 0;
     var _expectedCat = 40 + _realN;
     console.assert(CATALOG.length === _expectedCat, 'I1: esperado ' + _expectedCat + ' carteiras, obtido ' + CATALOG.length);
     if (CATALOG.length !== _expectedCat) errs++;
@@ -1259,7 +1259,7 @@
     console.assert(plFail === 0, 'I6: ' + plFail + ' PLs negativos ou zero após inception');
     if (plFail > 0) errs++;
 
-    // I7: gestores — 4 fictícios + 1 Mirabaud se dados reais carregados
+    // I7: gestores — 4 fictícios + 1 real se dados reais carregados
     var _expectedMgr = _realN > 0 ? 5 : 4;
     console.assert(MANAGERS.length === _expectedMgr, 'I7: esperado ' + _expectedMgr + ' gestores, obtido ' + MANAGERS.length);
     if (MANAGERS.length !== _expectedMgr) errs++;
@@ -1441,7 +1441,7 @@
     });
 
     _dataMode = 'demo';
-    injectMirabaud();
+    injectRealData();
     return { ok: true, mode: 'demo' };
   }
 

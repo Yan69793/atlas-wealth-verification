@@ -173,8 +173,8 @@ Três chamadas reportadas pelo agente de análise (linhas 710, 810, 1372) como e
 **3. `materialize()` em IIFE irrecuperável.**
 Reportado como problema por impossibilitar re-seeding. Na prática `restoreDemo()` restaura snapshot (`_demoSnapshot`) gerado no IIFE — state management adequado para os casos de uso do sistema. Re-materialização com seed alternativo não é requisito.
 
-**4. `injectMirabaud()` não-idempotente.**
-Reportado como risco de duplicação de MANAGERS. `restoreDemo()` restaura de snapshot, não chama `injectMirabaud()` — fluxo demo→import→demo está correto. MANAGERS duplicados não ocorrem no fluxo implementado.
+**4. `injectRealData()` não-idempotente.**
+Reportado como risco de duplicação de MANAGERS. `restoreDemo()` restaura de snapshot, não chama `injectRealData()` — fluxo demo→import→demo está correto. MANAGERS duplicados não ocorrem no fluxo implementado.
 
 **5. `MANAGERS.slice()` hardcoded como fragil.**
 O achado P13 é real como risco de manutenção, mas em produção é inerte: quando dados reais são importados, o array MANAGERS inteiro é substituído por `[{ id: 'IMPORTADAS', ... }]` (linha 1608). Os slices só operam no modo demo onde o CATALOG nunca muda em runtime.
@@ -197,4 +197,4 @@ Achados com percentuais inventados são design intencional do modo demo. A plata
 
 4. **Autenticação:** O sistema será exposto à internet ou permanece em rede interna? Isso define se a autenticação cosmética é aceitável indefinidamente ou se há prazo para implementação real.
 
-5. **PDF em Web Worker:** Existe limite de tamanho de PDF no fluxo atual? Um book Mirabaud típico tem quantas páginas?
+5. **PDF em Web Worker:** Existe limite de tamanho de PDF no fluxo atual? Um book típico tem quantas páginas?
