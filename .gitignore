@@ -47,3 +47,10 @@ platform-data-real.js
 *.ntvs*
 *.njsproj
 *.sln
+
+# Dado gerado — nunca versionar (alimenta o app; migra para R2 no Projeto 3)
+data.json
+data.js
+historico.json
+historico.js
+audits/*/input/
