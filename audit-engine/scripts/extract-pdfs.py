@@ -33,6 +33,7 @@ except ImportError:
 EXCLUDE_PATTERNS = [
     re.compile(r'^Consolida[cç][aã]o CC', re.I),
     re.compile(r'YANSZUCHMACHER', re.I),
+    re.compile(r'\bOLD\b', re.I),  # copias antigas marcadas (ex: "Book_SAA_2026_05 OLD.pdf")
 ]
 
 MESES = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -43,19 +44,50 @@ def is_excluded(filename):
     return any(p.search(filename) for p in EXCLUDE_PATTERNS)
 
 
-def pick_preferred_duplicate(filenames):
-    """Arquivos com sufixo 'novo'/'NOVO' sao reenvios corrigidos e tem prioridade."""
-    if len(filenames) == 1:
-        return filenames[0]
-    com_novo = [f for f in filenames if re.search(r'\bnovo\b', f, re.I)]
+def collect_book_files(pasta):
+    """Book_*.pdf da pasta curada (Editados) E do mes-pai (books soltos na raiz do
+    mes, fora de Editados - ex: AVP_LBP, EVP em junho/2026). SO LEITURA, nunca
+    escreve na fonte (regra do projeto: arvore de Extratos e read-only). Um nivel
+    acima apenas, nao recursivo. Retorna [(full_path, filename, origem)]."""
+    pasta_abs = os.path.abspath(pasta)
+    pai = os.path.dirname(pasta_abs)
+    resultado = []
+    vistos = set()
+    for d, origem in [(pasta_abs, 'editados'), (pai, 'raiz')]:
+        if d in vistos or not os.path.isdir(d):
+            continue
+        vistos.add(d)
+        for f in sorted(os.listdir(d)):
+            full = os.path.join(d, f)
+            if os.path.isfile(full) and re.match(r'^Book_.*\.pdf$', f, re.I) and not is_excluded(f):
+                resultado.append((full, f, origem))
+    return resultado
+
+
+def pick_preferred_duplicate(candidatos):
+    """candidatos: lista de dicts de extracao com 'arquivo' e 'origem'. Preferencia:
+    1) books em 'editados' (curado) sobre 'raiz' (solto no mes);
+    2) reenvio corrigido 'novo'/'NOVO';
+    3) ordem alfabetica do nome de arquivo (estavel)."""
+    if len(candidatos) == 1:
+        return candidatos[0]
+    editados = [c for c in candidatos if c.get('origem') == 'editados']
+    pool = editados if editados else candidatos
+    com_novo = [c for c in pool if re.search(r'\bnovo\b', c['arquivo'], re.I)]
     if com_novo:
-        return sorted(com_novo, key=len, reverse=True)[0]
-    return sorted(filenames)[0]
+        return sorted(com_novo, key=lambda c: len(c['arquivo']), reverse=True)[0]
+    return sorted(pool, key=lambda c: c['arquivo'])[0]
 
 
 def ym_to_label(ym):
     y, m = ym.split('-')
     return f'{MESES[int(m)]} {y}'
+
+
+def to_pct(value):
+    """Part.% na tabela de Ativos vem em pontos percentuais (ex: 30.67 = 30,67%);
+    normaliza para fracao 0-1, igual ao parsePct() do parser Excel (utils.ts)."""
+    return (value / 100) if value is not None else None
 
 
 def to_ativo_row(raw, current_classe):
@@ -72,7 +104,7 @@ def to_ativo_row(raw, current_classe):
             'plRef': plRef,
             'diff': diff,
             'varPct': varPct,
-            'part': raw.get('part'),
+            'part': to_pct(raw.get('part')),
         }
 
     return {
@@ -89,7 +121,7 @@ def to_ativo_row(raw, current_classe):
         'eventos': raw.get('eventos'),
         'impostos': raw.get('imposto'),
         'provIR': raw.get('provIR'),
-        'part': raw.get('part'),
+        'part': to_pct(raw.get('part')),
     }
 
 
@@ -117,7 +149,7 @@ def map_extraction(extraction, periodo):
         'eventos': t.get('eventos'),
         'impostos': t.get('imposto'),
         'provIR': t.get('provIR'),
-        'part': t.get('part'),
+        'part': to_pct(t.get('part')),
     }
 
     n_base = sum(1 for a in ativos if a['type'] == 'ativo' and a['plBase'] > 0)
@@ -170,15 +202,14 @@ def main():
         'referenciaLabel': ym_to_label(args.mes),
     }
 
-    entries = os.listdir(args.pasta)
-    book_files = [f for f in entries if re.match(r'^Book_.*\.pdf$', f, re.I) and not is_excluded(f)]
+    book_files = collect_book_files(args.pasta)
 
     extractions = []
-    for filename in book_files:
-        full = os.path.join(args.pasta, filename)
+    for full, filename, origem in book_files:
         try:
             data = extract_one(full, args.mes)
             data['arquivo'] = filename
+            data['origem'] = origem
             extractions.append(data)
         except Exception as e:
             print(f'[extract-pdfs] falha ao extrair {filename}: {e}', file=sys.stderr)
@@ -192,12 +223,11 @@ def main():
 
     carteiras = []
     for nome, exs in by_nome.items():
-        chosen_filename = pick_preferred_duplicate([e['arquivo'] for e in exs])
-        chosen = next(e for e in exs if e['arquivo'] == chosen_filename)
+        chosen = pick_preferred_duplicate(exs)
         if len(exs) > 1:
             descartados = [e['arquivo'] for e in exs if e is not chosen]
             print(
-                f'[extract-pdfs] "{nome}": {len(exs)} arquivos, usando "{chosen_filename}" '
+                f'[extract-pdfs] "{nome}": {len(exs)} arquivos, usando "{chosen["arquivo"]}" ({chosen.get("origem", "?")}) '
                 f'(descartados: {", ".join(descartados)})',
                 file=sys.stderr,
             )
@@ -205,7 +235,7 @@ def main():
         if carteira:
             carteiras.append(carteira)
         else:
-            print(f'[extract-pdfs] extracao incompleta, pulando: {chosen_filename}', file=sys.stderr)
+            print(f'[extract-pdfs] extracao incompleta, pulando: {chosen["arquivo"]}', file=sys.stderr)
 
     # "X" e "X (BR+CH)" nao sao duplicata por nome de arquivo - sao nomes
     # internos DIFERENTES no PDF (escopos diferentes: BR sozinho vs BR+CH

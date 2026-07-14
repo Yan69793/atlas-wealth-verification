@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, it } from 'node:test';
@@ -37,7 +38,12 @@ const CARTEIRAS_COM_BUG_RENT_EXCEL_CONHECIDO = new Set([
 const TOLERANCIA_PL = 0.003; // 0.3% - mesma tolerancia de conciliacao usada no motor
 const TOLERANCIA_RENT = 0.0005; // 5 pontos-base
 
-describe('parity PDF vs Excel (abril 2026, gabarito)', { timeout: 180_000 }, () => {
+// Teste de integração com dado real de abril (XLSX na raiz de staging + books no
+// OneDrive). Pula graciosamente quando o dado não está presente (ex.: rodando
+// dentro do ATLAS, que por decisão não hospeda dado real de cliente).
+const DADO_ABRIL_PRESENTE = fs.existsSync(XLSX) && fs.existsSync(BOOKS_ABRIL);
+
+describe('parity PDF vs Excel (abril 2026, gabarito)', { timeout: 180_000, skip: !DADO_ABRIL_PRESENTE && 'dado real de abril ausente (XLSX/books fora do ATLAS)' }, () => {
   it('carteiras extraidas via PDF batem com a planilha Excel ja auditada', async () => {
     const excelCarteiras = await parseExcelV2({ arquivo: XLSX, mes: '2026-04', baseline: '2026-03' });
     const pdfCarteiras = await parsePdfBookFolder({ pasta: BOOKS_ABRIL, mes: '2026-04', baseline: '2026-03' });

@@ -4,7 +4,7 @@
   "description": "Plataforma de verificação mensal de carteiras — Meridian Advisory",
   "private": true,
   "scripts": {
-    "test": "node tests/validate.js",
+    "test": "node tests/validate.js && npm --prefix audit-engine test",
     "serve": "python -m http.server 7821",
     "lint": "node tests/validate.js",
     "build": "echo 'App estático — sem etapa de build. Use npm run serve para desenvolvimento local.'"
