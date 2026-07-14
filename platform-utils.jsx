@@ -191,6 +191,7 @@
       menu:        'M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z',
       report:      'M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z',
       trending_up: 'M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z',
+      trend:       'M23 6l-9.5 9.5-5-5L1 18 M17 6h6v6',
     };
     const d = paths[name] || paths['info'];
     return (

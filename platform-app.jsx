@@ -171,6 +171,7 @@
     { id:'risco',       label:'Radar de Risco',      icon:'alert',      path:'#/risco'       },
     { id:'comparativo', label:'Comparativo',         icon:'compare',    path:'#/comparativo' },
     { id:'achados',     label:'Achados & Exceções',  icon:'findings',   path:'#/achados'     },
+    { id:'tendencia',   label:'Tendência do Ciclo',  icon:'trend',      path:'#/tendencia'   },
     { id:'receitas',    label:'Receitas & ROA',      icon:'revenue',    path:'#/receitas'    },
     { id:'busca',       label:'Busca por Ativo',     icon:'search',     path:'#/busca'       },
   ];
@@ -251,6 +252,13 @@
     const { Icon } = window.AtlasIcons;
     const months = window.AtlasData.MONTHS;
     const labels = window.AtlasData.MONTH_LABELS;
+    const tokens = window.AtlasTokens;
+    const [theme, setThemeLocal] = useState(() => tokens ? tokens.getActiveTheme() : 'editorial');
+
+    function handleThemeChange(name) {
+      setThemeLocal(name);
+      if (tokens) tokens.setTheme(name);
+    }
 
     return (
       <header className="topbar">
@@ -259,6 +267,23 @@
         </button>
 
         <div className="topbar-title">{title}</div>
+
+        {tokens && (
+          <div className="topbar-month-select" style={{ marginRight: 12 }}>
+            <label htmlFor="global-theme-select">Tema</label>
+            <select
+              id="global-theme-select"
+              className="form-select"
+              value={theme}
+              onChange={e => handleThemeChange(e.target.value)}
+              style={{ minWidth: 100 }}
+            >
+              <option value="editorial">Editorial</option>
+              <option value="slate">Slate</option>
+              <option value="midnight">Midnight</option>
+            </select>
+          </div>
+        )}
 
         <div className="topbar-month-select">
           <label htmlFor="global-month-select">Mês</label>
@@ -313,8 +338,10 @@
     if (path === '/cadastro') return 'cadastro';
     if (path === '/busca') return 'busca';
     if (path === '/risco') return 'risco';
+    if (path === '/tendencia') return 'tendencia';
     if (path === '/importar') return 'importar';
     if (path === '/usuarios') return 'usuarios';
+    if (path === '/tendencia') return 'tendencia';
     if (path.startsWith('/dev/relatorio/')) return 'dev-relatorio';
     return 'dashboard';
   }
@@ -328,8 +355,10 @@
     cadastro:   'Cadastro & Compliance',
     busca:      'Busca por Ativo',
     risco:      'Radar de Risco',
+    tendencia:  'Tendência do Ciclo',
     importar:   'Importar Extratos',
     usuarios:   'Usuários',
+    tendencia:  'Tendência do Ciclo',
   };
 
   function AppShell({ children, page, onNavigate }) {
@@ -418,6 +447,11 @@
         return pages.Usuarios
           ? React.createElement(pages.Usuarios)
           : <PlaceholderPage title="Usuários" etapa={8} />;
+
+      case 'tendencia':
+        return pages.Tendencia
+          ? React.createElement(pages.Tendencia)
+          : <PlaceholderPage title="Tendência do Ciclo" etapa="tendencia" />;
 
       case 'dev-relatorio': {
         const code = location.segments[2];

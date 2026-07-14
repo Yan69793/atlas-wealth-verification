@@ -28,11 +28,14 @@ desktop.ini
 *.swp
 *~
 
-# LGPD — pasta com dados operacionais reais (PDFs, relatórios, dados de clientes)
+# LGPD — pastas com dados operacionais reais (PDFs, relatórios, dados de clientes)
 Verificação Mensal de Carteiras Mirabaud/
+Verificação de carteiras/
 
 # LGPD — dados reais de clientes embutidos no JS (não versionar)
 platform-data-real.js
+platform-data-audit.js
+platform-historico.js
 
 # Binários e arquivos grandes
 *.pdf
@@ -48,9 +51,19 @@ platform-data-real.js
 *.njsproj
 *.sln
 
+# Sessões de terminal
+terminals/
+
+# Arquivo morto (legacy)
+.archive/
+
 # Dado gerado — nunca versionar (alimenta o app; migra para R2 no Projeto 3)
 data.json
 data.js
 historico.json
 historico.js
 audits/*/input/
+
+# Terminais (dados efemeros de sessao)
+terminals/
+docs/terminal*/

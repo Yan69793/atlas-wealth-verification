@@ -35,8 +35,59 @@
   --r-md: 8px;
   --r-lg: 12px;
 
-  --font-mono: var(--font-mono);
+  --font-mono: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
 }
+
+/* =========================================================
+   TEMA: SLATE (cinza azulado frio)
+========================================================= */
+[data-theme="slate"] {
+  --paper: #EEF1F4;
+  --paper-mid: #E4E9EE;
+  --rule: #D5DDE3;
+  --rule-strong: #ADBCC7;
+  --muted: #8A9CAA;
+  --body: #1E2D3A;
+  --heading: #0D1A26;
+  --gold: #B7985D;
+  --gold-2: #9A7D3E;
+  --green: #17724F;
+  --green-bg: #E5F5ED;
+  --amber: #96702F;
+  --amber-bg: #FDF4E0;
+  --red: #9A2D2D;
+  --red-bg: #FDEAEA;
+}
+
+/* =========================================================
+   TEMA: MIDNIGHT (dark navy profundo)
+========================================================= */
+[data-theme="midnight"] {
+  --paper: #001A2E;
+  --paper-mid: #002440;
+  --rule: #143550;
+  --rule-strong: #2A4D68;
+  --muted: #5A7185;
+  --body: #EAF1F6;
+  --heading: #FFFFFF;
+  --navy: #6BA8D9;
+  --navy-2: #5590C4;
+  --gold: #B7985D;
+  --gold-2: #CCAE7C;
+  --green: #6BE6B0;
+  --green-bg: rgba(107,230,176,0.12);
+  --amber: #D4A657;
+  --amber-bg: rgba(212,166,87,0.12);
+  --red: #E08585;
+  --red-bg: rgba(224,133,133,0.12);
+  --shadow-card: 0 1px 3px rgba(0,0,0,.25), 0 0 0 1px rgba(255,255,255,.04);
+  --shadow-popup: 0 4px 16px rgba(0,0,0,.35), 0 0 0 1px rgba(255,255,255,.04);
+}
+
+[data-theme="midnight"] .sidebar-logo-mark rect { fill: rgba(255,255,255,0.03); }
+[data-theme="midnight"] .topbar { background: var(--paper); border-bottom-color: var(--rule); }
+[data-theme="midnight"] .btn--primary { color: #001A2E; }
+[data-theme="midnight"] .login-screen { background: #00101E; }
 
 /* =========================================================
    RESET & BASE
@@ -1395,6 +1446,50 @@ th.sort-asc .th-sort-icon, th.sort-desc .th-sort-icon { opacity: 1; }
 .gap-8 { gap: 8px; }
 .gap-12 { gap: 12px; }
 .flex-1 { flex: 1; }
+
+/* =========================================================
+   HEATMAP TABLE (Tendência do ciclo)
+========================================================= */
+.heatmap-table { width: 100%; border-collapse: collapse; font-size: 0.786rem; }
+.heatmap-table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--paper-mid);
+  border-bottom: 1px solid var(--rule-strong);
+  padding: 8px 10px;
+  font-size: 0.714rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  white-space: nowrap;
+  z-index: 3;
+  text-align: center;
+  min-width: 52px;
+}
+.heatmap-table tbody tr { border-bottom: 1px solid var(--rule); transition: background 80ms; }
+.heatmap-table tbody tr:last-child { border-bottom: none; }
+.heatmap-table tbody tr:hover { background: var(--paper-mid); }
+.heatmap-table tbody td { padding: 6px 8px; text-align: center; white-space: nowrap; }
+
+.heat-cell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-sm);
+  font-family: var(--font-mono);
+  font-size: 0.714rem;
+  font-weight: 600;
+  cursor: default;
+  transition: transform 100ms, box-shadow 100ms;
+}
+.heat-cell:hover { transform: scale(1.15); box-shadow: var(--shadow-popup); }
+.heat-ok     { background: var(--green-bg); color: var(--green); }
+.heat-warn   { background: var(--amber-bg); color: var(--amber); }
+.heat-bad    { background: var(--red-bg);   color: var(--red);   }
+.heat-absent { color: var(--muted); opacity: 0.45; }
 
 /* =========================================================
    PRINT (para relatório inline)

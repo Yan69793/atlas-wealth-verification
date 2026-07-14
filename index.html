@@ -4,7 +4,10 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>ATLAS Wealth Verification · Meridian Advisory</title>
-  <link rel="stylesheet" href="platform-styles.css?v=20260612l" />
+  <link rel="stylesheet" href="platform-styles.css?v=20260714" />
+
+  <!-- Design Tokens — JS puro, antes dos scripts JSX -->
+  <script src="platform-tokens.js?v=20260714"></script>
 
   <!-- React 18.3.1 + Babel Standalone 7.29.0 (SRI de referência carteiras-app) -->
   <script
@@ -46,6 +49,18 @@
     crossorigin="anonymous"
   ></script>
 
+  <!-- Chart.js 4.4.0 — gráficos canvas para aba Tendência -->
+  <script
+    src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"
+    crossorigin="anonymous"
+  ></script>
+
+  <!-- TanStack Virtual 3.0.0 — virtualização de listas grandes -->
+  <script
+    src="https://unpkg.com/@tanstack/react-virtual@3.0.0/build/umd/index.production.js"
+    crossorigin="anonymous"
+  ></script>
+
   <!-- Parser de importação (CSV/Excel) — JS puro, sem Babel -->
   <script src="platform-parsers.js?v=20260611e"></script>
 
@@ -57,6 +72,10 @@
 
   <!-- 1c. Risk scoring (carregado depois de platform-data.js — usa window.AtlasData._internal) -->
   <script src="platform-data-risk.js?v=20260613a"></script>
+
+  <!-- 1d. Dados de auditoria (LGPD, gitignored — opcionais; alimentam a aba Tendência) -->
+  <script src="platform-data-audit.js?v=20260714" onerror="void(0)"></script>
+  <script src="platform-historico.js?v=20260714" onerror="void(0)"></script>
 
   <!-- 2. Utilitários, ícones, gráficos (Babel JSX) -->
   <script type="text/babel" src="platform-utils.jsx?v=20260612g"></script>
@@ -74,8 +93,9 @@
   <script type="text/babel" src="platform-usuarios.jsx?v=20260611d"></script>
 
   <script type="text/babel" src="platform-risco.jsx?v=20260613a"></script>
+  <script type="text/babel" src="platform-tendencia.jsx?v=20260714"></script>
 
   <!-- 4. App shell — deve ser carregado por ÚLTIMO (monta o ReactDOM) -->
-  <script type="text/babel" src="platform-app.jsx?v=20260611d"></script>
+  <script type="text/babel" src="platform-app.jsx?v=20260714"></script>
 </body>
 </html>
