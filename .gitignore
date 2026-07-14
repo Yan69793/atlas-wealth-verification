@@ -1,21 +1,101 @@
-# Dependências
-node_modules/
+# =====================================================================
+# POLÍTICA: NEGAR POR PADRÃO (LGPD)
+#
+# Nada é versionado a menos que liberado explicitamente na seção 3.
+#
+# Motivo: enumerar o que excluir falhou cinco vezes seguidas. SmartBrain,
+# audits/*/audit.json, reports/*/data.js, fixtures de teste e capturas do
+# .playwright-mcp entraram no git porque cada saída nova do pipeline
+# nascia FORA da lista de exclusão. Enumerar exige lembrar; negar por
+# padrão não exige nada. Um artefato novo só entra se alguém decidir
+# liberá-lo aqui, de propósito.
+#
+# Lembrete: .gitignore NÃO solta arquivo já rastreado. Para tirar algo do
+# git sem apagar do disco: git rm --cached <arquivo>
+# =====================================================================
 
-# Artefatos de build
+# --- 1) Negar tudo ---------------------------------------------------
+*
+
+# --- 2) Permitir que o git desça nos diretórios -----------------------
+# Sem isto, o git para no primeiro nível e nada da seção 3 é alcançado.
+!*/
+
+# --- 3) Liberar código-fonte e documentação ---------------------------
+!*.jsx
+!*.js
+!*.mjs
+!*.ts
+!*.py
+!*.ps1
+!*.md
+!*.css
+!*.html
+!*.json
+!*.toml
+!*.yml
+!*.yaml
+!.gitignore
+!.gitattributes
+
+# Templates com dado sintético (verificados: sem dado real)
+!/docs/templates/*.csv
+!/betting_ev_engine/data/*.csv
+
+# =====================================================================
+# 4) RE-NEGAÇÃO — vem DEPOIS de propósito: sobrepõe a seção 3.
+#    Diretório negado não é percorrido, então nada dentro dele volta.
+# =====================================================================
+
+# --- 4a) Dependências e build ----------------------------------------
+# Obrigatório: a seção 3 liberaria todo .js/.json dentro de node_modules.
+node_modules/
 dist/
 build/
 .cache/
 
-# Variáveis de ambiente
+# --- 4b) LGPD: dado real de cliente ----------------------------------
+# Pastas de dado operacional real (PDFs, relatórios, dados de clientes)
+/audits/
+/SmartBrain/
+Verificação Mensal de Carteiras Mirabaud/
+Verificação Mensal de Carteiras/
+Verificação de carteiras/
+
+# Capturas e dumps de página: renderizam o dashboard com dado real.
+# Os .png não são pesquisáveis por grep — varredura textual não os pega.
+/.playwright-mcp/
+
+# Gabaritos de teste congelados a partir de audit.json real
+/audit-engine/tests/fixtures/
+
+# Dado real embutido em JS (alimenta o app; migra para R2 no Projeto 3)
+platform-data-real.js
+platform-data-audit.js
+platform-historico.js
+data.js
+data.json
+historico.js
+historico.json
+
+# --- 4c) Binários que carregam dado real ------------------------------
+*.pdf
+*.docx
+*.xlsx
+*.xls
+*.zip
+
+# --- 4d) Efêmero e ambiente ------------------------------------------
 .env
 .env.local
 .env.*.local
-
-# Logs
 *.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+
+# Configuração local do Claude Code (por máquina, não compartilhar)
+.claude/settings.local.json
+terminals/
+docs/terminal*/
+.archive/
 
 # Sistema operacional
 .DS_Store
@@ -28,23 +108,6 @@ desktop.ini
 *.swp
 *~
 
-# LGPD — pastas com dados operacionais reais (PDFs, relatórios, dados de clientes)
-Verificação Mensal de Carteiras Mirabaud/
-Verificação Mensal de Carteiras/
-Verificação de carteiras/
-SmartBrain/
-
-# LGPD — dados reais de clientes embutidos no JS (não versionar)
-platform-data-real.js
-platform-data-audit.js
-platform-historico.js
-
-# Binários e arquivos grandes
-*.pdf
-*.docx
-*.xlsx
-*.zip
-
 # Editores
 .vscode/settings.json
 .idea/
@@ -52,19 +115,3 @@ platform-historico.js
 *.ntvs*
 *.njsproj
 *.sln
-
-# Sessões de terminal
-terminals/
-
-# Arquivo morto (legacy)
-.archive/
-
-# Dado gerado — nunca versionar (alimenta o app; migra para R2 no Projeto 3)
-data.json
-data.js
-historico.json
-historico.js
-audits/*/input/
-
-# Terminais e docs de sessao (dados efemeros)
-docs/terminal*/
