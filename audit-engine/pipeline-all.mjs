@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Pipeline completo 2024-01 a 2026-06 (30 meses):
+ * Pipeline completo (ver PRIMEIRO_AUDITAVEL/ULTIMO_AUDITAVEL abaixo):
  *   1. Extrai PDFs de cada mes (parsePdfBookFolder)
  *   2. Roda audit-engine
  *   3. Escreve audit.json por mes
@@ -33,18 +33,28 @@ const ROOT_ARG = args.includes('--root') ? args[args.indexOf('--root') + 1] : nu
 const ROOT = path.resolve(ROOT_ARG || process.env.ATLAS_DATA_ROOT || path.join(__dirname, '..'));
 const AUDITS_DIR = path.join(ROOT, 'audits');
 
+/**
+ * Meses auditáveis: 2023-06 a 2026-06.
+ *
+ * A base histórica começa em 2023-05, e um mês só é auditável se o anterior
+ * existir — o engine compara baseline contra referência. Por isso 2023-05 é
+ * dado de baseline, não mês auditado: seu antecessor (2023-04) não foi
+ * ingerido. Inventar um baseline para ele produziria variação de PL contra o
+ * nada, ou seja, achado falso em toda carteira.
+ */
+const PRIMEIRO_AUDITAVEL = '2023-06'; // baseline: 2023-05
+const ULTIMO_AUDITAVEL = '2026-06';
+
 function generateMonths() {
   const months = [];
-  for (let y = 2024; y <= 2026; y++) {
+  for (let y = 2023; y <= 2026; y++) {
     const end = (y === 2026) ? 6 : 12;
     for (let m = 1; m <= end; m++) {
       const mes = `${y}-${String(m).padStart(2, '0')}`;
-      let baseline;
-      if (m === 1) {
-        baseline = `${y - 1}-12`;
-      } else {
-        baseline = `${y}-${String(m - 1).padStart(2, '0')}`;
-      }
+      if (mes < PRIMEIRO_AUDITAVEL || mes > ULTIMO_AUDITAVEL) continue;
+      const baseline = (m === 1)
+        ? `${y - 1}-12`
+        : `${y}-${String(m - 1).padStart(2, '0')}`;
       months.push({ mes, baseline });
     }
   }
@@ -130,7 +140,7 @@ async function processMonth({ mes, baseline }) {
 }
 
 async function main() {
-  console.log('=== PIPELINE 2024-01 a 2026-06 ===');
+  console.log(`=== PIPELINE ${PRIMEIRO_AUDITAVEL} a ${ULTIMO_AUDITAVEL} ===`);
   console.log(`Root: ${ROOT}`);
   console.log(`Meses: ${MONTHS.length} (${MONTHS[0].mes} a ${MONTHS[MONTHS.length-1].mes})`);
   if (FORCE) console.log('Modo: FORCE (reprocessa todos)');
