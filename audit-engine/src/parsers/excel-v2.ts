@@ -177,7 +177,7 @@ function parseCarteiraSheet(
     total,
     nAtivosBase,
     nAtivosRef,
-    fonte: { tipo: 'xlsx', template: 'mirabaud-v2', arquivo },
+    fonte: { tipo: 'xlsx', template: 'custodian-xlsx-v2', arquivo },
   };
 }
 

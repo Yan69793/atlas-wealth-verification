@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Extract portfolio data from Mirabaud Book PDFs.
+Extract portfolio data from custodian "Book" PDFs.
 
 Usage:
     python scripts/extract-pdfs.py --pasta CAMINHO --mes 2026-05 --baseline 2026-04
@@ -472,7 +472,7 @@ def process_pdf(filepath: str, mes: str, baseline: str) -> dict | None:
         'total': total,
         'nAtivosBase': n_base,
         'nAtivosRef': n_ref,
-        'fonte': {'tipo': 'pdf', 'template': 'book-mirabaud-v1', 'arquivo': fname},
+        'fonte': {'tipo': 'pdf', 'template': 'custodian-pdf-v1', 'arquivo': fname},
     }
 
     return result
@@ -481,7 +481,7 @@ def process_pdf(filepath: str, mes: str, baseline: str) -> dict | None:
 # ── main ──────────────────────────────────────────────────────────────────────
 
 def main():
-    parser = argparse.ArgumentParser(description='Extrair dados de PDFs de carteiras Mirabaud')
+    parser = argparse.ArgumentParser(description='Extrair dados de PDFs de carteiras (formato Book)')
     parser.add_argument('--pasta', required=True, help='Pasta com os Book_*.pdf')
     parser.add_argument('--mes', required=True, help='Mês de referência (YYYY-MM)')
     parser.add_argument('--baseline', required=True, help='Mês baseline (YYYY-MM)')

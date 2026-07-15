@@ -44,7 +44,7 @@ function New-PerMonthReport($monthDir, $dashboardJson, $periodo) {
     $html = Get-Content $TEMPLATE -Raw -Encoding UTF8
 
     $refLabel = $periodo.referenciaLabel
-    $pageTitle = "Mirabaud · Verificação Mensal de Carteiras · $refLabel"
+    $pageTitle = "Verificação Mensal de Carteiras · $refLabel"
 
     # Atualizar titulo
     $html = $html -replace '<title>[^<]+</title>', "<title>$pageTitle</title>"
@@ -165,7 +165,7 @@ function New-LandingPage($months) {
   <div class="container">
     <header>
       <h1>Relatórios Mensais</h1>
-      <p>Verificação de carteiras — Mirabaud Family Office</p>
+      <p>Verificação de carteiras</p>
     </header>
     <table>
       <thead>

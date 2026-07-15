@@ -30,7 +30,7 @@ describe('cotas sem operacao', () => {
       ],
       nAtivosBase: 1,
       nAtivosRef: 1,
-      fonte: { tipo: 'xlsx', template: 'mirabaud-v2', arquivo: 'test.xlsx' },
+      fonte: { tipo: 'xlsx', template: 'custodian-xlsx-v2', arquivo: 'test.xlsx' },
     };
 
     const findings = cotasSemOperacaoRule.run(carteira, { mes: '2026-04', baseline: '2026-03', toleranciaPL: 0.003 });

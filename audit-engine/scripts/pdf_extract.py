@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Extrai dados estruturados de um relatorio 'Book_<carteira>_<AAAA>_<MM>.pdf' (Mirabaud/SmartBrain).
+"""Extrai dados estruturados de um relatorio 'Book_<carteira>_<AAAA>_<MM>.pdf' (formato custodiante/SmartBrain).
 
 Uso: python pdf_extract.py <arquivo.pdf> --mes 2026-05
 

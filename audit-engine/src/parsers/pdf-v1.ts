@@ -146,7 +146,7 @@ export async function parsePdfBookFolder(options: PdfIngestOptions): Promise<Car
       nAtivosRef: raw.nAtivosRef ?? 0,
       fonte: {
         tipo: 'pdf',
-        template: 'book-mirabaud-v1',
+        template: 'custodian-pdf-v1',
         arquivo: raw.fonte?.arquivo ?? '',
       },
     };
