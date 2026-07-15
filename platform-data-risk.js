@@ -64,15 +64,23 @@
     // MERCADO (0-30)
     var mercado = 0;
     var last6Start = Math.max(0, mi - 5);
-    var monthsBelowCDI = 0, plPeak = 0;
+    var monthsBelowCDI = 0;
+
+    // Drawdown sobre indice de retorno, nao sobre PL.
+    // O PL embute captacao liquida (plCurr = plPrev * (1 + ret) + nnm), entao
+    // medir queda de PL fazia resgate de cliente pontuar como risco de mercado:
+    // quem sacava por motivo alheio a risco (imposto, compra de imovel) ganhava
+    // ate 12 pontos sem ter perdido nada na marcacao. O indice abaixo compoe
+    // apenas retArr, que e a serie de rentabilidade, imune a fluxo.
+    var idxCurr = 1, idxPeak = 0;
     for (var j = last6Start; j <= mi; j++) {
       if (D.MONTHS[j] < p.inception) continue;
       if ((pd.retArr[j] || 0) < (D.CDI[D.MONTHS[j]] || 0)) monthsBelowCDI++;
-      var pl6 = pd.plArr[j] || 0;
-      if (pl6 > plPeak) plPeak = pl6;
+      idxCurr = idxCurr * (1 + (pd.retArr[j] || 0));
+      if (idxCurr > idxPeak) idxPeak = idxCurr;
     }
     mercado += Math.min(18, monthsBelowCDI * 3);
-    var drawdown6M = plPeak > 0 ? Math.max(0, (plPeak - row.plCurr) / plPeak) : 0;
+    var drawdown6M = idxPeak > 0 ? Math.max(0, (idxPeak - idxCurr) / idxPeak) : 0;
     if      (drawdown6M > 0.05) mercado += 12;
     else if (drawdown6M > 0.02) mercado += 6;
     else if (drawdown6M > 0.01) mercado += 3;
