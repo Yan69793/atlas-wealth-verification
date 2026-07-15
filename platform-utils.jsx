@@ -149,19 +149,19 @@
         d.observations[code + '|' + month] = text;
       });
     },
-    isAuthed() {
-      const d = storage.get();
-      return d.auth && d.auth.sessionUntil > Date.now();
-    },
-    login(password) {
-      // senha cosmética: atlas2026
-      if (password !== 'atlas2026') return false;
-      storage.update(d => { d.auth = { sessionUntil: Date.now() + 24 * 3600 * 1000 }; });
-      return true;
-    },
-    logout() {
-      storage.update(d => { d.auth = { sessionUntil: 0 }; });
-    },
+    /* Autenticação não é responsabilidade deste app.
+     *
+     * Existia aqui uma senha fixa comparada no navegador e uma sessão gravada
+     * no localStorage. Isso não era controle de acesso: a senha estava no
+     * bundle, no README e no placeholder do próprio campo, e quem tivesse o
+     * arquivo já tinha o dado. Sinalizava proteção sem proteger, que é pior do
+     * que não ter portão nenhum.
+     *
+     * O perímetro é do deploy: Cloudflare Access na frente, e o Worker
+     * validando o JWT por conta própria antes de servir dado. Rodando local,
+     * não há perímetro, e o app assume que quem abriu o arquivo pode ver o que
+     * está nele.
+     */
     getSelectedMonth() {
       const d = storage.get();
       return (d.ui && d.ui.selectedMonth) || (window.AtlasData ? window.AtlasData.CURRENT_MONTH : '2026-04');

@@ -12,7 +12,7 @@ O `platform-data.js` (1521 LOC) é a camada de dados inteira: geração de demo,
 
 Dados demo são gerados deterministicamente via seed no carregamento. Dados reais ficam em `platform-data-real.js` (gitignored, LGPD). Importação de CSV/XLSX/PDF substitui o dataset inteiro em memória via `importPortfolioData()`. Nenhum dado persiste além do localStorage de autenticação e observações de analista.
 
-Autenticação é cosmética (localStorage, senha demo `atlas2026`). Documentado no README como intencional.
+RESOLVIDO (jul/2026): a senha fixa saiu. O app não autentica por desenho, e o perímetro é do deploy. `tests/validate.js` falha se a credencial voltar.
 
 ---
 

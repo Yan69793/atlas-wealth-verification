@@ -93,9 +93,13 @@ ok('getCDI() definida em platform-data.js',
 
 const appContent = fs.readFileSync(path.join(ROOT, 'platform-app.jsx'), 'utf8');
 
-ok('LoginScreen definida em platform-app.jsx', appContent.includes('function LoginScreen'));
+// Antes se exigia `function LoginScreen` aqui. A tela saiu junto com a senha
+// fixa: autenticação é do perímetro (Cloudflare Access), não deste app. O que
+// importa checar é que o shell monta e roteia.
 ok('ReactDOM.createRoot ou render presente',
   appContent.includes('createRoot') || appContent.includes('ReactDOM.render'));
+ok('AppShell e roteador definidos em platform-app.jsx',
+  /function AppShell/.test(appContent) && /function pageFromPath/.test(appContent));
 
 // ─── 5. platform-comparativo.jsx — Fix 1 presente ─────────────────────────
 
@@ -132,9 +136,31 @@ if (fs.existsSync(readmePath)) {
     /demo|sint[eé]tico/i.test(readme));
   ok('README menciona que dados reais\/LGPD ficam fora do Git',
     /LGPD|dados reais|fora do Git|ignorad/i.test(readme));
-  ok('README menciona a senha demo atlas2026',
-    /atlas2026/.test(readme));
 }
+
+// ─── 8b. Sem credencial fixa no código ──────────────────────────────────────
+//
+// O check anterior aqui EXIGIA que o README citasse a senha `atlas2026`, o que
+// documentava a credencial em vez de questioná-la. A senha saiu: era comparada
+// no navegador, ficava no bundle e no README, e sinalizava proteção sem
+// proteger. Autenticação agora é do perímetro (Cloudflare Access).
+//
+// Este check é o inverso do antigo: garante que ela não volte.
+
+const FONTES_APP = fs.readdirSync(ROOT)
+  .filter(f => /^platform-.*\.(jsx|js)$/.test(f));
+
+let comSenhaFixa = [];
+for (const f of FONTES_APP) {
+  const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
+  // Ignora linhas de comentário: os arquivos explicam por que a senha saiu.
+  const codigo = src.split('\n')
+    .filter(l => !/^\s*(\/\/|\*|\/\*)/.test(l))
+    .join('\n');
+  if (/atlas2026/.test(codigo)) comSenhaFixa.push(f);
+}
+ok('nenhuma senha fixa nos fontes do app', comSenhaFixa.length === 0,
+  comSenhaFixa.length ? `encontrada em: ${comSenhaFixa.join(', ')}` : 'ok');
 
 // ─── 9. platform-risco.jsx — estrutura mínima ───────────────────────────────
 

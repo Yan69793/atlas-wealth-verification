@@ -2,7 +2,7 @@
 
 **Versão:** 0.1 · **Ambiente:** Protótipo / Demo  
 **Repositório:** https://github.com/Yan69793/atlas-wealth-verification  
-**Acesso online (GitHub Pages):** https://yan69793.github.io/atlas-wealth-verification/
+**Acesso:** local, via `npm run serve` (http://localhost:7821). Nao ha deploy publico.
 
 ---
 
@@ -58,8 +58,7 @@ npm run serve
 ### Acesso
 
 - **URL:** `http://localhost:7821`
-- **Senha demo:** `atlas2026`
-- **Alternativa online (sem instalação):** https://yan69793.github.io/atlas-wealth-verification/
+- O app nao pede senha: autenticacao e responsabilidade do perimetro do deploy.
 
 > Os dados exibidos são completamente sintéticos. Nenhuma informação real é carregada ou transmitida.
 
@@ -211,7 +210,7 @@ A perda estimada é calculada pela exposição de cada carteira às classes afet
 | Limitação | Detalhe |
 |---|---|
 | Dados sintéticos | Todos os dados exibidos foram gerados algoritmicamente para fins de demonstração. Não representam carteiras reais. |
-| Autenticação demonstrativa | A senha `atlas2026` é verificada apenas no lado cliente (localStorage). Não há controle de acesso real. |
+| App sem autenticacao propria | Por desenho. Servir com dado real exige perimetro na frente (Cloudflare Access). |
 | Sem backend ou persistência | O sistema é 100% estático. Alterações não são salvas. |
 | Importação não implementada | O parser de PDF/Excel/CSV/Markdown está especificado mas aguarda desenvolvimento. |
 | Sem controle de permissões | Todos os usuários têm acesso total no protótipo. |
@@ -240,7 +239,6 @@ Em ordem de prioridade para viabilizar uso produtivo:
 Use este roteiro em uma apresentação de 15–20 minutos:
 
 - [ ] Abrir o app (online ou local)
-- [ ] Fazer login com senha demo `atlas2026`
 - [ ] **Dashboard** — mostrar visão consolidada: PL total, status, gráfico de evolução
 - [ ] **Selecionar mês** — demonstrar navegação temporal
 - [ ] **Carteira individual** — abrir uma carteira COM ALERTA, mostrar composição e achados

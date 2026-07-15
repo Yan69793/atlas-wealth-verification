@@ -39,8 +39,12 @@ AtlasData, AtlasParsers, AtlasUtils, AtlasIcons, AtlasCharts, AtlasUI, AtlasCont
 
 ## Autenticação
 
-- A autenticação atual é demo/cosmética — senha `atlas2026` verificada no lado cliente via localStorage
-- Não tratar como autenticação real; não confiar nela para controle de acesso
+- Este app não autentica. Não há tela de login, senha nem sessão, por desenho
+- A senha fixa `atlas2026` foi removida: ficava no bundle e no README, então
+  sinalizava proteção sem proteger. `tests/validate.js` falha se ela voltar
+- O perímetro é do deploy: Cloudflare Access na frente, e o Worker validando o
+  JWT por conta própria antes de servir dado
+- Não reintroduzir gate no cliente. Comparar credencial no navegador é teatro
 
 ## Antes de finalizar qualquer mudança
 

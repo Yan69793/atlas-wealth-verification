@@ -18,8 +18,6 @@ npm run serve
 # Abre em http://localhost:7821
 ```
 
-Senha demo: `atlas2026`
-
 ## Como rodar os testes
 
 ```bash
@@ -32,9 +30,19 @@ Os testes validam integridade estrutural dos arquivos (sem execução de browser
 
 ## Autenticação
 
-**A autenticação atual é cosmética / demo.**
+**Este app não autentica ninguém. O perímetro é responsabilidade do deploy.**
 
-A senha `atlas2026` é verificada no lado cliente via localStorage. Não há backend, não há sessão real, não há controle de acesso efetivo. O sistema é adequado apenas para uso interno controlado.
+Existia aqui uma senha fixa comparada no navegador, com a sessão gravada no
+localStorage. Foi removida: a senha estava no bundle, no README e no placeholder
+do próprio campo, então qualquer um que tivesse o arquivo já tinha o dado. Ela
+sinalizava proteção sem proteger, que é pior do que não ter portão nenhum.
+
+Quem serve este app com dado real precisa pôr autenticação de verdade na frente.
+A arquitetura desenhada é Cloudflare Access como perímetro, com um Worker que
+valida o JWT do Access por conta própria antes de responder com dado, de modo que
+furar o perímetro não baste.
+
+Rodando local com dados sintéticos, não há o que proteger.
 
 ## Dados
 
@@ -75,7 +83,7 @@ Regras do fluxo de PDF:
 
 | Risco | Severidade | Observação |
 |---|---|---|
-| Autenticação localStorage (sem backend) | Médio | Demo apenas — não usar em produção |
+| App sem autenticação própria | Médio | Por desenho. Servir com dado real exige perímetro na frente |
 | CDN sem fallback local | Baixo | App falha se unpkg.com offline |
 | `innerHTML` no módulo de relatório | Médio | Entrada deve ser confiável (dados internos) |
 | App sem bundle empacotado | Baixo | Babel compila JSX no browser em cada carregamento |

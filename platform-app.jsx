@@ -66,87 +66,13 @@
      LOGIN
   ============================================================ */
 
-  function LoginScreen({ onLogin }) {
-    const [password, setPassword] = useState('');
-    const [error, setError]       = useState('');
-    const [loading, setLoading]   = useState(false);
-    const inputRef = useRef(null);
-
-    useEffect(() => { inputRef.current && inputRef.current.focus(); }, []);
-
-    function handleSubmit(e) {
-      e.preventDefault();
-      if (password.length < 6) { setError('Mínimo 6 caracteres.'); return; }
-      setLoading(true);
-      setError('');
-      setTimeout(() => {
-        const ok = window.AtlasUtils.storage.login(password);
-        if (ok) {
-          onLogin();
-        } else {
-          setError('Senha incorreta.');
-          setLoading(false);
-        }
-      }, 300);
-    }
-
-    return (
-      <div className="login-screen">
-        {/* Left strip */}
-        <div className="login-strip" aria-hidden="true">
-          <div className="login-strip-label">Meridian Advisory</div>
-          <div className="login-strip-year">2026</div>
-        </div>
-
-        {/* Background watermark */}
-        <div className="login-watermark" aria-hidden="true">ATLAS</div>
-
-        {/* Main */}
-        <div className="login-main">
-          {/* Geometric monogram — architectural A */}
-          <div className="login-monogram" aria-hidden="true">
-            <svg width="56" height="50" viewBox="0 0 56 50" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <polygon points="28,2 54,48 2,48" fill="none" stroke="#C4A228" strokeWidth="1.4" strokeLinejoin="round" />
-              <line x1="12" y1="36" x2="44" y2="36" stroke="#C4A228" strokeWidth="1.4" />
-            </svg>
-          </div>
-
-          <div className="login-separator" />
-
-          <div className="login-product">Atlas</div>
-          <div className="login-firm">Verificação de Carteiras · Meridian Advisory</div>
-
-          <form className="login-form" onSubmit={handleSubmit}>
-            <div>
-              <label className="login-field-label" htmlFor="atlas-pwd">Senha de acesso</label>
-              <input
-                id="atlas-pwd"
-                ref={inputRef}
-                type="password"
-                className="login-field-input"
-                placeholder="••••••••"
-                value={password}
-                onChange={e => { setPassword(e.target.value); setError(''); }}
-                autoComplete="current-password"
-                disabled={loading}
-              />
-            </div>
-
-            {error && <div className="login-error">{error}</div>}
-
-            <button type="submit" className="login-btn" disabled={loading || !password}>
-              {loading ? 'Verificando...' : 'Entrar'}
-            </button>
-          </form>
-
-          <div className="login-note">
-            Ambiente de demonstração · Dados sintéticos<br />
-            Sem vínculo com carteiras ou clientes reais
-          </div>
-        </div>
-      </div>
-    );
-  }
+  /* A LoginScreen foi removida junto com a senha fixa.
+   *
+   * Ela também exibia "Ambiente de demonstração, dados sintéticos, sem vínculo
+   * com carteiras ou clientes reais". Numa instância com dado real carregado,
+   * esse aviso era falso, e a tela que o mostrava era a primeira coisa que o
+   * usuário via.
+   */
 
   /* ============================================================
      MONOGRAMA / LOGO
@@ -220,22 +146,14 @@
             {NAV_GESTAO.map(item => <NavItem key={item.id} item={item} />)}
           </div>
 
+          {/* Sem botão de sair: não há sessão neste app para encerrar. Atrás de
+              um perímetro (Cloudflare Access), quem encerra a sessão é o
+              perímetro, em /cdn-cgi/access/logout, e não o app. */}
           <div className="sidebar-footer">
             <div className="sidebar-user">
               <div className="sidebar-user-name">Administrador</div>
               <div>Meridian Advisory</div>
             </div>
-            <button
-              className="sidebar-item"
-              onClick={() => {
-                window.AtlasUtils.storage.logout();
-                window.location.hash = '#/login';
-                window.location.reload();
-              }}
-            >
-              <Icon name="logout" size={16} />
-              Sair
-            </button>
           </div>
         </nav>
         {open && <div className="sidebar-overlay" onClick={onClose} aria-hidden="true" />}
@@ -329,7 +247,8 @@
   ============================================================ */
 
   function pageFromPath(path) {
-    if (path === '/login') return 'login';
+    // '/login' não é mais uma página. Cai no default junto com qualquer rota
+    // desconhecida; o redirect no AppRoot leva ao dashboard em seguida.
     if (path === '/dashboard') return 'dashboard';
     if (path.startsWith('/carteira/')) return 'carteira';
     if (path === '/achados') return 'achados';
@@ -479,9 +398,6 @@
     const { location, navigate } = useRouter();
     const { toasts, addToast }   = useToast();
 
-    // Auth state
-    const [authed, setAuthed] = useState(() => storage.isAuthed());
-
     // Re-render quando os dados mudam (import/restore demo)
     const [dataVersion, setDataVersion] = useState(0);
     useEffect(() => {
@@ -497,36 +413,16 @@
       storage.setSelectedMonth(m);
     }, []);
 
-    // Redirect logic
+    // /login era a rota do portão que este app não tem mais. Quem chegar nela
+    // por link antigo ou favorito vai para o dashboard.
     useEffect(() => {
-      const path = location.path;
-      if (!authed && path !== '/login') {
-        navigate('/login');
-      } else if (authed && path === '/login') {
-        navigate('/dashboard');
-      }
-    }, [authed, location.path]);
-
-    function handleLogin() {
-      setAuthed(true);
-      navigate('/dashboard');
-    }
-
-    if (!authed || location.path === '/login') {
-      return (
-        <MonthContext.Provider value={{ selectedMonth, setSelectedMonth }}>
-          <ToastContext.Provider value={{ toasts, addToast }}>
-            <LoginScreen onLogin={handleLogin} />
-            <ToastContainer toasts={toasts} />
-          </ToastContext.Provider>
-        </MonthContext.Provider>
-      );
-    }
+      if (location.path === '/login') navigate('/dashboard');
+    }, [location.path]);
 
     const page = pageFromPath(location.path);
 
     return (
-      <AuthContext.Provider value={{ authed, logout: () => { storage.logout(); setAuthed(false); } }}>
+      <AuthContext.Provider value={{ authed: true, logout: null }}>
         <MonthContext.Provider value={{ selectedMonth, setSelectedMonth }}>
           <ToastContext.Provider value={{ toasts, addToast }}>
             <AppShell page={page} onNavigate={path => { window.location.href = path; }}>

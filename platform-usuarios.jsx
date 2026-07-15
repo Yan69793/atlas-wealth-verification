@@ -7,19 +7,14 @@
   const ROLES = ['Administrador', 'Analista', 'Visualizador'];
 
   function Usuarios() {
-    const { useToast, useAuth } = window.AtlasContexts;
-    const { addToast }          = useToast();
-    const { logout }            = useAuth();
+    const { useToast }  = window.AtlasContexts;
+    const { addToast }  = useToast();
 
     const [users, setUsers] = useState(() => storage.get().users || []);
 
     // Form: novo usuário
     const [form, setForm] = useState({ name: '', email: '', role: ROLES[1] });
     const [formErr, setFormErr] = useState('');
-
-    // Troca de senha
-    const [pwForm, setPwForm]   = useState({ current: '', next: '', confirm: '' });
-    const [pwErr,  setPwErr]    = useState('');
 
     function saveUsers(list) {
       storage.update(d => { d.users = list; });
@@ -42,16 +37,6 @@
       const updated = users.filter(u => u.id !== id);
       saveUsers(updated);
       addToast('Usuário removido.', 'info');
-    }
-
-    function handleChangePassword(e) {
-      e.preventDefault();
-      setPwErr('');
-      if (pwForm.current !== 'atlas2026') { setPwErr('Senha atual incorreta.'); return; }
-      if (pwForm.next.length < 6) { setPwErr('Nova senha deve ter no mínimo 6 caracteres.'); return; }
-      if (pwForm.next !== pwForm.confirm) { setPwErr('Senhas não coincidem.'); return; }
-      addToast('Senha atualizada. Faça login novamente.', 'info');
-      setTimeout(() => { logout(); navigate('#/login'); }, 1200);
     }
 
     return (
@@ -174,53 +159,14 @@
               </form>
             </div>
 
-            {/* Troca de senha */}
-            <div className="card">
-              <div style={{ fontWeight: 600, fontSize: '0.857rem', color: 'var(--heading)', marginBottom: 14 }}>
-                Trocar senha de acesso
-              </div>
-              <form onSubmit={handleChangePassword} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <div>
-                  <label style={{ fontSize: '0.714rem', color: 'var(--muted)', display: 'block', marginBottom: 4 }}>Senha atual</label>
-                  <input
-                    type="password"
-                    className="filter-select"
-                    style={{ width: '100%', boxSizing: 'border-box' }}
-                    value={pwForm.current}
-                    onChange={e => setPwForm(f => ({ ...f, current: e.target.value }))}
-                    autoComplete="current-password"
-                  />
-                </div>
-                <div>
-                  <label style={{ fontSize: '0.714rem', color: 'var(--muted)', display: 'block', marginBottom: 4 }}>Nova senha (mín. 6 caracteres)</label>
-                  <input
-                    type="password"
-                    className="filter-select"
-                    style={{ width: '100%', boxSizing: 'border-box' }}
-                    value={pwForm.next}
-                    onChange={e => setPwForm(f => ({ ...f, next: e.target.value }))}
-                    autoComplete="new-password"
-                  />
-                </div>
-                <div>
-                  <label style={{ fontSize: '0.714rem', color: 'var(--muted)', display: 'block', marginBottom: 4 }}>Confirmar nova senha</label>
-                  <input
-                    type="password"
-                    className="filter-select"
-                    style={{ width: '100%', boxSizing: 'border-box' }}
-                    value={pwForm.confirm}
-                    onChange={e => setPwForm(f => ({ ...f, confirm: e.target.value }))}
-                    autoComplete="new-password"
-                  />
-                </div>
-                {pwErr && (
-                  <div style={{ fontSize: '0.786rem', color: 'var(--red)' }}>{pwErr}</div>
-                )}
-                <button type="submit" className="btn btn--ghost" style={{ marginTop: 4 }}>
-                  Atualizar senha
-                </button>
-              </form>
-            </div>
+            {/* O card de troca de senha saiu junto com a autenticação.
+                Ele comparava a senha atual contra uma string fixa no bundle e
+                exibia "Senha atualizada" sem gravar nada: a próxima sessão
+                aceitava a senha antiga. Uma tela que finge ter mudado uma
+                credencial é pior do que a ausência dela.
+
+                Autenticação agora é do perímetro (Cloudflare Access), e é lá
+                que se gerencia quem entra. */}
           </div>
         </div>
       </div>

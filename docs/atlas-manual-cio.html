@@ -412,12 +412,12 @@
       <div class="cover-meta-value">0.2 · Jun/2026</div>
     </div>
     <div class="cover-meta-item">
-      <div class="cover-meta-label">App online</div>
-      <div class="cover-meta-value">yan69793.github.io/atlas-wealth-verification</div>
+      <div class="cover-meta-label">Acesso</div>
+      <div class="cover-meta-value">local, npm run serve</div>
     </div>
     <div class="cover-meta-item">
-      <div class="cover-meta-label">Senha demo</div>
-      <div class="cover-meta-value">atlas2026</div>
+      <div class="cover-meta-label">Autenticação</div>
+      <div class="cover-meta-value">perímetro do deploy</div>
     </div>
     <div class="cover-meta-item">
       <div class="cover-meta-label">Dados</div>
@@ -467,10 +467,11 @@
   </p>
 
   <div class="callout warning">
-    <strong>Nota sobre autenticação:</strong> a senha <code>atlas2026</code> é verificada
-    no lado do cliente via <code>localStorage</code>. Não há controle de acesso real.
-    Qualquer pessoa com o link pode acessar inspecionando o código-fonte.
-    Para uso com dados reais, isso precisa ser substituído por autenticação de servidor.
+    <strong>Nota sobre autenticação:</strong> este app não autentica ninguém, por desenho.
+    Havia uma senha fixa comparada no navegador, e ela foi removida: ficava no bundle,
+    então sinalizava proteção sem proteger. Servir com dados reais exige um perímetro na
+    frente. A arquitetura desenhada é Cloudflare Access, com o Worker validando o JWT
+    por conta própria antes de responder com dado.
   </div>
 
 
@@ -1017,7 +1018,7 @@
       <div class="step-num">1</div>
       <div class="step-content">
         <div class="step-title">Abrir o app e fazer login</div>
-        <div class="step-desc">yan69793.github.io/atlas-wealth-verification · senha: atlas2026</div>
+        <div class="step-desc">npm run serve, depois http://localhost:7821</div>
       </div>
     </div>
     <div class="step">
