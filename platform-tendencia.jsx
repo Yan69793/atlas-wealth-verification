@@ -180,13 +180,21 @@
     var mesInicio = H.mesesLabel[0];
     var mesFim    = H.mesesLabel[H.mesesLabel.length - 1];
 
+    // O ano vem de H.meses, nao fixo: uma janela que cruza o virada de ano
+    // (ex.: Nov a Abr) datava os dois extremos no ano final.
+    var anoIni = String(H.meses[0]).slice(0, 4);
+    var anoFim = String(H.meses[H.meses.length - 1]).slice(0, 4);
+    var periodoLabel = anoIni === anoFim
+      ? mesInicio + ' a ' + mesFim + ' de ' + anoFim
+      : mesInicio + '/' + anoIni + ' a ' + mesFim + '/' + anoFim;
+
     return React.createElement('div', null,
       /* ---- Cabecalho ---- */
       React.createElement('div', { className: 'page-header' },
         React.createElement('div', { className: 'page-eyebrow' }, 'Analise Longitudinal'),
         React.createElement('h1', { className: 'page-title' }, 'Tendencia do ciclo'),
         React.createElement('p', { className: 'page-subtitle' },
-          'Evolucao de ', mesInicio, ' a ', mesFim, ' de 2026 — ',
+          'Evolucao de ', periodoLabel, ' — ',
           Object.keys(H.carteiras).length, ' carteiras unicas ao longo do periodo, ',
           'comparadas mes a mes em vez de so contra o mes anterior.'
         )
