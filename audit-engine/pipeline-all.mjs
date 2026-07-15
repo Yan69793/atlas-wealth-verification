@@ -6,7 +6,11 @@
  *   3. Escreve audit.json por mes
  *
  * Idempotente: pula mes que ja tem audit.json valido.
- * Uso: node pipeline-all.mjs [--force] [--only 2024-03]
+ * Uso: node pipeline-all.mjs [--force] [--only 2024-03] [--root <dir>]
+ *
+ * --root aponta a raiz dos dados (onde vive audits/). Sem ele, usa
+ * ATLAS_DATA_ROOT ou o diretorio-pai. Consumido como submodule, o dado real
+ * fica no repo da instancia do cliente, fora desta arvore.
  */
 
 import fs from 'node:fs';
@@ -16,12 +20,18 @@ import { runEngine } from './dist/src/engine.js';
 import { parsePdfBookFolder } from './dist/src/parsers/pdf-v1.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ROOT = path.resolve(__dirname, '..');
-const AUDITS_DIR = path.join(ROOT, 'audits');
 
 const args = process.argv.slice(2);
 const FORCE = args.includes('--force');
 const ONLY = args.includes('--only') ? args[args.indexOf('--only') + 1] : null;
+
+// Raiz dos dados. Precisa ser externa: quando o engine é consumido como
+// submodule pela instância do cliente, o dado real vive no repo de fora e
+// nunca dentro desta árvore, que é o produto.
+// Precedência: --root > ATLAS_DATA_ROOT > diretório-pai (retrocompatível).
+const ROOT_ARG = args.includes('--root') ? args[args.indexOf('--root') + 1] : null;
+const ROOT = path.resolve(ROOT_ARG || process.env.ATLAS_DATA_ROOT || path.join(__dirname, '..'));
+const AUDITS_DIR = path.join(ROOT, 'audits');
 
 function generateMonths() {
   const months = [];
