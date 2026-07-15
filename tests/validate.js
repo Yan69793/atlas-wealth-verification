@@ -31,17 +31,28 @@ ok('index.html existe e não está vazio', indexHtml.length > 100);
 ok('charset utf-8 declarado', /charset\s*=\s*["']?utf-8/i.test(indexHtml));
 ok('lang pt-BR declarado', indexHtml.includes('lang="pt-BR"'));
 
-// Todos os scripts locais (sem CDN) devem existir como arquivo
-const localScripts = [...indexHtml.matchAll(/src="([^"h][^"?]*)(?:\?[^"]*)?"/g)]
-  .map(m => m[1])
-  .filter(s => !s.startsWith('http'));
+// Todos os scripts locais (sem CDN) devem existir como arquivo.
+//
+// Exceção: script declarado com onerror é overlay OPCIONAL. O dado real vive
+// no repo da instância do cliente, não neste, que é o produto. Sem o overlay o
+// app roda em modo demo — por isso o index.html tolera a ausência via
+// onerror="void(0)". Exigir o arquivo aqui contradiz esse desenho e faz a
+// suíte falhar num repo corretamente sem dado real.
+const localScriptTags = [...indexHtml.matchAll(/<script\b[^>]*\bsrc="([^"h][^"?]*)(?:\?[^"]*)?"[^>]*>/g)]
+  .filter(m => !m[1].startsWith('http'));
 
-ok('index.html lista scripts locais', localScripts.length > 0,
-  `encontrados: ${localScripts.length}`);
+ok('index.html lista scripts locais', localScriptTags.length > 0,
+  `encontrados: ${localScriptTags.length}`);
 
-for (const src of localScripts) {
+for (const m of localScriptTags) {
+  const src = m[1];
   const fp = path.join(ROOT, src);
-  ok(`arquivo referenciado existe: ${src}`, fs.existsSync(fp));
+  if (/\bonerror\s*=/.test(m[0])) {
+    ok(`overlay opcional tolera ausência: ${src}`, true,
+      fs.existsSync(fp) ? 'presente' : 'ausente (modo demo)');
+  } else {
+    ok(`arquivo referenciado existe: ${src}`, fs.existsSync(fp));
+  }
 }
 
 // ─── 2. Encoding — sem mojibake ────────────────────────────────────────────
