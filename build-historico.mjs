@@ -1,13 +1,55 @@
-/* Agrega audits/<mes>/audit.json (fev-jun 2026) num historico.json compacto
-   para a aba Tendencia do dashboard e para o relatorio do comite.
-   Rodar: node build-historico.mjs */
+/* Agrega audits/<mes>/audit.json num historico.json compacto para a aba
+   Tendencia do dashboard e para o relatorio do comite.
+
+   Rodar: node build-historico.mjs [--root <dir>] [--meses 12]
+
+   --root: raiz dos dados (onde vive audits/). Sem ele, usa ATLAS_DATA_ROOT ou
+   o diretorio do script. Precisa ser externa: consumido como submodule, o dado
+   real vive no repo da instancia do cliente e nunca nesta arvore, que e o
+   produto. Mesma precedencia do audit-engine/pipeline-all.mjs.
+
+   Os meses sao DESCOBERTOS em audits/, nao fixos: a lista estava cravada em
+   fev-jun/2026 e ja ignorava silenciosamente os outros 32 meses ingeridos. */
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const ROOT = path.dirname(fileURLToPath(import.meta.url));
-const MESES = ['2026-02', '2026-03', '2026-04', '2026-05', '2026-06'];
-const LABELS = { '2026-02': 'Fev', '2026-03': 'Mar', '2026-04': 'Abr', '2026-05': 'Mai', '2026-06': 'Jun' };
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const args = process.argv.slice(2);
+const ROOT_ARG = args.includes('--root') ? args[args.indexOf('--root') + 1] : null;
+const ROOT = path.resolve(ROOT_ARG || process.env.ATLAS_DATA_ROOT || __dirname);
+
+/* --meses N: mantem so os N meses mais recentes. O historico.js e embutido no
+   browser; 37 meses x ~110 carteiras cresce o suficiente para pesar no load.
+   Sem o flag, usa tudo o que existir. */
+const LIMITE = args.includes('--meses') ? Number(args[args.indexOf('--meses') + 1]) : null;
+
+const NOMES_MES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+const rotulo = (mes) => {
+  const [a, m] = mes.split('-');
+  return `${NOMES_MES[Number(m) - 1]}/${a.slice(2)}`;
+};
+
+const AUDITS_DIR = path.join(ROOT, 'audits');
+if (!fs.existsSync(AUDITS_DIR)) {
+  console.error(`audits/ nao encontrado em ${AUDITS_DIR}`);
+  console.error('Use --root para apontar a raiz dos dados.');
+  process.exit(1);
+}
+
+let MESES = fs
+  .readdirSync(AUDITS_DIR)
+  .filter((d) => /^\d{4}-\d{2}$/.test(d))
+  .filter((d) => fs.existsSync(path.join(AUDITS_DIR, d, 'audit.json')))
+  .sort();
+if (LIMITE && MESES.length > LIMITE) MESES = MESES.slice(-LIMITE);
+
+if (MESES.length === 0) {
+  console.error(`Nenhum audit.json encontrado em ${AUDITS_DIR}`);
+  process.exit(1);
+}
+
+const LABELS = Object.fromEntries(MESES.map((m) => [m, rotulo(m)]));
 
 function bucket(msg) {
   if (/Conciliacao de PL/i.test(msg)) return 'pl-conciliacao';
@@ -88,8 +130,21 @@ function d_stamp() {
   return last.meta.processadoEm;
 }
 
+/* historico.json: artefato de dados, para o relatorio do comite e consumo fora
+   do browser. */
 fs.writeFileSync(path.join(ROOT, 'historico.json'), JSON.stringify(out));
-fs.writeFileSync(path.join(ROOT, 'historico.js'), 'window.HISTORICO_DATA = ' + JSON.stringify(out) + ';\n');
 
-console.log(`historico.json/.js gerados: ${MESES.length} meses, ${Object.keys(carteiras).length} carteiras unicas, ${recorrentes.length} achados recorrentes (erro) rastreados.`);
+/* platform-historico.js: e o arquivo que o index.html carrega de fato
+   (window.HISTORICO_DATA, lido por platform-tendencia.jsx).
+
+   Antes escrevia-se `historico.js`, que NINGUEM le: o app so referencia
+   platform-historico.js, e a ponte entre os dois era uma copia manual nao
+   documentada. Resultado observado: a aba Tendencia mostrava 5 meses
+   (fev-jun/2026) enquanto 37 ja estavam ingeridos. O gerador passa a escrever
+   o nome que o app carrega, e a ponte deixa de existir. */
+const js = 'window.HISTORICO_DATA = ' + JSON.stringify(out) + ';\n';
+fs.writeFileSync(path.join(ROOT, 'platform-historico.js'), js);
+
+console.log(`Raiz: ${ROOT}`);
+console.log(`historico.json + platform-historico.js gerados: ${MESES.length} meses (${MESES[0]} a ${MESES[MESES.length - 1]}), ${Object.keys(carteiras).length} carteiras unicas, ${recorrentes.length} achados recorrentes rastreados.`);
 console.log('Top 5 recorrencias:', recorrentes.slice(0, 5).map(r => `${r.nome} (${r.categoria}, ${r.mesesConsecutivos}m, desde ${r.desdeMes})`).join(' | '));
