@@ -19,7 +19,7 @@ const base: CarteiraRaw = {
   ativos: [],
   nAtivosBase: 1,
   nAtivosRef: 1,
-  fonte: { tipo: 'xlsx', template: 'mirabaud-v2', arquivo: 'test.xlsx' },
+  fonte: { tipo: 'xlsx', template: 'custodian-xlsx-v2', arquivo: 'test.xlsx' },
 };
 
 describe('rent zero', () => {

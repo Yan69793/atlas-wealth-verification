@@ -55,8 +55,8 @@ export interface CarteiraRaw {
   nAtivosBase: number;
   nAtivosRef: number;
   fonte:
-    | { tipo: 'xlsx'; template: 'mirabaud-v2'; arquivo: string }
-    | { tipo: 'pdf'; template: 'book-mirabaud-v1'; arquivo: string };
+    | { tipo: 'xlsx'; template: 'custodian-xlsx-v2'; arquivo: string }
+    | { tipo: 'pdf'; template: 'custodian-pdf-v1'; arquivo: string };
 }
 
 export interface AuditFinding {

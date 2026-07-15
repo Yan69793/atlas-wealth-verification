@@ -269,7 +269,7 @@
         <div className="topbar-title">{title}</div>
 
         {tokens && (
-          <div className="topbar-month-select" style={{ marginRight: 12 }}>
+          <div className="topbar-month-select topbar-theme-select" style={{ marginRight: 12 }}>
             <label htmlFor="global-theme-select">Tema</label>
             <select
               id="global-theme-select"

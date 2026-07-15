@@ -20,7 +20,7 @@ function make(nome: string, rentRef: number | null): CarteiraRaw {
     ativos: [],
     nAtivosBase: 1,
     nAtivosRef: 1,
-    fonte: { tipo: 'pdf', template: 'book-mirabaud-v1', arquivo: `Book_${nome}_2026_06.pdf` },
+    fonte: { tipo: 'pdf', template: 'custodian-pdf-v1', arquivo: `Book_${nome}_2026_06.pdf` },
   };
 }
 

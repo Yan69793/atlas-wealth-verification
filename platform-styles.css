@@ -717,7 +717,15 @@ th.sort-asc .th-sort-icon, th.sort-desc .th-sort-icon { opacity: 1; }
   gap: 0;
   border-bottom: 1px solid var(--rule);
   margin-bottom: 20px;
+  /* Sem isto, abas que excedem a largura ficam inalcançáveis no mobile:
+     o flex não quebra (tab-btn tem nowrap) e não havia rolagem. */
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
 }
+
+.tabs::-webkit-scrollbar { display: none; }
 
 .tab-btn {
   padding: 10px 16px;
@@ -1352,6 +1360,19 @@ th.sort-asc .th-sort-icon, th.sort-desc .th-sort-icon { opacity: 1; }
   /* Topbar compacta: título menor e sem rótulo "Mês" para caber com o seletor */
   .topbar-title { font-size: 1rem; }
   .topbar-month-select label { display: none; }
+
+  /* O seletor de Tema (100px) deixava 64px para o título, e o maior deles
+     ("Cadastro & Compliance") precisa de 133px — daí a quebra em 2-3 linhas
+     estourando a barra de 56px. Escondê-lo libera 180px e todos cabem em
+     uma linha. É controle cosmético de paleta; os 3 temas seguem no desktop. */
+  .topbar-theme-select { display: none; }
+
+  .topbar-title {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+  }
 
   /* Tabelas: rolam internamente (.table-wrap tem overflow-x:auto); densidade menor no toque */
   .table-wrap { -webkit-overflow-scrolling: touch; }

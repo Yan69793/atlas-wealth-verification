@@ -19,7 +19,7 @@ const scCarteira: CarteiraRaw = {
   ativos: [],
   nAtivosBase: 14,
   nAtivosRef: 14,
-  fonte: { tipo: 'xlsx', template: 'mirabaud-v2', arquivo: 'test.xlsx' },
+  fonte: { tipo: 'xlsx', template: 'custodian-xlsx-v2', arquivo: 'test.xlsx' },
 };
 
 describe('SC corrigir', () => {
