@@ -173,7 +173,7 @@ def map_extraction(extraction, periodo):
         'total': total,
         'nAtivosBase': n_base,
         'nAtivosRef': n_ref,
-        'fonte': {'tipo': 'pdf', 'template': 'book-mirabaud-v1', 'arquivo': extraction['arquivo']},
+        'fonte': {'tipo': 'pdf', 'template': 'custodian-pdf-v1', 'arquivo': extraction['arquivo']},
     }
 
 

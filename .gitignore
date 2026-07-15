@@ -59,6 +59,7 @@ __pycache__/
 # --- 4b) LGPD: dado real de cliente ----------------------------------
 # Pastas de dado operacional real (PDFs, relatórios, dados de clientes)
 /audits/
+/reports/
 /SmartBrain/
 Verificação Mensal de Carteiras Mirabaud/
 Verificação Mensal de Carteiras/
@@ -98,6 +99,9 @@ historico.json
 terminals/
 docs/terminal*/
 .archive/
+
+# Dumps de ferramentas de agente (scraping, fetch — resíduo, não é produto)
+agent-tools/
 
 # Sistema operacional
 .DS_Store
