@@ -391,8 +391,11 @@
     });
     var ss = D.statusScript || {};
     for (var sk in ss) { if (ss.hasOwnProperty(sk)) delete STATUS_SCRIPT[sk]; }
+    // Remove todos os managers injetados anteriormente (idempotencia)
+    var realManagerIds = (D.managers || []).map(function(m) { return m.id; });
+    realManagerIds.push('REAIS'); // fallback legado
     for (var j = MANAGERS.length - 1; j >= 0; j--) {
-      if (MANAGERS[j].id === 'REAIS') MANAGERS.splice(j, 1);
+      if (realManagerIds.indexOf(MANAGERS[j].id) >= 0) MANAGERS.splice(j, 1);
     }
 
     // CATALOG + _codeMap
@@ -401,7 +404,23 @@
       CATALOG.push(entry); _codeMap[p.code] = entry;
     });
 
-    MANAGERS.push({ id:'REAIS', name:'Carteiras Reais', codes:codes.slice(), roaTarget:0.0050 });
+    // Managers: usa dados reais se disponiveis, senao fallback unico
+    if (D.managers && D.managers.length) {
+      D.managers.forEach(function(m) {
+        // Filtra apenas codes que existem no CATALOG
+        var validCodes = m.codes.filter(function(c) { return !!_codeMap[c]; });
+        if (validCodes.length > 0) {
+          MANAGERS.push({
+            id: m.id,
+            name: m.name,
+            codes: validCodes,
+            roaTarget: m.roaTarget || 0.0050
+          });
+        }
+      });
+    } else {
+      MANAGERS.push({ id:'REAIS', name:'Carteiras Reais', codes:codes.slice(), roaTarget:0.0050 });
+    }
 
     // Mapeia mes → indice no array MONTHS (dinamico, cobre 30 meses)
     var REAL_MONTH_IDX = {};
@@ -427,7 +446,7 @@
             var rent = (rentByMonth && rentByMonth[rm] != null) ? rentByMonth[rm] : null;
             // Fallback para CDI quando rentRef e null (offshore)
             retArr[idx] = (rent != null) ? rent : (CDI_RATES[rm] || 0);
-            feeArr[idx] = plByMonth[rm] * MFEE;
+            feeArr[idx] = plByMonth[rm] * (p.fee != null ? p.fee : MFEE);
             // rpp: reported PL do mes anterior (para verificacao de conciliacao)
             if (idx > 0) rpp[idx] = plByMonth[rm];
           }
