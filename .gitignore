@@ -121,3 +121,6 @@ desktop.ini
 *.ntvs*
 *.njsproj
 *.sln
+
+# Diretorio de publicacao gerado por scripts/build-deploy.mjs
+/dist-deploy/
