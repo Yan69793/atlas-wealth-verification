@@ -1,4 +1,4 @@
-# CLAUDE.md — Instruções obrigatórias para agentes
+# AGENTS.md — Instruções obrigatórias para agentes
 
 Estas regras valem para qualquer agente que trabalhe neste repositório.
 

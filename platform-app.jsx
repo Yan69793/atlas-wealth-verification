@@ -260,7 +260,6 @@
     if (path === '/tendencia') return 'tendencia';
     if (path === '/importar') return 'importar';
     if (path === '/usuarios') return 'usuarios';
-    if (path === '/tendencia') return 'tendencia';
     if (path.startsWith('/dev/relatorio/')) return 'dev-relatorio';
     return 'dashboard';
   }
@@ -277,7 +276,6 @@
     tendencia:  'Tendência do Ciclo',
     importar:   'Importar Extratos',
     usuarios:   'Usuários',
-    tendencia:  'Tendência do Ciclo',
   };
 
   function AppShell({ children, page, onNavigate }) {
