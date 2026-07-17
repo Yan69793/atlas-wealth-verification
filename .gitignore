@@ -115,6 +115,9 @@ docs/terminal*/
 # Dumps de ferramentas de agente (scraping, fetch — resíduo, não é produto)
 agent-tools/
 
+# Mockups de sessão do companheiro visual de brainstorming (skill superpowers)
+.superpowers/
+
 # Sistema operacional
 .DS_Store
 Thumbs.db

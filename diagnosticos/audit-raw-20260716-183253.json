@@ -1,0 +1,155 @@
+{
+  "target": "http://localhost:7821",
+  "timestamp": "2026-07-16T18:32:53",
+  "pageerrors": [
+    "Failed to load resource: the server responded with a status of 404 (File not found)",
+    "Failed to load resource: the server responded with a status of 404 (File not found)",
+    "Failed to load resource: the server responded with a status of 404 (File not found)",
+    "Warning: %s: Support for defaultProps will be removed from function components in a future major release. Use JavaScript default parameters instead.%s XAxis \n    at Hx (https://unpkg.com/recharts@2.12.7/umd/Recharts.js:2:413414)\n    at svg\n    at lt (https://unpkg.com/recharts@2.12.7/umd/Recharts.js:2:69944)\n    at div\n    at Tb (https://unpkg.com/recharts@2.12.7/umd/Recharts.js:2:354079)\n    at n (https://unpkg.com/recharts@2.12.7/umd/Recharts.js:2:439135)\n    at div\n    at https://unpkg.com/recharts@2.12.7/umd/Recharts.js:2:107724\n    at div\n    at PlChart (<anonymous>:356:23)\n    at div\n    at Dashboard (<anonymous>:521:21)\n    at main\n    at div\n    at div\n    at AppShell (<anonymous>:418:26)\n    at App (<anonymous>:562:22)",
+    "Warning: %s: Support for defaultProps will be removed from function components in a future major release. Use JavaScript default parameters instead.%s YAxis \n    at Yx (https://unpkg.com/recharts@2.12.7/umd/Recharts.js:2:414165)\n    at svg\n    at lt (https://unpkg.com/recharts@2.12.7/umd/Recharts.js:2:69944)\n    at div\n    at Tb (https://unpkg.com/recharts@2.12.7/umd/Recharts.js:2:354079)\n    at n (https://unpkg.com/recharts@2.12.7/umd/Recharts.js:2:439135)\n    at div\n    at https://unpkg.com/recharts@2.12.7/umd/Recharts.js:2:107724\n    at div\n    at PlChart (<anonymous>:356:23)\n    at div\n    at Dashboard (<anonymous>:521:21)\n    at main\n    at div\n    at div\n    at AppShell (<anonymous>:418:26)\n    at App (<anonymous>:562:22)",
+    "Warning: %s: Support for defaultProps will be removed from function components in a future major release. Use JavaScript default parameters instead.%s ReferenceLine \n    at Hb (https://unpkg.com/recharts@2.12.7/umd/Recharts.js:2:358301)\n    at svg\n    at lt (https://unpkg.com/recharts@2.12.7/umd/Recharts.js:2:69944)\n    at div\n    at Tb (https://unpkg.com/recharts@2.12.7/umd/Recharts.js:2:354079)\n    at n (https://unpkg.com/recharts@2.12.7/umd/Recharts.js:2:439135)\n    at div\n    at https://unpkg.com/recharts@2.12.7/umd/Recharts.js:2:107724\n    at div\n    at MoversChart (<anonymous>:137:22)\n    at div\n    at Comparativo (<anonymous>:236:21)\n    at main\n    at div\n    at div\n    at AppShell (<anonymous>:418:26)\n    at App (<anonymous>:562:22)",
+    "Failed to load resource: the server responded with a status of 404 (File not found)",
+    "Failed to load resource: the server responded with a status of 404 (File not found)",
+    "Failed to load resource: the server responded with a status of 404 (File not found)",
+    "Warning: %s: Support for defaultProps will be removed from function components in a future major release. Use JavaScript default parameters instead.%s XAxis \n    at Hx (https://unpkg.com/recharts@2.12.7/umd/Recharts.js:2:413414)\n    at svg\n    at lt (https://unpkg.com/recharts@2.12.7/umd/Recharts.js:2:69944)\n    at div\n    at Tb (https://unpkg.com/recharts@2.12.7/umd/Recharts.js:2:354079)\n    at n (https://unpkg.com/recharts@2.12.7/umd/Recharts.js:2:439135)\n    at div\n    at https://unpkg.com/recharts@2.12.7/umd/Recharts.js:2:107724\n    at div\n    at PlChart (<anonymous>:356:23)\n    at div\n    at Dashboard (<anonymous>:521:21)\n    at main\n    at div\n    at div\n    at AppShell (<anonymous>:418:26)\n    at App (<anonymous>:562:22)",
+    "Warning: %s: Support for defaultProps will be removed from function components in a future major release. Use JavaScript default parameters instead.%s YAxis \n    at Yx (https://unpkg.com/recharts@2.12.7/umd/Recharts.js:2:414165)\n    at svg\n    at lt (https://unpkg.com/recharts@2.12.7/umd/Recharts.js:2:69944)\n    at div\n    at Tb (https://unpkg.com/recharts@2.12.7/umd/Recharts.js:2:354079)\n    at n (https://unpkg.com/recharts@2.12.7/umd/Recharts.js:2:439135)\n    at div\n    at https://unpkg.com/recharts@2.12.7/umd/Recharts.js:2:107724\n    at div\n    at PlChart (<anonymous>:356:23)\n    at div\n    at Dashboard (<anonymous>:521:21)\n    at main\n    at div\n    at div\n    at AppShell (<anonymous>:418:26)\n    at App (<anonymous>:562:22)"
+  ],
+  "console": [
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (File not found)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (File not found)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (File not found)"
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "warning",
+      "text": "You are using the in-browser Babel transformer. Be sure to precompile your scripts for production - https://babeljs.io/docs/setup/"
+    },
+    {
+      "type": "error",
+      "text": "Warning: %s: Support for defaultProps will be removed from function components in a future major release. Use JavaScript default parameters instead.%s XAxis \n    at Hx (https://unpkg.com/recharts@2.12.7/umd/Recharts.js:2:413414)\n    at svg\n    at lt (https://unpkg.com/recharts@2.12.7/umd/Recharts.js:2:69944)\n    at div\n    at Tb (https://unpkg.com/recharts@2.12.7/umd/Recharts.js:2:354079)\n    at n (https://unpkg.com/recharts@2.12.7/umd/Recharts.js:2:439135)\n    at div\n    at https://unpkg.com/recharts@2.12.7/umd/Recharts.js:2:107724\n    at div\n    at PlChart (<anonymous>:356:23)\n    at div\n    at Dashboard (<anonymous>:521:21)\n    at main\n    at div\n    at div\n    at AppShell (<anonymous>:418:26)\n    at App (<anonymous>:562:22)"
+    },
+    {
+      "type": "error",
+      "text": "Warning: %s: Support for defaultProps will be removed from function components in a future major release. Use JavaScript default parameters instead.%s YAxis \n    at Yx (https://unpkg.com/recharts@2.12.7/umd/Recharts.js:2:414165)\n    at svg\n    at lt (https://unpkg.com/recharts@2.12.7/umd/Recharts.js:2:69944)\n    at div\n    at Tb (https://unpkg.com/recharts@2.12.7/umd/Recharts.js:2:354079)\n    at n (https://unpkg.com/recharts@2.12.7/umd/Recharts.js:2:439135)\n    at div\n    at https://unpkg.com/recharts@2.12.7/umd/Recharts.js:2:107724\n    at div\n    at PlChart (<anonymous>:356:23)\n    at div\n    at Dashboard (<anonymous>:521:21)\n    at main\n    at div\n    at div\n    at AppShell (<anonymous>:418:26)\n    at App (<anonymous>:562:22)"
+    },
+    {
+      "type": "error",
+      "text": "Warning: %s: Support for defaultProps will be removed from function components in a future major release. Use JavaScript default parameters instead.%s ReferenceLine \n    at Hb (https://unpkg.com/recharts@2.12.7/umd/Recharts.js:2:358301)\n    at svg\n    at lt (https://unpkg.com/recharts@2.12.7/umd/Recharts.js:2:69944)\n    at div\n    at Tb (https://unpkg.com/recharts@2.12.7/umd/Recharts.js:2:354079)\n    at n (https://unpkg.com/recharts@2.12.7/umd/Recharts.js:2:439135)\n    at div\n    at https://unpkg.com/recharts@2.12.7/umd/Recharts.js:2:107724\n    at div\n    at MoversChart (<anonymous>:137:22)\n    at div\n    at Comparativo (<anonymous>:236:21)\n    at main\n    at div\n    at div\n    at AppShell (<anonymous>:418:26)\n    at App (<anonymous>:562:22)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (File not found)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (File not found)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (File not found)"
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "warning",
+      "text": "You are using the in-browser Babel transformer. Be sure to precompile your scripts for production - https://babeljs.io/docs/setup/"
+    },
+    {
+      "type": "error",
+      "text": "Warning: %s: Support for defaultProps will be removed from function components in a future major release. Use JavaScript default parameters instead.%s XAxis \n    at Hx (https://unpkg.com/recharts@2.12.7/umd/Recharts.js:2:413414)\n    at svg\n    at lt (https://unpkg.com/recharts@2.12.7/umd/Recharts.js:2:69944)\n    at div\n    at Tb (https://unpkg.com/recharts@2.12.7/umd/Recharts.js:2:354079)\n    at n (https://unpkg.com/recharts@2.12.7/umd/Recharts.js:2:439135)\n    at div\n    at https://unpkg.com/recharts@2.12.7/umd/Recharts.js:2:107724\n    at div\n    at PlChart (<anonymous>:356:23)\n    at div\n    at Dashboard (<anonymous>:521:21)\n    at main\n    at div\n    at div\n    at AppShell (<anonymous>:418:26)\n    at App (<anonymous>:562:22)"
+    },
+    {
+      "type": "error",
+      "text": "Warning: %s: Support for defaultProps will be removed from function components in a future major release. Use JavaScript default parameters instead.%s YAxis \n    at Yx (https://unpkg.com/recharts@2.12.7/umd/Recharts.js:2:414165)\n    at svg\n    at lt (https://unpkg.com/recharts@2.12.7/umd/Recharts.js:2:69944)\n    at div\n    at Tb (https://unpkg.com/recharts@2.12.7/umd/Recharts.js:2:354079)\n    at n (https://unpkg.com/recharts@2.12.7/umd/Recharts.js:2:439135)\n    at div\n    at https://unpkg.com/recharts@2.12.7/umd/Recharts.js:2:107724\n    at div\n    at PlChart (<anonymous>:356:23)\n    at div\n    at Dashboard (<anonymous>:521:21)\n    at main\n    at div\n    at div\n    at AppShell (<anonymous>:418:26)\n    at App (<anonymous>:562:22)"
+    }
+  ],
+  "interactions": [
+    {
+      "action": "navigate",
+      "route": "#/dashboard",
+      "status": "OK"
+    },
+    {
+      "action": "navigate",
+      "route": "#/carteira/A1",
+      "status": "OK"
+    },
+    {
+      "action": "navigate",
+      "route": "#/achados",
+      "status": "ERRO"
+    },
+    {
+      "action": "navigate",
+      "route": "#/comparativo",
+      "status": "OK"
+    },
+    {
+      "action": "navigate",
+      "route": "#/receitas",
+      "status": "OK"
+    },
+    {
+      "action": "navigate",
+      "route": "#/cadastro",
+      "status": "OK"
+    },
+    {
+      "action": "navigate",
+      "route": "#/busca",
+      "status": "OK"
+    },
+    {
+      "action": "navigate",
+      "route": "#/risco",
+      "status": "OK"
+    },
+    {
+      "action": "navigate",
+      "route": "#/tendencia",
+      "status": "OK"
+    },
+    {
+      "action": "navigate",
+      "route": "#/importar",
+      "status": "OK"
+    },
+    {
+      "action": "navigate",
+      "route": "#/usuarios",
+      "status": "OK"
+    },
+    {
+      "action": "click_chips",
+      "found": 21,
+      "clicked": 10
+    },
+    {
+      "action": "sort_headers",
+      "found": 0,
+      "clicked": 0
+    },
+    {
+      "action": "import_ui",
+      "status": "file_input_present"
+    }
+  ],
+  "screenshots": [
+    "E:\\Diretorio\\Claude\\ATLAS\\diagnosticos\\audit-ui-desktop-20260716-183253.png",
+    "E:\\Diretorio\\Claude\\ATLAS\\diagnosticos\\audit-ui-mobile-20260716-183253.png"
+  ],
+  "title": "ATLAS Wealth Verification · Meridian Advisory"
+}
