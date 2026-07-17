@@ -7,18 +7,25 @@ import { runEngine } from '../src/engine.js';
 import { parseExcelV2 } from '../src/parsers/excel-v2.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ROOT = path.resolve(__dirname, '..', '..', '..');
-const XLSX = path.join(ROOT, 'Verificacao_Carteiras_Abril_2026_v2.xlsx');
-// Snapshot congelado do audit.json Excel-only de abril (commit 45a3f79), imune a
-// reingestoes posteriores que sobrescrevem audits/2026-04/audit.json com outra fonte.
-// Referenciado a partir da arvore fonte (nao dist/), pois e um fixture estatico
-// que o build tsc nao copia.
-const LEGACY = path.join(ROOT, 'audit-engine', 'tests', 'fixtures', 'abril-2026-legacy.json');
 
-// Pula quando o XLSX de abril não está presente (dado real fora do ATLAS).
-describe('parity abril 2026', { skip: !fs.existsSync(XLSX) && 'fixture XLSX de abril ausente (dado real fora do ATLAS)' }, () => {
+// ATLAS_FIXTURES aponta para onde o dado real vive (a instancia do cliente).
+// Nao derivar por path.resolve a partir de __dirname: isso responde coisas
+// diferentes conforme rode do dist, da fonte, do repo produto ou do submodule,
+// e foi assim que esta suite passou meses pulando sem ninguem notar.
+const FIXTURES = process.env.ATLAS_FIXTURES;
+const XLSX = FIXTURES ? path.join(FIXTURES, 'Verificacao_Carteiras_Abril_2026_v2.xlsx') : null;
+const LEGACY = path.resolve(__dirname, '..', '..', 'tests', 'fixtures', 'abril-2026-legacy.anon.json');
+
+// Sem ATLAS_FIXTURES, pula (dev local sem dado real). Com a var setada e o
+// arquivo ausente, e ERRO: silencio aqui e o mesmo modo de falha que o
+// docs/operacao.md chama de mais perigoso.
+if (FIXTURES && !fs.existsSync(XLSX!)) {
+  throw new Error(`ATLAS_FIXTURES setada mas XLSX ausente: ${XLSX}`);
+}
+
+describe('parity abril 2026', { skip: !FIXTURES && 'ATLAS_FIXTURES ausente (rode com a raiz da instancia)' }, () => {
   it('processa 79 carteiras com 1 CORRIGIR (SC)', async () => {
-    const carteiras = await parseExcelV2({ arquivo: XLSX, mes: '2026-04', baseline: '2026-03' });
+    const carteiras = await parseExcelV2({ arquivo: XLSX!, mes: '2026-04', baseline: '2026-03' });
     assert.equal(carteiras.length, 79);
 
     const output = runEngine(carteiras, {
@@ -38,7 +45,7 @@ describe('parity abril 2026', { skip: !fs.existsSync(XLSX) && 'fixture XLSX de a
   });
 
   it('PL total dentro de 0.01% do legacy', async () => {
-    const carteiras = await parseExcelV2({ arquivo: XLSX, mes: '2026-04', baseline: '2026-03' });
+    const carteiras = await parseExcelV2({ arquivo: XLSX!, mes: '2026-04', baseline: '2026-03' });
     const raw = JSON.parse(fs.readFileSync(LEGACY, 'utf-8'));
     const leg = raw.dashboard ?? raw;
 

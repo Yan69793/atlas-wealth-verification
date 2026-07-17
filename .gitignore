@@ -72,6 +72,18 @@ Verificação de carteiras/
 # Gabaritos de teste congelados a partir de audit.json real
 /audit-engine/tests/fixtures/
 
+# Gabarito de parity sem dado identificavel: so totais e plRef, nomes hasheados.
+# Precisa ser versionado, senao o parity nunca roda em clone limpo, que e
+# exatamente a falha que deixou as duas suites pulando em silencio.
+#
+# Ordem obrigatoria: re-inclui o diretorio para o git descer, re-nega TUDO
+# dentro dele (senao o `!*.json` global la em cima re-exporia o gabarito real
+# com nome de cliente), e libera SO o .anon.json. Nao simplificar para um unico
+# `!...*.anon.json`: sem a re-negacao, o dado real vaza.
+!/audit-engine/tests/fixtures/
+/audit-engine/tests/fixtures/*
+!/audit-engine/tests/fixtures/*.anon.json
+
 # Dado real embutido em JS (alimenta o app; migra para R2 no Projeto 3)
 platform-data-real.js
 platform-data-audit.js

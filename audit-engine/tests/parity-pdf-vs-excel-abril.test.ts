@@ -1,18 +1,26 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { describe, it } from 'node:test';
 import { parseExcelV2 } from '../src/parsers/excel-v2.js';
 import { parsePdfBookFolder } from '../src/parsers/pdf-v1.js';
 import type { CarteiraRaw } from '../src/schema.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ROOT = path.resolve(__dirname, '..', '..', '..');
-const XLSX = path.join(ROOT, 'Verificacao_Carteiras_Abril_2026_v2.xlsx');
+// ATLAS_FIXTURES aponta para a raiz da instancia do cliente (onde o XLSX real
+// vive). Nao derivar por path.resolve a partir de __dirname: respondia caminhos
+// diferentes conforme rodasse do dist, da fonte ou do submodule, e foi assim que
+// esta suite passou meses pulando em silencio.
+const FIXTURES = process.env.ATLAS_FIXTURES;
+const XLSX = FIXTURES ? path.join(FIXTURES, 'Verificacao_Carteiras_Abril_2026_v2.xlsx') : null;
 const BOOKS_ABRIL = path.join(
   'C:/Users/User/OneDrive - MIRABAUD (BRASIL) REPRESENTAÇÕES LTDA/Extratos Mensais/2026_04/Editados',
 );
+
+// Com ATLAS_FIXTURES setada e o XLSX ausente, e ERRO, nao skip. Os books ficam
+// no OneDrive (fora da instancia), entao ausencia deles ainda pula com aviso.
+if (FIXTURES && !fs.existsSync(XLSX!)) {
+  throw new Error(`ATLAS_FIXTURES setada mas XLSX ausente: ${XLSX}`);
+}
 
 // Carteiras cujo nome canonico mudou de proposito ao adotar o nome interno do
 // PDF como fonte de verdade (decisao de produto, nao divergencia de bug).
@@ -41,11 +49,11 @@ const TOLERANCIA_RENT = 0.0005; // 5 pontos-base
 // Teste de integração com dado real de abril (XLSX na raiz de staging + books no
 // OneDrive). Pula graciosamente quando o dado não está presente (ex.: rodando
 // dentro do ATLAS, que por decisão não hospeda dado real de cliente).
-const DADO_ABRIL_PRESENTE = fs.existsSync(XLSX) && fs.existsSync(BOOKS_ABRIL);
+const DADO_ABRIL_PRESENTE = !!FIXTURES && fs.existsSync(XLSX!) && fs.existsSync(BOOKS_ABRIL);
 
-describe('parity PDF vs Excel (abril 2026, gabarito)', { timeout: 180_000, skip: !DADO_ABRIL_PRESENTE && 'dado real de abril ausente (XLSX/books fora do ATLAS)' }, () => {
+describe('parity PDF vs Excel (abril 2026, gabarito)', { timeout: 180_000, skip: !DADO_ABRIL_PRESENTE && 'dado real de abril ausente (ATLAS_FIXTURES/books)' }, () => {
   it('carteiras extraidas via PDF batem com a planilha Excel ja auditada', async () => {
-    const excelCarteiras = await parseExcelV2({ arquivo: XLSX, mes: '2026-04', baseline: '2026-03' });
+    const excelCarteiras = await parseExcelV2({ arquivo: XLSX!, mes: '2026-04', baseline: '2026-03' });
     const pdfCarteiras = await parsePdfBookFolder({ pasta: BOOKS_ABRIL, mes: '2026-04', baseline: '2026-03' });
 
     const pdfByNome = new Map(pdfCarteiras.map((c) => [c.nome, c]));
