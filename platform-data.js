@@ -47,12 +47,20 @@
      2. CONSTANTES
   ============================================================= */
 
+  // Janela de meses. Estendida por APPEND (nunca reordenar/remover): os índices
+  // dos meses existentes são o contrato com os dados reais (injectRealData mapeia
+  // mês → índice). Anexar meses ao fim preserva todos os índices e valores já
+  // congelados. Jul–Dez/26 foram adicionados para que o mês corrente de auditoria
+  // não seja silenciosamente descartado na ingestão (o import usa D.MONTHS como
+  // faixa suportada). Quando 2027 chegar, estender aqui; injectRealData avisa em
+  // console.warn se um mês real cair fora desta janela, então nunca falha calado.
   var MONTHS = [
     '2024-01','2024-02','2024-03','2024-04','2024-05','2024-06',
     '2024-07','2024-08','2024-09','2024-10','2024-11','2024-12',
     '2025-01','2025-02','2025-03','2025-04','2025-05','2025-06',
     '2025-07','2025-08','2025-09','2025-10','2025-11','2025-12',
-    '2026-01','2026-02','2026-03','2026-04','2026-05','2026-06'
+    '2026-01','2026-02','2026-03','2026-04','2026-05','2026-06',
+    '2026-07','2026-08','2026-09','2026-10','2026-11','2026-12'
   ];
 
   var MONTH_LABELS = [
@@ -60,7 +68,8 @@
     'Jul/24','Ago/24','Set/24','Out/24','Nov/24','Dez/24',
     'Jan/25','Fev/25','Mar/25','Abr/25','Mai/25','Jun/25',
     'Jul/25','Ago/25','Set/25','Out/25','Nov/25','Dez/25',
-    'Jan/26','Fev/26','Mar/26','Abr/26','Mai/26','Jun/26'
+    'Jan/26','Fev/26','Mar/26','Abr/26','Mai/26','Jun/26',
+    'Jul/26','Ago/26','Set/26','Out/26','Nov/26','Dez/26'
   ];
 
   var CDI = {
@@ -71,9 +80,16 @@
     '2025-05':0.0115,'2025-06':0.0116,'2025-07':0.0116,'2025-08':0.0116,
     '2025-09':0.0116,'2025-10':0.0116,'2025-11':0.0116,'2025-12':0.0116,
     '2026-01':0.0116,'2026-02':0.0116,'2026-03':0.0115,'2026-04':0.0113,
-    '2026-05':0.0113,'2026-06':0.0111
+    '2026-05':0.0113,'2026-06':0.0111,
+    // Jul–Dez/26: placeholder só para a demo (repete o último CDI conhecido).
+    // Para dado real, o CDI vem do overlay (D.cdiRates em injectRealData), não daqui.
+    '2026-07':0.0111,'2026-08':0.0111,'2026-09':0.0111,
+    '2026-10':0.0111,'2026-11':0.0111,'2026-12':0.0111
   };
 
+  // Último mês FECHADO (âncora do rescale demo e status default). Mantido em
+  // 2026-06 de propósito ao estender a janela: mudar a âncora reescalaria todos
+  // os números demo. Avançar só quando o mês virar de fato o corrente fechado.
   var CURRENT_MONTH = '2026-06';
 
   function getCDI(month) { return CDI[month] || 0; }
@@ -422,12 +438,21 @@
       MANAGERS.push({ id:'REAIS', name:'Carteiras Reais', codes:codes.slice(), roaTarget:0.0050 });
     }
 
-    // Mapeia mes → indice no array MONTHS (dinamico, cobre 30 meses)
+    // Mapeia mes → indice no array MONTHS
     var REAL_MONTH_IDX = {};
+    var mesesForaDaJanela = [];
     REAL_MONTHS.forEach(function(rm) {
       var idx = MONTHS.indexOf(rm);
       if (idx >= 0) REAL_MONTH_IDX[rm] = idx;
+      else mesesForaDaJanela.push(rm);
     });
+    // Antes isto era descarte silencioso: um mês real fora de MONTHS sumia do
+    // dashboard sem aviso. Agora é audível — estenda MONTHS para acomodá-lo.
+    if (mesesForaDaJanela.length && window.console && console.warn) {
+      console.warn('[ATLAS] Meses com dado real FORA da janela MONTHS (descartados): '
+        + mesesForaDaJanela.join(', ')
+        + '. Estenda MONTHS/MONTH_LABELS em platform-data.js para incluí-los.');
+    }
 
     // _portfolioData com PL e rentabilidade reais por mes
     function realPd(p) {

@@ -125,6 +125,14 @@ ok('prop-types tem integrity no index.html',
 ok('Recharts tem integrity no index.html',
   /recharts[^<]+integrity\s*=\s*"sha384-/i.test(indexHtml.replace(/\s+/g, ' ')));
 
+// Chart.js e TanStack serviam a página com dado de cliente SEM SRI: um CDN
+// comprometido injetaria JS na origem autenticada. Trava a regressão.
+ok('Chart.js tem integrity no index.html',
+  /chart\.umd\.min\.js"[^>]*integrity\s*=\s*"sha384-/i.test(indexHtml.replace(/\s+/g, ' ')));
+
+ok('TanStack react-virtual tem integrity no index.html',
+  /react-virtual@[^"]+"[^>]*integrity\s*=\s*"sha384-/i.test(indexHtml.replace(/\s+/g, ' ')));
+
 // ─── 8. README — conteúdo mínimo ────────────────────────────────────────────
 
 const readmePath = path.join(ROOT, 'README.md');

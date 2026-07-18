@@ -52,12 +52,14 @@
   <!-- Chart.js 4.4.0 — gráficos canvas para aba Tendência -->
   <script
     src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"
+    integrity="sha384-e6nUZLBkQ86NJ6TVVKAeSaK8jWa3NhkYWZFomE39AvDbQWeie9PlQqM3pmYW5d1g"
     crossorigin="anonymous"
   ></script>
 
   <!-- TanStack Virtual 3.0.0 — virtualização de listas grandes -->
   <script
     src="https://unpkg.com/@tanstack/react-virtual@3.0.0/build/umd/index.production.js"
+    integrity="sha384-qTjAXw+7X+de+FLeQSJPVEmM/OAj7AT14TknLs9zPck8soo2LpkWIWf3x8n6bujJ"
     crossorigin="anonymous"
   ></script>
 
@@ -68,7 +70,7 @@
   <script src="platform-data-real.js?v=20260612" onerror="void(0)"></script>
 
   <!-- 1b. Dados (script normal — sem Babel, sem JSX) -->
-  <script src="platform-data.js?v=20260613a"></script>
+  <script src="platform-data.js?v=20260717a"></script>
 
   <!-- 1c. Risk scoring (carregado depois de platform-data.js — usa window.AtlasData._internal) -->
   <script src="platform-data-risk.js?v=20260613a"></script>
@@ -78,7 +80,7 @@
   <script src="platform-historico.js?v=20260714" onerror="void(0)"></script>
 
   <!-- 2. Utilitários, ícones, gráficos (Babel JSX) -->
-  <script type="text/babel" src="platform-utils.jsx?v=20260612g"></script>
+  <script type="text/babel" src="platform-utils.jsx?v=20260717a"></script>
 
   <!-- 3. Páginas (carregadas na etapa correspondente) -->
   <script type="text/babel" src="platform-dashboard.jsx?v=20260613a"></script>
@@ -96,6 +98,6 @@
   <script type="text/babel" src="platform-tendencia.jsx?v=20260714"></script>
 
   <!-- 4. App shell — deve ser carregado por ÚLTIMO (monta o ReactDOM) -->
-  <script type="text/babel" src="platform-app.jsx?v=20260714"></script>
+  <script type="text/babel" src="platform-app.jsx?v=20260717a"></script>
 </body>
 </html>

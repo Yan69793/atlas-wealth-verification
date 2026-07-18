@@ -297,6 +297,11 @@
   function LineChart({ series, height = 220, showLegend = true }) {
     // series: [{ label, color, dash, data: [{month, value}] }]
     // value is a decimal ratio (0.0234 = 2.34%)
+    if (!window.Recharts) {
+      // Recharts vem de CDN separado; se não carregou (rede/CSP/CDN), degrada
+      // limpo em vez de lançar TypeError e derrubar a página inteira.
+      return <div className="empty-state" style={{ height }}>Gráfico indisponível — biblioteca não carregada</div>;
+    }
     const {
       LineChart: RC_LineChart, Line, XAxis, YAxis,
       CartesianGrid, Tooltip, Legend, ResponsiveContainer,

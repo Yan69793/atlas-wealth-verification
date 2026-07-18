@@ -119,6 +119,27 @@ export async function parsePdfBookFolder(options: PdfIngestOptions): Promise<Car
     throw new Error('Nenhuma carteira extraida dos PDFs');
   }
 
+  // Extracao PARCIAL nao pode passar calada: antes, se o Python pulava uma
+  // carteira (cabecalho fora do padrao), ela sumia do relatorio do cliente e o
+  // mes saia "OK". O Python ja avisa no stderr, mas na linha 98-101 o stderr so
+  // e lido em FALHA (exit != 0). No sucesso com carteira pulada, o exit e 0 e o
+  // aviso era descartado. Aqui tornamos audivel, sem derrubar a ingestao:
+  const stderrAvisos = (proc.stderr ?? '').trim();
+  if (stderrAvisos) {
+    console.warn(`[audit-engine] Avisos do extrator Python (pasta ${path.basename(pastaAbs)}):\n${stderrAvisos}`);
+  }
+  // Contagem: 1 book PDF = 1 carteira. Se vierem menos carteiras que PDFs, algum
+  // book foi descartado. Aviso (nao throw): a premissa 1:1 nao esta coberta por
+  // fixture real, entao um throw poderia bloquear um mes valido. Suba para erro
+  // duro assim que a contagem esperada for confirmada contra os books reais.
+  const pdfCount = fs.readdirSync(pastaAbs).filter((f) => /\.pdf$/i.test(f)).length;
+  if (pdfCount > 0 && parsed.carteiras.length < pdfCount) {
+    console.warn(
+      `[audit-engine] EXTRACAO PARCIAL: ${parsed.carteiras.length} carteira(s) extraida(s) de ${pdfCount} PDF(s) na pasta ${path.basename(pastaAbs)}. ` +
+      `Faltam ${pdfCount - parsed.carteiras.length} — revise os avisos acima antes de entregar o relatorio.`,
+    );
+  }
+
   const results: CarteiraRaw[] = parsed.carteiras.map((raw: any) => {
     const periodo: PeriodoRef = raw.periodo ?? {
       baseline: options.baseline,

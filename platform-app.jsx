@@ -63,6 +63,68 @@
   }
 
   /* ============================================================
+     ERROR BOUNDARY (contém erro de render numa página só)
+     Sem isto, qualquer throw em qualquer componente desmonta a
+     árvore inteira do React e o app vira tela branca. Com dado real
+     (formato diferente da demo) isso acontecia "toda hora". O boundary
+     mantém sidebar/topbar/troca-de-mês vivos e isola a falha na área
+     de conteúdo. É reinstanciado a cada navegação (key={page}), então
+     trocar de página limpa o erro automaticamente.
+  ============================================================ */
+
+  function PageErrorFallback({ error }) {
+    return (
+      <div style={{ padding: '32px' }}>
+        <div className="page-header">
+          <div className="page-eyebrow" style={{ color: '#8B1A1A' }}>Erro nesta página</div>
+          <h1 className="page-title">Não foi possível renderizar este conteúdo</h1>
+          <div className="page-subtitle">
+            O restante do sistema continua funcionando. Troque de página na barra lateral,
+            ou recarregue. Se persistir, o mês ou os dados carregados podem estar num formato inesperado.
+          </div>
+        </div>
+        <div className="card" style={{ marginTop: 16 }}>
+          <button
+            onClick={() => window.location.reload()}
+            style={{
+              padding: '8px 16px', borderRadius: 'var(--r-md)', border: '1px solid var(--gold, #C4A228)',
+              background: 'transparent', color: 'var(--heading)', cursor: 'pointer', fontSize: '0.857rem',
+            }}
+          >
+            Recarregar
+          </button>
+          <pre style={{
+            marginTop: 12, marginBottom: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+            fontFamily: 'var(--font-mono)', fontSize: '0.786rem', color: 'var(--muted)',
+          }}>
+            {String((error && (error.message || error)) || 'Erro desconhecido')}
+          </pre>
+        </div>
+      </div>
+    );
+  }
+
+  class ErrorBoundary extends React.Component {
+    constructor(props) {
+      super(props);
+      this.state = { error: null };
+    }
+    static getDerivedStateFromError(error) {
+      return { error };
+    }
+    componentDidCatch(error, info) {
+      // Loga o stack completo no console para diagnóstico; a UI mostra só a mensagem.
+      if (window.console && console.error) {
+        console.error('[ATLAS] Erro capturado no boundary:', error, info);
+      }
+    }
+    render() {
+      if (this.state.error) return <PageErrorFallback error={this.state.error} />;
+      return this.props.children;
+    }
+  }
+
+  /* ============================================================
      LOGIN
   ============================================================ */
 
@@ -424,7 +486,9 @@
         <MonthContext.Provider value={{ selectedMonth, setSelectedMonth }}>
           <ToastContext.Provider value={{ toasts, addToast }}>
             <AppShell page={page} onNavigate={path => { window.location.href = path; }}>
-              <React.Fragment key={dataVersion}>{renderPage(page, location)}</React.Fragment>
+              <ErrorBoundary key={page + ':' + dataVersion}>
+                {renderPage(page, location)}
+              </ErrorBoundary>
             </AppShell>
           </ToastContext.Provider>
         </MonthContext.Provider>
