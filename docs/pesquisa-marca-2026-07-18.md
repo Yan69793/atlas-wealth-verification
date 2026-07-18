@@ -37,22 +37,52 @@ financeiro/técnico em português (o produto é PT-BR primeiro).
 
 ---
 
-## 3. Shortlist final (3, por risco crescente)
+## 3. Rodada 2 (candidatos do operador, 2026-07-18)
 
-1. **Confere** — nenhuma colisão encontrada, npm livre, nome autoexplicativo
-   para o produto (verificação de carteira). Risco: palavra comum em
-   português, pode ter uso não-registrável isolado sem qualificador (ex.:
-   "Confere Wealth", "Confere Verification").
-2. **Atesta** — nenhuma colisão encontrada, npm livre, tom mais institucional
-   que "Confere", combina bem com o conceito de selo/trilha de auditoria já
-   implementado no relatório. Mesmo risco de palavra comum.
-3. **Zelo** — domínio/npm ocupados por empresa não relacionada (baixo risco
-   de confusão real, já que é outro país e outro setor), mas exige variante
-   de domínio ou negociação/compra do domínio principal.
+| Candidato | npm | Domínio .com.br / .com | Colisão encontrada | Veredito |
+|---|---|---|---|---|
+| **Norte** | ocupado | `.com.br` livre, `.com` ocupado | **Direta e grave**: "Norte Asset Management Gestão de Recursos S.A." (norteasset.com.br, CNPJ 36.633.625/0001-38) — gestora fundada em 2020, administradora de carteira de valores mobiliários autorizada na CVM (Resolução CVM 21), atua em ações e renda fixa | **Descartado** |
+| **Rumo** | ocupado | `.com.br` ocupado, `.com` livre | **Grave, por reconhecimento de marca**: não é gestora, mas é **Rumo S.A. (RAIL3)** — gigante ferroviária/logística listada na B3, grupo Cosan, CVM nº 1745-0, fusão Rumo Logística + ALL. Qualquer profissional financeiro brasileiro reconhece o nome de imediato | **Descartado** |
+| **Rota** | ocupado | `.com.br` ocupado, `.com` ocupado | **Real, porém menor**: "Rota Capital & Planejamento" — consultoria de valores mobiliários autorizada pela CVM (CVM 19), ativa mas pequena/pouco conhecida (CEO Janser Rojo, CFP) | Zona cinza — risco existe, mas concorrente pequeno |
+| **Senda** | ocupado | `.com.br` ocupado (Sennda Software, PDV/restaurantes, sem relação), `.com` ocupado | Nenhuma colisão financeira encontrada (busca direcionada "Senda Capital/Asset/Investimentos" CVM: zero resultados) | **Limpo** — precisa de variante de domínio |
+| **Fado** | ocupado | `.com.br` ocupado (autopeças/escapamentos, 40 anos, sem relação), `.com` ocupado | Nenhuma colisão financeira encontrada. Ressalva de posicionamento: forte associação cultural com o gênero musical português, pode soar deslocado para B2B financeiro sério | **Limpo**, mas questão de tom/posicionamento |
 
 ---
 
-## 4. Limitação desta pesquisa
+## 4. Shortlist consolidada (13 candidatos testados)
+
+**Descartados por colisão financeira direta:**
+Lastro (DTVM 30 anos), Prumo (gestora + empresa grande), Norte (gestora CVM
+ativa), Verus (uso genérico internacional já consolidado)
+
+**Descartado por reconhecimento de marca (fora do setor, mas nome pesado):**
+Rumo (RAIL3, gigante B3)
+
+**Zona cinza (colisão real, porém pequena):**
+Rota (Rota Capital & Planejamento, CVM ativa mas pouco conhecida)
+
+**Sobreviventes limpos, por ordem de prontidão:**
+
+1. **Confere** — nenhuma colisão, npm livre, nome autoexplicativo do produto
+   (confere = verifica). Risco: palavra comum, pode exigir qualificador
+   ("Confere Wealth").
+2. **Atesta** — nenhuma colisão, npm livre, tom institucional, conecta com o
+   conceito de selo/trilha de auditoria já implementado no relatório. Mesmo
+   risco de palavra comum.
+3. **Senda** — nenhuma colisão financeira, domínio ocupado por setor não
+   relacionado (precisa de variante). Tema de "trilha/caminho" conecta com a
+   trilha de auditoria do produto.
+4. **Zelo** — domínio/npm ocupados por empresa não relacionada (EUA, outro
+   setor), precisa de variante ou negociação de domínio.
+5. **Fado** — limpo tecnicamente, mas exige avaliar se o tom (associação com
+   música/fado) serve ao posicionamento institucional do produto.
+
+Não aprofundados (checar antes de avançar, se entrarem em consideração):
+Crivo, Aferir.
+
+---
+
+## 5. Limitação desta pesquisa
 
 `[Risco]` **Não foi possível consultar o INPI de forma automatizada.** O
 sistema pePI (busca.inpi.gov.br) é uma aplicação Java com sessão stateful que
@@ -69,7 +99,7 @@ gastar advogado de marca num nome que já falha no primeiro filtro.
 
 ---
 
-## 5. Próximo passo
+## 6. Próximo passo
 
 Registrar aqui a escolha (quando o operador decidir) e propagar para
 `CLAUDE.md`/`AGENTS.md` do projeto, conforme já apontado em
