@@ -1107,7 +1107,10 @@
   }
 
   function revenueSeries() {
-    return MONTHS.map(function(m, mi) {
+    // Ate o ultimo mes com dado. Sem isso, a serie e o grafico de ROA mostravam
+    // Jul-Dez/26 zerados (a janela MONTHS vai ate Dez/26 so para ingestao) e a
+    // linha de ROA mergulhava para 0 no fim. Slice de 0 preserva os indices.
+    return MONTHS.slice(0, latestMonthIdxWithData() + 1).map(function(m, mi) {
       var aum = 0, revenue = 0, nnm = 0;
       CATALOG.forEach(function(p) {
         var pd = _portfolioData[p.code];
