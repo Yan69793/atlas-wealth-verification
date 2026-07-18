@@ -59,8 +59,12 @@ def collect_book_files(pasta):
         vistos.add(d)
         for f in sorted(os.listdir(d)):
             full = os.path.join(d, f)
-            if os.path.isfile(full) and re.match(r'^Book_.*\.pdf$', f, re.I) and not is_excluded(f):
-                resultado.append((full, f, origem))
+            if not (os.path.isfile(full) and re.match(r'^Book_.*\.pdf$', f, re.I)):
+                continue
+            if is_excluded(f):
+                print(f'[extract-pdfs] "{f}" excluido da extracao (copia pessoal/versao antiga, padrao de exclusao intencional)', file=sys.stderr)
+                continue
+            resultado.append((full, f, origem))
     return resultado
 
 
