@@ -111,13 +111,28 @@ all_codes = sorted(all_codes)
 # Ficam de fora do overlay (nao contam pra AUM/receita do dashboard nem do
 # rollup por gestor). A conciliacao do PDF em si continua existindo em
 # audits/<mes>/audit.json, isto so afeta o que aparece agregado no dashboard.
-codigos_consolidado = sorted(c for c in all_codes if '_Consolidado' in c)
+#
+# EXCECAO -- mantidos, NAO excluidos, apesar do sufixo bater: CABM_TMBM_Consolidado
+# e DDA_Consolidado. CABM_TMBM_Consolidado: so 49% do valor explicado pelo par
+# CABM_TMBM, estavel ha 2 anos -- sobra outra metade nao identificada.
+# DDA_Consolidado: proporcao instavel (8% em dez/2025, salta pra 64% em jan/2026)
+# -- parece problema diferente, nao double count simples. Decisao do operador
+# em 18/07/2026: nao assumir double count por semelhanca de nome sozinha nesses
+# dois, manter contando ate identificar o componente exato.
+MANTER_APESAR_DO_SUFIXO = {'CABM_TMBM_Consolidado', 'DDA_Consolidado'}
+codigos_consolidado = sorted(
+    c for c in all_codes if '_Consolidado' in c and c not in MANTER_APESAR_DO_SUFIXO
+)
 if codigos_consolidado:
     print(f'Excluidos do overlay (visao consolidada, ja contada via carteiras '
           f'individuais): {len(codigos_consolidado)}')
     for c in codigos_consolidado:
         print(f'  {c}')
     all_codes = [c for c in all_codes if c not in set(codigos_consolidado)]
+mantidos = sorted(c for c in all_codes if c in MANTER_APESAR_DO_SUFIXO)
+if mantidos:
+    print(f'Mantidos apesar do sufixo _Consolidado (overlap nao confirmado, '
+          f'ver comentario no codigo): {", ".join(mantidos)}')
 
 # Resolve fee e gestor por codigo canonico, antes de qualquer outro processamento.
 fee_by_code = {}
