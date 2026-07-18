@@ -233,6 +233,14 @@
   function getStatus(code, month) {
     var key = code + '|' + month;
     if (STATUS_SCRIPT[key]) return STATUS_SCRIPT[key];
+    // Sem dado nesse mes (vazio, futuro ou antes da inception): nao inventa status.
+    // So aplica depois da materializacao completa — durante a geracao, plArr ainda
+    // esta sendo preenchido (length < MONTHS.length), entao nao interfere na demo.
+    var _pd = _portfolioData[code];
+    if (_pd && _pd.plArr.length === MONTHS.length) {
+      var _mi = MONTHS.indexOf(month);
+      if (_mi < 0 || !(_pd.plArr[_mi] > 0)) return 'LIBERAR';
+    }
     // Mês corrente: apenas os scripts definem status — demais são LIBERAR (garante contagens exatas)
     if (month === CURRENT_MONTH) return 'LIBERAR';
     var rng = subRng('status|' + key);
@@ -277,7 +285,10 @@
         var month = MONTHS[mi];
         var cdi = CDI[month];
 
-        if (month < p.inception) {
+        if (month < p.inception || month > CURRENT_MONTH) {
+          // Nao fabricar dado alem do ultimo mes fechado (CURRENT_MONTH). A janela
+          // MONTHS vai ate Dez/26 so para aceitar ingestao do mes corrente; a demo
+          // nao deve exibir auditoria de mes que ainda nao fechou.
           pd.plArr.push(0);
           pd.nnmArr.push(0);
           pd.retArr.push(0);
@@ -1544,6 +1555,24 @@
 
   function getDataMode() { return _dataMode; }
 
+  // Meses que devem aparecer no seletor: ate o ultimo mes com dado real de carteira
+  // (PL > 0). Em demo isso e CURRENT_MONTH; em real/importado, o ultimo mes carregado.
+  // Impede o seletor de oferecer mes vazio ou futuro (auditoria fabricada na demo,
+  // dashboard zerado no real).
+  function latestMonthIdxWithData() {
+    var last = 0;
+    for (var i = 0; i < MONTHS.length; i++) {
+      for (var c in _portfolioData) {
+        if (_portfolioData.hasOwnProperty(c) && _portfolioData[c].plArr[i] > 0) { last = i; break; }
+      }
+    }
+    return last;
+  }
+  function visibleMonths() {
+    var last = latestMonthIdxWithData();
+    return { months: MONTHS.slice(0, last + 1), labels: MONTH_LABELS.slice(0, last + 1) };
+  }
+
   /* =============================================================
      9. EXPORTS
   ============================================================= */
@@ -1553,6 +1582,7 @@
   window.AtlasData = {
     MONTHS: MONTHS,
     MONTH_LABELS: MONTH_LABELS,
+    visibleMonths: visibleMonths,
     CDI: CDI,
     CURRENT_MONTH: CURRENT_MONTH,
     CATALOG: CATALOG,

@@ -230,8 +230,9 @@
   function Topbar({ title, onMenuClick }) {
     const { selectedMonth, setSelectedMonth } = useMonth();
     const { Icon } = window.AtlasIcons;
-    const months = window.AtlasData.MONTHS;
-    const labels = window.AtlasData.MONTH_LABELS;
+    const _vis = window.AtlasData.visibleMonths ? window.AtlasData.visibleMonths() : null;
+    const months = _vis ? _vis.months : window.AtlasData.MONTHS;
+    const labels = _vis ? _vis.labels : window.AtlasData.MONTH_LABELS;
     const tokens = window.AtlasTokens;
     const [theme, setThemeLocal] = useState(() => tokens ? tokens.getActiveTheme() : 'editorial');
 
@@ -467,7 +468,13 @@
     }, []);
 
     // Month state (global)
-    const [selectedMonth, setSelectedMonthState] = useState(() => storage.getSelectedMonth());
+    const [selectedMonth, setSelectedMonthState] = useState(() => {
+      const _m = storage.getSelectedMonth();
+      const _vis = window.AtlasData.visibleMonths ? window.AtlasData.visibleMonths() : null;
+      // Um mes persistido fora da faixa com dado (ex.: futuro escolhido antes deste
+      // fix) cai para o mes corrente, em vez de abrir num dashboard vazio/fabricado.
+      return (_vis && _vis.months.indexOf(_m) < 0) ? window.AtlasData.CURRENT_MONTH : _m;
+    });
     const setSelectedMonth = useCallback(m => {
       setSelectedMonthState(m);
       storage.setSelectedMonth(m);
