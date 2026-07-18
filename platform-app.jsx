@@ -214,7 +214,7 @@
           <div className="sidebar-footer">
             <div className="sidebar-user">
               <div className="sidebar-user-name">Administrador</div>
-              <div>Meridian Advisory</div>
+              <div>{(window.AtlasBrand && window.AtlasBrand.tenant) || 'Meridian Advisory'}</div>
             </div>
           </div>
         </nav>

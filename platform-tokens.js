@@ -176,4 +176,21 @@
 
   window.AtlasTokens = TOKENS;
 
+  /* ============================================================
+     BRAND (white-label): nome do produto e do tenant num unico
+     lugar. Trocar aqui troca a sidebar, o relatorio exportado e o
+     <title> de uma vez, sem cacar string hardcoded pelo codigo.
+     Um platform-brand-real.js (LGPD, gitignored) pode sobrescrever
+     window.AtlasBrand antes deste script no futuro, como ja e feito
+     com os dados reais.
+     ============================================================ */
+  var BRAND = window.AtlasBrand || {
+    product: 'ATLAS Wealth Verification',
+    tenant: 'Meridian Advisory',
+    reportLabel: 'Relatório de Carteira',
+    confidentiality: 'Uso Interno',
+  };
+  window.AtlasBrand = BRAND;
+  try { document.title = BRAND.product + ' · ' + BRAND.tenant; } catch (_) {}
+
 })();

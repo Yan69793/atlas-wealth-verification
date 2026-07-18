@@ -179,6 +179,7 @@
     } = data;
     const code = row.code || cat.code || '';
     const DEFAULT_OBS = 'Conciliação aprovada sem ressalvas.';
+    const BRAND = window.AtlasBrand || { product: 'ATLAS Wealth Verification', tenant: 'Meridian Advisory', reportLabel: 'Relatório de Carteira', confidentiality: 'Uso Interno' };
 
     const chartSVG = linePath([
       { color: '#05305F', width: 2,   data: accumData },
@@ -319,7 +320,7 @@ td { padding: 5px 7px; border-bottom: 1px solid #E3DDD5; color: #3C3830; vertica
 
 <div class="rpt-hdr">
   <div>
-    <div class="rpt-brand">Meridian Advisory · Relatório de Carteira</div>
+    <div class="rpt-brand">${escH(BRAND.tenant)} · ${escH(BRAND.reportLabel)}</div>
     <div class="rpt-code">${escH(code)}</div>
     <div class="rpt-sub">${escH(cat.name || '')}${managerName ? ' · Gestor: ' + escH(managerName) : ''}</div>
     <div class="rpt-sub" style="margin-top:2px;">Referência: ${monthLabel} · Gerado em ${today}</div>
@@ -369,11 +370,11 @@ ${obsHTML}
 <div class="footnotes">
   (*) Retorno Acumulado: variação patrimonial relativa ao PL no início do período, inclui efeito de aportes e resgates.<br>
   (**) TWR: método CFA/GIPS — &#8719;(1 + r&#8345;) &#8722; 1, elimina distorções por aportes e resgates.<br>
-  Dados sintéticos — ATLAS Wealth Verification · Meridian Advisory (uso interno).
+  Dados sintéticos — ${escH(BRAND.product)} · ${escH(BRAND.tenant)} (uso interno).
 </div>
 
 <footer class="rpt-footer">
-  <span>Meridian Advisory · Relatório de Carteira · Uso Interno</span>
+  <span>${escH(BRAND.tenant)} · ${escH(BRAND.reportLabel)} · ${escH(BRAND.confidentiality)}</span>
   <span>${escH(code)} · ${monthLabel}</span>
 </footer>
 </body>
