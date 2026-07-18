@@ -110,8 +110,11 @@ anos de histórico e mais de cem carteiras por mês.
 
 O que falta para virar produto de prateleira:
 
-Autenticação de verdade. A senha atual é verificada no navegador e guardada no
-localStorage, o que serve para demonstrar a tela e nada além disso.
+Autenticação. O app não autentica por desenho: a senha cosmética que ficava no
+navegador foi removida, porque sinalizava proteção sem proteger. O perímetro é
+do deploy, Cloudflare Access na frente e um Worker validando o JWT do Access
+antes de servir dado. Falta fechar esse perímetro na instância que roda com
+dado real.
 
 Backend. Hoje o dado é lido de arquivo local. O caminho desenhado é servir por
 API autenticada, com o dado fora do bundle.
