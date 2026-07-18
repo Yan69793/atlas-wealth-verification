@@ -245,7 +245,7 @@
       <div>
         {/* Summary */}
         <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(6, 1fr)', marginBottom: 20 }}>
-          <KPITile label="TWR Período"      value={fmtPct(twr, 2)}              sub={`desde ${fmtMonthLabel(inception)}`} />
+          <KPITile label="TWR Período"      value={fmtPct(twr, 2)}              sub={`desde ${fmtMonthLabel(history[0].month)}`} />
           <KPITile label="CDI Período"      value={fmtPct(cdiAcc, 2)}           sub="Acumulado" />
           <KPITile label="vs CDI"           value={(twr - cdiAcc >= 0 ? '+' : '') + fmtPct(twr - cdiAcc, 2)}
             sub="TWR – CDI" variant={twr < cdiAcc ? 'amber' : undefined} />
@@ -637,15 +637,16 @@
     const p   = useMemo(() => D.CATALOG.find(x => x.code === code), [code]);
     const row = useMemo(() => D.getRow(code, selectedMonth), [code, selectedMonth]);
 
-    const { twr, cdiAcc } = useMemo(() => {
-      if (!p) return { twr: 0, cdiAcc: 0 };
+    const { twr, cdiAcc, start } = useMemo(() => {
+      if (!p) return { twr: 0, cdiAcc: 0, start: null };
       const inc = p.inception || D.MONTHS[0];
       const months = D.MONTHS.filter(m => m >= inc && m <= selectedMonth);
       const rows = months.map(m => D.getRow(code, m)).filter(Boolean);
-      if (!rows.length) return { twr: 0, cdiAcc: 0 };
+      if (!rows.length) return { twr: 0, cdiAcc: 0, start: null };
       return {
         twr:    rows.reduce((acc, r) => acc * (1 + r.rent), 1) - 1,
         cdiAcc: rows.reduce((acc, r) => acc * (1 + r.cdi),  1) - 1,
+        start:  months[0], // getRow nao carrega .month; months[0] e o inicio da janela
       };
     }, [code, selectedMonth, p]);
 
@@ -764,7 +765,7 @@
             {/* KPI row 3 */}
             <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', marginBottom: 24 }}>
               <KPITile label="CDI Mês"       value={fmtPct(row.cdi, 3)} sub="Taxa mês" />
-              <KPITile label="TWR Acumulado" value={fmtPct(twr, 2)}     sub={`desde ${fmtMonthLabel(p.inception || D.MONTHS[0])}`} />
+              <KPITile label="TWR Acumulado" value={fmtPct(twr, 2)}     sub={`desde ${fmtMonthLabel(start || p.inception || D.MONTHS[0])}`} />
               <KPITile
                 label="CDI Acumulado"
                 value={fmtPct(cdiAcc, 2)}
