@@ -472,8 +472,6 @@
             // Fallback para CDI quando rentRef e null (offshore)
             retArr[idx] = (rent != null) ? rent : (CDI_RATES[rm] || 0);
             feeArr[idx] = plByMonth[rm] * (p.fee != null ? p.fee : MFEE);
-            // rpp: reported PL do mes anterior (para verificacao de conciliacao)
-            if (idx > 0) rpp[idx] = plByMonth[rm];
           }
         });
       } else {
@@ -485,9 +483,13 @@
           plArr[idx2] = pl;
           retArr[idx2] = CDI_RATES[rk] || 0;
           feeArr[idx2] = pl * MFEE;
-          if (idx2 > 0) rpp[idx2] = pl;
         }
       }
+      // reportedPlPrev = PL de fechamento do mes anterior, mesmo contrato do demo
+      // (materialize) e do import (buildPortfolioEntry): plArr[mi-1]. Antes gravava
+      // o PL do proprio mes, o que zerava a variacao e disparava falsa quebra de
+      // conciliacao em TODA carteira real (o dado do cliente que paga).
+      for (var k = 1; k < n; k++) rpp[k] = plArr[k - 1];
       return { fee:MFEE, plArr:plArr, nnmArr:z(), retArr:retArr, feeArr:feeArr, reportedPlPrevArr:rpp };
     }
 
