@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Wealth Verification · Camada de prova do book mensal</title>
+  <style>
+    :root {
+      --navy: #0A1928;
+      --navy-2: #0F2438;
+      --gold: #C4A228;
+      --gold-dim: rgba(196, 162, 40, 0.14);
+      --text: #E8E4D9;
+      --muted: #8B9AAB;
+      --line: rgba(232, 228, 217, 0.08);
+      --ok: #3D8B6E;
+      --warn: #C4A228;
+      --bad: #B54A4A;
+      --font: "Segoe UI", system-ui, -apple-system, sans-serif;
+      --mono: "Cascadia Code", "Consolas", ui-monospace, monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: var(--font);
+      background: var(--navy);
+      color: var(--text);
+      line-height: 1.5;
+      font-size: 16px;
+    }
+    a { color: var(--gold); text-decoration: none; }
+    .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+
+    /* NAV */
+    nav {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 0; border-bottom: 1px solid var(--line);
+    }
+    .brand {
+      display: flex; align-items: center; gap: 12px;
+      font-size: 0.75rem; letter-spacing: 0.16em; text-transform: uppercase;
+      color: var(--muted);
+    }
+    .brand strong {
+      color: var(--text); font-weight: 600; letter-spacing: 0.12em;
+    }
+    .mark {
+      width: 28px; height: 28px; border: 1px solid var(--gold);
+      display: grid; place-items: center; font-size: 0.7rem; color: var(--gold);
+      font-family: var(--mono);
+    }
+    .nav-cta {
+      border: 1px solid var(--gold); color: var(--gold);
+      padding: 8px 16px; font-size: 0.75rem; letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .nav-cta:hover { background: var(--gold-dim); }
+
+    /* HERO */
+    .hero {
+      display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 48px;
+      padding: 72px 0 64px; align-items: center;
+    }
+    @media (max-width: 900px) {
+      .hero { grid-template-columns: 1fr; gap: 32px; padding: 40px 0; }
+    }
+    .eyebrow {
+      font-size: 0.72rem; letter-spacing: 0.18em; text-transform: uppercase;
+      color: var(--gold); margin-bottom: 18px;
+    }
+    h1 {
+      font-size: clamp(2rem, 4vw, 3.1rem); font-weight: 500;
+      line-height: 1.12; letter-spacing: -0.02em; max-width: 14ch;
+      margin-bottom: 20px;
+    }
+    .lede {
+      color: var(--muted); font-size: 1.05rem; max-width: 38ch;
+      margin-bottom: 28px;
+    }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+    .btn {
+      display: inline-block; padding: 12px 20px; font-size: 0.8rem;
+      letter-spacing: 0.06em; text-transform: uppercase; border: 1px solid transparent;
+      cursor: pointer;
+    }
+    .btn-primary { background: var(--gold); color: var(--navy); font-weight: 600; }
+    .btn-ghost { border-color: var(--line); color: var(--text); }
+    .btn-ghost:hover { border-color: var(--muted); }
+
+    .hero-visual {
+      position: relative; border: 1px solid var(--line); background: var(--navy-2);
+      aspect-ratio: 16/10; overflow: hidden;
+    }
+    .hero-visual img, .hero-visual video {
+      width: 100%; height: 100%; object-fit: cover; display: block; opacity: 0.92;
+    }
+    .hero-badge {
+      position: absolute; left: 16px; bottom: 16px;
+      background: rgba(10, 25, 40, 0.88); border: 1px solid var(--line);
+      padding: 10px 14px; font-size: 0.72rem; color: var(--muted);
+      font-family: var(--mono);
+    }
+    .hero-badge b { color: var(--gold); font-weight: 500; }
+
+    /* METRICS */
+    .metrics {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px;
+      background: var(--line); border: 1px solid var(--line); margin-bottom: 80px;
+    }
+    @media (max-width: 700px) { .metrics { grid-template-columns: 1fr 1fr; } }
+    .metric {
+      background: var(--navy); padding: 28px 20px;
+    }
+    .metric .k {
+      font-size: 0.68rem; letter-spacing: 0.14em; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 8px;
+    }
+    .metric .v {
+      font-size: 1.65rem; font-weight: 500; letter-spacing: -0.02em;
+      font-variant-numeric: tabular-nums;
+    }
+    .metric .s { font-size: 0.78rem; color: var(--muted); margin-top: 4px; }
+
+    /* SECTIONS */
+    section { padding: 0 0 72px; }
+    h2 {
+      font-size: 1.55rem; font-weight: 500; letter-spacing: -0.02em;
+      margin-bottom: 12px; max-width: 22ch;
+    }
+    .section-lead { color: var(--muted); max-width: 52ch; margin-bottom: 32px; }
+
+    .grid-3 {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
+    }
+    @media (max-width: 800px) { .grid-3 { grid-template-columns: 1fr; } }
+    .card {
+      border: 1px solid var(--line); background: var(--navy-2); padding: 24px;
+      min-height: 180px;
+    }
+    .card .n {
+      font-family: var(--mono); font-size: 0.7rem; color: var(--gold);
+      margin-bottom: 12px; letter-spacing: 0.08em;
+    }
+    .card h3 {
+      font-size: 1.05rem; font-weight: 500; margin-bottom: 10px;
+    }
+    .card p { color: var(--muted); font-size: 0.92rem; }
+
+    /* COMPARE */
+    .compare {
+      width: 100%; border-collapse: collapse; font-size: 0.9rem;
+    }
+    .compare th, .compare td {
+      text-align: left; padding: 14px 16px; border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+    .compare th {
+      font-size: 0.68rem; letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--muted); font-weight: 500;
+    }
+    .compare td:first-child { color: var(--muted); width: 28%; }
+    .compare .us { color: var(--text); }
+    .tag {
+      display: inline-block; font-size: 0.68rem; letter-spacing: 0.06em;
+      text-transform: uppercase; padding: 3px 8px; border: 1px solid var(--line);
+      color: var(--muted);
+    }
+    .tag-gold { border-color: rgba(196,162,40,0.45); color: var(--gold); }
+
+    /* DASH MOCK (real structure, demo numbers) */
+    .dash {
+      border: 1px solid var(--line); background: #07131f; overflow: hidden;
+    }
+    .dash-top {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 14px 18px; border-bottom: 1px solid var(--line);
+      font-size: 0.75rem; color: var(--muted);
+    }
+    .dash-top strong { color: var(--text); font-weight: 500; }
+    .pills { display: flex; gap: 8px; flex-wrap: wrap; }
+    .pill {
+      padding: 4px 10px; border: 1px solid var(--line); font-size: 0.7rem;
+      font-variant-numeric: tabular-nums;
+    }
+    .pill-ok { border-color: rgba(61,139,110,0.5); color: var(--ok); }
+    .dash-body {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px;
+      background: var(--line);
+    }
+    @media (max-width: 700px) { .dash-body { grid-template-columns: 1fr 1fr; } }
+    .stat {
+      background: #07131f; padding: 20px 16px;
+    }
+    .stat .l { font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+    .stat .n { font-size: 1.4rem; margin-top: 6px; font-variant-numeric: tabular-nums; }
+    .stat .h { font-size: 0.75rem; color: var(--muted); margin-top: 4px; }
+
+    .table-wrap { overflow-x: auto; }
+    table.rows { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    table.rows th {
+      text-align: left; padding: 10px 14px; color: var(--muted);
+      font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase;
+      border-bottom: 1px solid var(--line); font-weight: 500;
+    }
+    table.rows td {
+      padding: 12px 14px; border-bottom: 1px solid var(--line);
+      font-variant-numeric: tabular-nums;
+    }
+    table.rows tr:hover td { background: rgba(255,255,255,0.02); }
+    .status {
+      font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase;
+      color: var(--ok);
+    }
+
+    /* LAYERS */
+    .layers { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 800px) { .layers { grid-template-columns: 1fr; } }
+    .layer {
+      border-left: 2px solid var(--gold); padding: 8px 0 8px 18px;
+    }
+    .layer h3 { font-size: 0.95rem; font-weight: 500; margin-bottom: 6px; }
+    .layer p { color: var(--muted); font-size: 0.88rem; }
+
+    /* TRAIL */
+    .trail {
+      border: 1px solid var(--line); padding: 24px; background: var(--navy-2);
+      font-size: 0.9rem;
+    }
+    .trail code {
+      font-family: var(--mono); font-size: 0.82rem; color: var(--gold);
+      display: block; margin: 12px 0; line-height: 1.6;
+    }
+    .trail .muted { color: var(--muted); }
+
+    /* CTA */
+    .cta-band {
+      border: 1px solid var(--line); padding: 40px; text-align: center;
+      background: linear-gradient(180deg, var(--navy-2), var(--navy));
+      margin-bottom: 48px;
+    }
+    .cta-band h2 { max-width: none; margin: 0 auto 12px; }
+    .cta-band p { color: var(--muted); margin: 0 auto 24px; max-width: 42ch; }
+
+    footer {
+      border-top: 1px solid var(--line); padding: 28px 0 48px;
+      display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+      font-size: 0.75rem; color: var(--muted);
+    }
+
+    .note {
+      font-size: 0.72rem; color: var(--muted); margin-top: 12px;
+      font-family: var(--mono);
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <nav>
+      <div class="brand">
+        <span class="mark">WV</span>
+        <div><strong>Wealth Verification</strong><br />Szuchmacher Consultoria</div>
+      </div>
+      <a class="nav-cta" href="#prova">Ver a prova</a>
+    </nav>
+
+    <header class="hero">
+      <div>
+        <p class="eyebrow">Camada de auditoria do book mensal</p>
+        <h1>Não mostre o patrimônio. Prove o número.</h1>
+        <p class="lede">
+          O mercado vende consolidação. O middle office paga por confiança:
+          conciliação de PL, achados com conta aberta, classificação do que pode
+          ir ao cliente e trilha pronta para auditoria.
+        </p>
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="#sistema">Quatro camadas de valor</a>
+          <a class="btn btn-ghost" href="#versus">vs. consolidador</a>
+        </div>
+        <p class="note">Demo institucional · dados sintéticos · Jun/26</p>
+      </div>
+      <div class="hero-visual">
+        <video autoplay muted loop playsinline poster="assets/hero-glass-panels.jpg">
+          <source src="assets/hero-cinematic.mp4" type="video/mp4" />
+        </video>
+        <div class="hero-badge">SELO · <b>verificação antes do envio</b></div>
+      </div>
+    </header>
+
+    <div class="metrics" id="prova">
+      <div class="metric">
+        <div class="k">Carteiras no ciclo</div>
+        <div class="v">40</div>
+        <div class="s">visão única · Jun/26</div>
+      </div>
+      <div class="metric">
+        <div class="k">PL consolidado</div>
+        <div class="v">R$ 1,20 bi</div>
+        <div class="s">demo · Meridian Advisory</div>
+      </div>
+      <div class="metric">
+        <div class="k">Status LIBERAR</div>
+        <div class="v">100%</div>
+        <div class="s">0 CORRIGIR no mês demo</div>
+      </div>
+      <div class="metric">
+        <div class="k">Regras de auditoria</div>
+        <div class="v">7</div>
+        <div class="s">PL · continuidade · come-cotas…</div>
+      </div>
+    </div>
+
+    <section id="sistema">
+      <h2>O que o ICP compra de verdade</h2>
+      <p class="section-lead">
+        Padrão Addepar/Aleta: fundação de dado e confiança. Nosso corte: a
+        verificação independente do book do custodiante, empacotada como produto.
+      </p>
+      <div class="layers">
+        <div class="layer">
+          <h3>1. Verificação financeira</h3>
+          <p>Dashboard, achados com severidade e recidiva, comparativo mês a mês, busca por ativo. Cada alerta carrega o número que o gerou.</p>
+        </div>
+        <div class="layer">
+          <h3>2. Risco prudencial</h3>
+          <p>Score em cinco dimensões e stress interativo (juros, bolsa, liquidez, combinado) com top carteiras impactadas.</p>
+        </div>
+        <div class="layer">
+          <h3>3. Compliance documental</h3>
+          <p>Pendências de KYC e ficha por status e prazo, segmentadas por porte. Dimensão que consolidador puro não empacota.</p>
+        </div>
+        <div class="layer">
+          <h3>4. Prova ao cliente</h3>
+          <p>Relatório white-label: TWR vs CDI/IBOV/IPCA, composição, histórico e trilha de auditoria com método de conciliação.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="versus">
+      <h2>Posicionamento em 10 segundos</h2>
+      <p class="section-lead">Não competir de frente com consolidador. Entrar como a camada que valida o output.</p>
+      <table class="compare">
+        <thead>
+          <tr>
+            <th>Job</th>
+            <th>Consolidador (ex.: SmartBrain, Gorila)</th>
+            <th>Ops do escritório (ex.: AAWZ)</th>
+            <th><span class="tag tag-gold">Wealth Verification</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Função central</td>
+            <td>Mostrar patrimônio</td>
+            <td>Rodar a casa (CRM + BPO)</td>
+            <td class="us">Provar o book antes do envio</td>
+          </tr>
+          <tr>
+            <td>Achado</td>
+            <td>Rótulo ou alerta genérico</td>
+            <td>Processo humano</td>
+            <td class="us">Conta aberta + severidade + recidiva</td>
+          </tr>
+          <tr>
+            <td>Auditoria ANBIMA</td>
+            <td>Export de posição</td>
+            <td>Fluxo operacional</td>
+            <td class="us">Trilha: método, regras, desvio de continuidade</td>
+          </tr>
+          <tr>
+            <td>White-label</td>
+            <td>Variável</td>
+            <td>Hub da casa</td>
+            <td class="us">Relatório e shell com marca do tenant</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Operação do mês · resumo auditável</h2>
+      <p class="section-lead">
+        Estrutura real do produto (demo Jun/26). Números sintéticos, coerentes
+        entre Dashboard, Radar e Relatório.
+      </p>
+      <div class="dash">
+        <div class="dash-top">
+          <div><strong>Dashboard</strong> · Verificação mensal · Jun/26</div>
+          <div class="pills">
+            <span class="pill pill-ok">40 LIBERAR</span>
+            <span class="pill">CDI 1,110%</span>
+            <span class="pill">Modo demo</span>
+          </div>
+        </div>
+        <div class="dash-body">
+          <div class="stat">
+            <div class="l">Carteiras</div>
+            <div class="n">40</div>
+            <div class="h">ciclo fechado</div>
+          </div>
+          <div class="stat">
+            <div class="l">PL do mês</div>
+            <div class="n">R$ 1,20 bi</div>
+            <div class="h">consolidado</div>
+          </div>
+          <div class="stat">
+            <div class="l">Com alerta</div>
+            <div class="n">0</div>
+            <div class="h">nenhuma</div>
+          </div>
+          <div class="stat">
+            <div class="l">Corrigir</div>
+            <div class="n">0</div>
+            <div class="h">nenhuma</div>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="rows">
+            <thead>
+              <tr>
+                <th>Carteira</th>
+                <th>Status</th>
+                <th>PL atual</th>
+                <th>Rent.</th>
+                <th>vs CDI</th>
+                <th>Gestor</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>ORION_02 · Orion Gestão II</td>
+                <td><span class="status">Liberar</span></td>
+                <td>R$ 127,8 mi</td>
+                <td>1,09%</td>
+                <td>−0,02%</td>
+                <td>Crest Family Office</td>
+              </tr>
+              <tr>
+                <td>TIGRE_FAM · Tigre Family Office</td>
+                <td><span class="status">Liberar</span></td>
+                <td>R$ 122,8 mi</td>
+                <td>1,40%</td>
+                <td>+0,29%</td>
+                <td>Delta Private Banking</td>
+              </tr>
+              <tr>
+                <td>HELIOS_02 · Helios Patrimonial II</td>
+                <td><span class="status">Liberar</span></td>
+                <td>R$ 111,8 mi</td>
+                <td>0,39%</td>
+                <td>−0,72%</td>
+                <td>Beacon Wealth Management</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <p class="note">Fonte: SPA demo · teste 2026-07-18 · coerência TIGRE_FAM no Radar (top stress) e no relatório exportado</p>
+    </section>
+
+    <section>
+      <h2>Trilha de auditoria · o diferencial</h2>
+      <p class="section-lead">Consolidador exibe. Verificação prova. Trecho real do relatório exportável.</p>
+      <div class="trail">
+        <div class="muted">TRILHA DE AUDITORIA · referência Jun/26</div>
+        <code>PL esperado = PL base + compras − vendas + eventos − impostos<br />
+Desvio de continuidade: 0,000% (tolerância 0,300%)<br />
+Regras: conciliação de PL · continuidade · rentabilidade · spread · cotas sem operação · come-cotas · alocação</code>
+        <p class="muted">
+          Benchmarks no mesmo entregável: TWR vs CDI, IBOV e IPCA. White-label:
+          nome do tenant no cabeçalho e rodapé. Uso interno / confidencialidade configurável.
+        </p>
+      </div>
+    </section>
+
+    <section>
+      <h2>Radar de risco · decisão, não decoração</h2>
+      <div class="grid-3">
+        <div class="card">
+          <div class="n">01 · SCORE</div>
+          <h3>Cinco dimensões</h3>
+          <p>Mercado, concentração, liquidez, suitability e operacional. Heatmap ordenável por carteira.</p>
+        </div>
+        <div class="card">
+          <div class="n">02 · STRESS</div>
+          <h3>Quatro cenários</h3>
+          <p>Juros +200 bps, bolsa −15%, crise de liquidez, combinado. Top-5 mais impactadas por cenário.</p>
+        </div>
+        <div class="card">
+          <div class="n">03 · DEMO JUN/26</div>
+          <h3>Bolsa −15%</h3>
+          <p>Perda estimada agregada −R$ 33,3 mi. TIGRE_FAM no topo do impacto (−7,9%).</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Roadmap que o mercado exige</h2>
+      <p class="section-lead">Da pesquisa de nicho: vender o que prova; não virar super-app de wealth.</p>
+      <div class="grid-3">
+        <div class="card">
+          <div class="n">P0</div>
+          <h3>Condição de venda</h3>
+          <p>Perímetro Access/JWT, fila de exceção, selo do mês na UI, decisão de marca.</p>
+        </div>
+        <div class="card">
+          <div class="n">P1</div>
+          <h3>Escala de uso</h3>
+          <p>PDF multi-layout + HITL, suitability/mandato, portal de entrega, KPI de FTE no Dashboard.</p>
+        </div>
+        <div class="card">
+          <div class="n">P2</div>
+          <h3>Diferenciação</h3>
+          <p>Qtd/PU, alternativos, segunda fonte (Open Finance/feeds), API, upsell VIX Radar.</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="cta-band">
+      <h2>Shadow month com design partner</h2>
+      <p>
+        Rodar em paralelo à planilha da casa. Medir % auto-LIBERAR, divergências
+        capturadas só pela verificação e horas de middle office.
+      </p>
+      <a class="btn btn-primary" href="../../">Abrir o produto (local)</a>
+    </div>
+
+    <footer>
+      <div>Szuchmacher Consultoria · documento de go-to-market · 2026-07-18</div>
+      <div>Assets: docs/go-to-market · sem dado LGPD · marca final pendente (Task 9)</div>
+    </footer>
+  </div>
+</body>
+</html>
