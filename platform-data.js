@@ -1589,6 +1589,21 @@
 
   function getDataMode() { return _dataMode; }
 
+  // Selo do mes (N0.4): le exclusivamente de window._AtlasSelos, overlay LGPD
+  // populado pela instancia do cliente (script selar-mes). Sem overlay, retorna
+  // selado=false -- nunca fabrica checksum para o modo demo.
+  function getSeloInfo(month) {
+    var entry = window._AtlasSelos && window._AtlasSelos.meses && window._AtlasSelos.meses[month];
+    if (!entry) return { selado: false, checksum: null, sealedAt: null, sealedBy: null };
+    if (typeof entry === 'string') return { selado: true, checksum: entry, sealedAt: null, sealedBy: null };
+    return {
+      selado: true,
+      checksum: entry.checksum || null,
+      sealedAt: entry.sealedAt || null,
+      sealedBy: entry.sealedBy || null,
+    };
+  }
+
   // Meses que devem aparecer no seletor: ate o ultimo mes com dado real de carteira
   // (PL > 0). Em demo isso e CURRENT_MONTH; em real/importado, o ultimo mes carregado.
   // Impede o seletor de oferecer mes vazio ou futuro (auditoria fabricada na demo,
@@ -1659,6 +1674,7 @@
     importPortfolioData: importPortfolioData,
     restoreDemo: restoreDemo,
     getDataMode: getDataMode,
+    getSeloInfo: getSeloInfo,
     validate: validate,
   };
 

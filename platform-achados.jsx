@@ -1,8 +1,8 @@
 /* platform-achados.jsx — Achados & Exceções: página global de findings */
 (() => {
-  const { useState, useMemo } = React;
+  const { useState, useMemo, useEffect } = React;
 
-  const { fmtCompactBRL, fmtPct, fmtMonthLabel, signClass, navigate } = window.AtlasUtils;
+  const { fmtCompactBRL, fmtPct, fmtMonthLabel, signClass, navigate, storage } = window.AtlasUtils;
   const { Icon }                                = window.AtlasIcons;
   const { Badge, SeverityBadge, KPITile, EmptyState } = window.AtlasUI;
   const D = window.AtlasData;
@@ -290,10 +290,160 @@
   }
 
   /* ============================================================
+     TAB: FILA DE EXCEÇÃO (N0.3) — workflow sobre achados CORRIGIR/
+     COM ALERTA. Achado CORRIGIR ainda aberto/em análise bloqueia a
+     exportação do relatório daquela carteira (ver handleExport em
+     platform-carteira.jsx). Persistido em localStorage, sem backend.
+  ============================================================ */
+  const STATUS_OPTIONS = [
+    { id: 'aberto',              label: 'Aberto' },
+    { id: 'em_analise',          label: 'Em análise' },
+    { id: 'resolvido',           label: 'Resolvido' },
+    { id: 'aceito_com_ressalva', label: 'Aceito com ressalva' },
+  ];
+  const STATUS_LABEL = STATUS_OPTIONS.reduce((m, s) => (m[s.id] = s.label, m), {});
+  const STATUS_BLOCKS = { aberto: true, em_analise: true, resolvido: false, aceito_com_ressalva: false };
+
+  function buildExceptionItems(month) {
+    const out = [];
+    D.CATALOG.forEach(p => {
+      const row = D.getRow(p.code, month);
+      if (!row || !row.findings) return;
+      row.findings.forEach((f, idx) => {
+        if (f.severity !== 'CORRIGIR' && f.severity !== 'COM ALERTA') return;
+        const key = storage.exceptionKey(p.code, month, idx);
+        out.push({ code: p.code, name: p.name, idx, key, finding: f, exc: storage.getException(key) });
+      });
+    });
+    return out;
+  }
+
+  function ExceptionNoteCell({ item }) {
+    const [assignee, setAssignee] = useState(item.exc.assignee || '');
+    const [note, setNote]         = useState(item.exc.note || '');
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 160 }}>
+        <input
+          className="form-input"
+          style={{ padding: '4px 8px', fontSize: '0.786rem', minHeight: 28 }}
+          placeholder="Responsável"
+          value={assignee}
+          onChange={e => setAssignee(e.target.value)}
+          onBlur={() => storage.setException(item.key, { assignee })}
+        />
+        <input
+          className="form-input"
+          style={{ padding: '4px 8px', fontSize: '0.786rem', minHeight: 28 }}
+          placeholder="Nota"
+          value={note}
+          onChange={e => setNote(e.target.value)}
+          onBlur={() => storage.setException(item.key, { note })}
+        />
+      </div>
+    );
+  }
+
+  function TabFilaExcecao({ month }) {
+    const [items, setItems] = useState(() => buildExceptionItems(month));
+    const [filter, setFilter] = useState('todos');
+
+    useEffect(() => { setItems(buildExceptionItems(month)); }, [month]);
+
+    function setStatus(key, status) {
+      storage.setException(key, { status });
+      setItems(prev => prev.map(it => it.key === key ? { ...it, exc: { ...it.exc, status } } : it));
+    }
+
+    const counts = useMemo(() => {
+      const c = { aberto: 0, em_analise: 0, resolvido: 0, aceito_com_ressalva: 0 };
+      items.forEach(it => { c[it.exc.status] = (c[it.exc.status] || 0) + 1; });
+      return c;
+    }, [items]);
+
+    const filtered = filter === 'todos' ? items : items.filter(it => it.exc.status === filter);
+
+    if (!items.length) {
+      return (
+        <EmptyState
+          title="Nenhuma exceção na fila"
+          sub="Nenhuma carteira com achado CORRIGIR ou COM ALERTA neste mês."
+          icon="check"
+        />
+      );
+    }
+
+    return (
+      <div>
+        <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 16 }}>
+          <KPITile label="Aberto"              value={counts.aberto}              variant={counts.aberto > 0 ? 'red' : undefined} />
+          <KPITile label="Em análise"          value={counts.em_analise}          variant={counts.em_analise > 0 ? 'amber' : undefined} />
+          <KPITile label="Resolvido"           value={counts.resolvido}           variant={counts.resolvido > 0 ? 'green' : undefined} />
+          <KPITile label="Aceito com ressalva" value={counts.aceito_com_ressalva} />
+        </div>
+
+        <div className="chip-group" style={{ marginBottom: 14 }}>
+          <button className={`chip${filter === 'todos' ? ' active' : ''}`} onClick={() => setFilter('todos')}>Todos</button>
+          {STATUS_OPTIONS.map(s => (
+            <button key={s.id} className={`chip${filter === s.id ? ' active' : ''}`} onClick={() => setFilter(s.id)}>
+              {s.label} ({counts[s.id] || 0})
+            </button>
+          ))}
+        </div>
+
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style={{ minWidth: 150 }}>Carteira</th>
+                <th>Severidade</th>
+                <th>Achado</th>
+                <th style={{ minWidth: 170 }}>Status</th>
+                <th>Responsável / Nota</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(item => (
+                <tr key={item.key}>
+                  <td style={{ minWidth: 150 }}>
+                    <div style={{ fontWeight: 600, fontSize: '0.857rem' }}>{item.code}</div>
+                    <div style={{ fontSize: '0.714rem', color: 'var(--muted)' }}>{item.name}</div>
+                  </td>
+                  <td><SeverityBadge severity={item.finding.severity} /></td>
+                  <td style={{ fontSize: '0.857rem', color: 'var(--body)', maxWidth: 360, wordBreak: 'break-word' }}>
+                    {item.finding.text}
+                    {item.finding.severity === 'CORRIGIR' && STATUS_BLOCKS[item.exc.status] && (
+                      <div style={{ fontSize: '0.714rem', color: 'var(--red)', marginTop: 4 }}>
+                        Bloqueia exportação do relatório enquanto não sair de "{STATUS_LABEL[item.exc.status]}"
+                      </div>
+                    )}
+                  </td>
+                  <td>
+                    <select
+                      className="filter-select"
+                      style={{ minWidth: 160 }}
+                      value={item.exc.status}
+                      onChange={e => setStatus(item.key, e.target.value)}
+                    >
+                      {STATUS_OPTIONS.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+                    </select>
+                  </td>
+                  <td><ExceptionNoteCell item={item} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  }
+
+  /* ============================================================
      ACHADOS — componente principal
   ============================================================ */
   const TABS = [
     { id: 'mes',       label: 'Mês atual'     },
+    { id: 'fila',      label: 'Fila de Exceção' },
     { id: 'recidiva',  label: 'Recidiva'      },
     { id: 'anomalias', label: 'Anomalias'     },
     { id: 'limpas',    label: 'Sem ressalvas' },
@@ -309,6 +459,10 @@
     const recidivas  = useMemo(() => D.recidivas(),                   []);
     const anomalias  = useMemo(() => D.anomalias(selectedMonth),      [selectedMonth]);
     const limpas     = useMemo(() => D.limpas(selectedMonth),         [selectedMonth]);
+    const filaAberta = useMemo(
+      () => buildExceptionItems(selectedMonth).filter(it => STATUS_BLOCKS[it.exc.status]).length,
+      [selectedMonth]
+    );
 
     return (
       <div>
@@ -332,6 +486,7 @@
           {TABS.map(t => {
             const count =
               t.id === 'mes'       ? findingsArr.length :
+              t.id === 'fila'      ? filaAberta         :
               t.id === 'recidiva'  ? recidivas.length   :
               t.id === 'anomalias' ? anomalias.length   : 0;
             return (
@@ -350,10 +505,11 @@
         </div>
 
         <div role="tabpanel">
-          {tab === 'mes'       && <TabMesAtual   findingsArr={findingsArr} month={selectedMonth} />}
-          {tab === 'recidiva'  && <TabRecidiva   recidivas={recidivas}     />}
-          {tab === 'anomalias' && <TabAnomalias  anomalias={anomalias}     />}
-          {tab === 'limpas'    && <TabLimpas     limpas={limpas}           />}
+          {tab === 'mes'       && <TabMesAtual      findingsArr={findingsArr} month={selectedMonth} />}
+          {tab === 'fila'      && <TabFilaExcecao   month={selectedMonth}     />}
+          {tab === 'recidiva'  && <TabRecidiva      recidivas={recidivas}     />}
+          {tab === 'anomalias' && <TabAnomalias     anomalias={anomalias}     />}
+          {tab === 'limpas'    && <TabLimpas        limpas={limpas}           />}
         </div>
       </div>
     );

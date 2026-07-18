@@ -6,7 +6,7 @@
   // AtlasContexts é definido por platform-app.jsx (último) — acessar só dentro do componente.
   const { fmtCompactBRL, fmtPct, fmtMonthLabel, signClass, navigate } = window.AtlasUtils;
   const { Icon }      = window.AtlasIcons;
-  const { Badge, Chip, KPITile, EmptyState } = window.AtlasUI;
+  const { Badge, Chip, KPITile, EmptyState, SeloChip } = window.AtlasUI;
   const D = window.AtlasData;
 
   /* ============================================================
@@ -380,7 +380,10 @@
         <div className="page-header">
           <div className="page-eyebrow">Verificação Mensal</div>
           <h1 className="page-title">Dashboard</h1>
-          <div className="page-subtitle">{fmtMonthLabel(selectedMonth)} · {D.CATALOG.length} carteiras</div>
+          <div className="page-subtitle" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <span>{fmtMonthLabel(selectedMonth)} · {D.CATALOG.length} carteiras</span>
+            <SeloChip month={selectedMonth} />
+          </div>
         </div>
 
         <KpiRow

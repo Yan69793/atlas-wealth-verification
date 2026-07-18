@@ -5,7 +5,7 @@
   // Safe IIFE-level destructuring (carregam antes das páginas)
   const { fmtBRL, fmtCompactBRL, fmtPct, fmtMonthLabel, signClass, computeDrawdown, navigate, storage } = window.AtlasUtils;
   const { Icon }            = window.AtlasIcons;
-  const { Badge, SeverityBadge, KPITile, EmptyState } = window.AtlasUI;
+  const { Badge, SeverityBadge, KPITile, EmptyState, SeloChip } = window.AtlasUI;
   const { LineChart } = window.AtlasCharts;
   const D = window.AtlasData;
 
@@ -679,7 +679,28 @@
       { key: 'contacorrente', label: 'Conta Corrente' },
     ], [row && row.nAchados]);
 
+    // N0.3: export bloqueado enquanto houver CORRIGIR aberto/em analise na fila
+    // de excecao. Override exige motivo (fica registrado na propria excecao,
+    // unico "log" possivel neste SPA estatico sem backend).
     function handleExport() {
+      const blocking = window.AtlasUtils.getBlockingExceptions(code, selectedMonth);
+      if (blocking.length > 0) {
+        const lista = blocking.map(b => '- ' + b.finding.text).join('\n');
+        const proceed = window.confirm(
+          'Esta carteira tem ' + blocking.length + ' achado(s) CORRIGIR em aberto na Fila de Exceção:\n\n' +
+          lista +
+          '\n\nExportar mesmo assim exige justificativa e fica registrado. Deseja continuar?'
+        );
+        if (!proceed) return;
+        const motivo = window.prompt('Motivo do override (obrigatório):');
+        if (!motivo || !motivo.trim()) {
+          window.alert('Exportação cancelada: motivo obrigatório para liberar com pendência aberta.');
+          return;
+        }
+        blocking.forEach(b => {
+          storage.setException(b.key, { overrideMotivo: motivo.trim(), overrideAt: new Date().toISOString() });
+        });
+      }
       window.open(window.location.origin + window.location.pathname + '#/dev/relatorio/' + code, '_blank');
     }
 
@@ -702,6 +723,7 @@
               {row && <Badge status={row.status} />}
               <span>Extrato {fmtMonthLabel(selectedMonth)}</span>
               {mgr && <span style={{ color: 'var(--muted)' }}>· {mgr.name}</span>}
+              <SeloChip month={selectedMonth} />
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', paddingTop: 4, flexWrap: 'wrap' }}>

@@ -107,12 +107,20 @@ RIA/FO escala por outlier.
 
 ### Critérios de aceite
 
-- [ ] Com carteira CORRIGIR em demo ou fixture, fila mostra 1+ item
-- [ ] Transição de status persiste após reload da página
-- [ ] Export bloqueado com mensagem clara; override exige motivo e fica no log
-- [ ] `npm test` verde; smoke manual nas rotas dashboard, achados, carteira
+- [x] Com carteira CORRIGIR em demo ou fixture, fila mostra 1+ item
+- [x] Transição de status persiste após reload da página
+- [x] Export bloqueado com mensagem clara; override exige motivo e fica no log
+- [x] `npm test` verde; smoke manual nas rotas dashboard, achados, carteira
 - [ ] Documento de uso: 10 linhas em `manual-de-uso.md` ou comentário no header
       da página
+
+**Implementado 2026-07-18:** `platform-achados.jsx` (nova aba "Fila de Exceção"),
+`platform-utils.jsx` (`storage.exceptionKey/getException/setException`,
+`getBlockingExceptions`), `platform-carteira.jsx` (`handleExport` bloqueia com
+`window.confirm`/`window.prompt`, override exige motivo, fica registrado em
+`exception.overrideMotivo`/`overrideAt`). V1 usa diálogos nativos do browser em
+vez de modal próprio — aceitável no SPA estático sem backend; revisar se algum
+design partner pedir UX mais rica.
 
 ### Fora de escopo N0.3
 
@@ -145,11 +153,18 @@ controle e fechamento.
 
 ### Critérios de aceite
 
-- [ ] Relatório TIGRE_FAM (ou fixture) em demo: texto de trilha permanece; chip
+- [x] Relatório TIGRE_FAM (ou fixture) em demo: texto de trilha permanece; chip
       demo explícito
-- [ ] Com payload mock de selo injetado, UI e relatório mostram checksum
-- [ ] Zero regressão no print do relatório (smoke Playwright ou checklist manual)
-- [ ] `npm test` verde
+- [x] Com payload mock de selo injetado, UI e relatório mostram checksum
+- [x] Zero regressão no print do relatório (smoke Playwright ou checklist manual)
+- [x] `npm test` verde
+
+**Implementado 2026-07-18:** `D.getSeloInfo(month)` em `platform-data.js` (lê só
+`window._AtlasSelos`, nunca fabrica checksum). `AtlasUI.SeloChip` em
+`platform-utils.jsx`, plugado em `platform-dashboard.jsx`, `platform-carteira.jsx`
+e no rodapé da Trilha de Auditoria em `platform-report.jsx`. Testado ao vivo com
+overlay mock injetado via console (`window._AtlasSelos = {meses:{...}}`) e sem
+overlay (estado "Não selado (ambiente demo)" honesto, sem hash inventado).
 
 ---
 

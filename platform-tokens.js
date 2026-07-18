@@ -56,20 +56,23 @@
         '--red-bg':      '#FDEAEA',
       },
 
-      /* Midnight -- dark navy profundo */
+      /* Midnight -- dark navy profundo. Paleta identica ao pitch institucional
+         (docs/go-to-market/pitch-institucional.html) e a tela de login: mesmo
+         fundo #0A1928, mesmo dourado #C4A228 -- as 3 superficies compartilham
+         uma unica identidade de marca em vez de 3 tons de "escuro" diferentes. */
       midnight: {
-        '--paper':       '#001A2E',
-        '--paper-mid':   '#002440',
-        '--rule':        '#143550',
-        '--rule-strong': '#2A4D68',
-        '--muted':       '#5A7185',
-        '--body':        '#EAF1F6',
+        '--paper':       '#0A1928',
+        '--paper-mid':   '#0F2438',
+        '--rule':        '#1C3348',
+        '--rule-strong': '#2E4A60',
+        '--muted':       '#8B9AAB',
+        '--body':        '#E8E4D9',
         '--heading':     '#FFFFFF',
         '--navy':        '#6BA8D9',
         '--navy-2':      '#5590C4',
-        '--sidebar-bg':  '#00101E',
-        '--gold':        '#B7985D',
-        '--gold-2':      '#CCAE7C',
+        '--sidebar-bg':  '#07101C',
+        '--gold':        '#C4A228',
+        '--gold-2':      '#A8881E',
         '--green':       '#6BE6B0',
         '--green-bg':    'rgba(107,230,176,0.12)',
         '--amber':       '#D4A657',

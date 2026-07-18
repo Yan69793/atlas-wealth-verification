@@ -70,7 +70,7 @@
   <script src="platform-data-real.js?v=20260612" onerror="void(0)"></script>
 
   <!-- 1b. Dados (script normal — sem Babel, sem JSX) -->
-  <script src="platform-data.js?v=20260717f"></script>
+  <script src="platform-data.js?v=20260718b"></script>
 
   <!-- 1c. Risk scoring (carregado depois de platform-data.js — usa window.AtlasData._internal) -->
   <script src="platform-data-risk.js?v=20260613a"></script>
@@ -79,14 +79,18 @@
   <script src="platform-data-audit.js?v=20260714" onerror="void(0)"></script>
   <script src="platform-historico.js?v=20260714" onerror="void(0)"></script>
 
+  <!-- 1e. Fallback sintetico de HISTORICO_DATA quando o overlay real (1d) nao
+       carregou — produto puro, versionado, nao LGPD. So popula se 1d nao populou. -->
+  <script src="platform-historico-demo.js?v=20260718a"></script>
+
   <!-- 2. Utilitários, ícones, gráficos (Babel JSX) -->
-  <script type="text/babel" src="platform-utils.jsx?v=20260717a"></script>
+  <script type="text/babel" src="platform-utils.jsx?v=20260718b"></script>
 
   <!-- 3. Páginas (carregadas na etapa correspondente) -->
-  <script type="text/babel" src="platform-dashboard.jsx?v=20260613a"></script>
-  <script type="text/babel" src="platform-carteira.jsx?v=20260717b"></script>
-  <script type="text/babel" src="platform-report.jsx?v=20260717f"></script>
-  <script type="text/babel" src="platform-achados.jsx?v=20260612"></script>
+  <script type="text/babel" src="platform-dashboard.jsx?v=20260718b"></script>
+  <script type="text/babel" src="platform-carteira.jsx?v=20260718b"></script>
+  <script type="text/babel" src="platform-report.jsx?v=20260718c"></script>
+  <script type="text/babel" src="platform-achados.jsx?v=20260718b"></script>
   <script type="text/babel" src="platform-comparativo.jsx?v=20260718a"></script>
   <script type="text/babel" src="platform-receitas.jsx?v=20260611d"></script>
   <script type="text/babel" src="platform-cadastro.jsx?v=20260611"></script>

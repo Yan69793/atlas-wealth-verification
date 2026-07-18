@@ -116,8 +116,11 @@
       ui: { selectedMonth: window.AtlasData ? window.AtlasData.CURRENT_MONTH : '2026-04', plRange: '6M', comparativo: {} },
       observations: {},
       users: [],
+      exceptions: {},
     };
   }
+
+  const EXCEPTION_DEFAULT = { status: 'aberto', assignee: '', note: '', overrideMotivo: '', overrideAt: null, updatedAt: null };
 
   const storage = {
     get() {
@@ -169,7 +172,50 @@
     setSelectedMonth(m) {
       storage.update(d => { d.ui = d.ui || {}; d.ui.selectedMonth = m; });
     },
+    /* Fila de exceção (N0.3): chave inclui o modo de dado para não misturar
+     * workflow de um ciclo demo com um ciclo real do mesmo rótulo de mês. */
+    exceptionKey(code, month, idx) {
+      const mode = window.AtlasData && window.AtlasData.getDataMode ? window.AtlasData.getDataMode() : 'demo';
+      return mode + '|' + code + '|' + month + '|' + idx;
+    },
+    getException(key) {
+      const d = storage.get();
+      return Object.assign({}, EXCEPTION_DEFAULT, d.exceptions && d.exceptions[key]);
+    },
+    setException(key, patch) {
+      storage.update(d => {
+        d.exceptions = d.exceptions || {};
+        const prev = Object.assign({}, EXCEPTION_DEFAULT, d.exceptions[key]);
+        d.exceptions[key] = Object.assign(prev, patch, { updatedAt: new Date().toISOString() });
+      });
+    },
+    allExceptions() {
+      const d = storage.get();
+      return d.exceptions || {};
+    },
   };
+
+  /* ===========================================================
+     FILA DE EXCEÇÃO — achados que exigem decisão antes do envio
+  =========================================================== */
+
+  // Achados CORRIGIR (e opcionalmente COM ALERTA) que ainda não foram
+  // resolvidos/aceitos bloqueiam a exportação do relatório daquela carteira/mês.
+  function getBlockingExceptions(code, month) {
+    const D = window.AtlasData;
+    const row = D && D.getRow(code, month);
+    if (!row || !row.findings) return [];
+    const blocking = [];
+    row.findings.forEach((f, idx) => {
+      if (f.severity !== 'CORRIGIR') return;
+      const key = storage.exceptionKey(code, month, idx);
+      const exc = storage.getException(key);
+      if (exc.status === 'aberto' || exc.status === 'em_analise') {
+        blocking.push({ idx, finding: f, key, exception: exc });
+      }
+    });
+    return blocking;
+  }
 
   /* ===========================================================
      HASH ROUTER
@@ -548,6 +594,28 @@
     return <span title={text} style={{cursor:'help'}}>{children}</span>;
   }
 
+  // Selo do mês (N0.4): só afirma "selado" quando window._AtlasSelos (overlay
+  // real, LGPD) existir para o mês. Sem overlay, mostra o estado honesto --
+  // "não selado" -- em vez de inventar um checksum de demonstração.
+  function SeloChip({ month }) {
+    const D = window.AtlasData;
+    const info = D && D.getSeloInfo ? D.getSeloInfo(month) : { selado: false };
+    if (info.selado) {
+      const short = info.checksum ? String(info.checksum).slice(0, 12) : '';
+      const title = 'Selado' + (info.sealedAt ? ' em ' + info.sealedAt : '') + (info.sealedBy ? ' por ' + info.sealedBy : '');
+      return (
+        <span className="badge badge--green" title={title}>
+          Selado{short ? ' · ' + short : ''}
+        </span>
+      );
+    }
+    return (
+      <span className="badge badge--muted" title="Sem selo de verificação neste ambiente (demo/local) — nenhum checksum foi gerado.">
+        Não selado (ambiente demo)
+      </span>
+    );
+  }
+
   /* ===========================================================
      EXPORTS
   =========================================================== */
@@ -555,6 +623,7 @@
   window.AtlasUtils = {
     fmt, fmtBRL, fmtCompactBRL, fmtPct, fmtPctRaw, fmtMonthLabel,
     signClass, computeDrawdown, storage, navigate, useRouter,
+    getBlockingExceptions,
   };
 
   window.AtlasIcons = { Icon };
@@ -563,7 +632,7 @@
 
   window.AtlasUI = {
     Badge, StatusDot, SeverityBadge, Chip, KPITile,
-    EmptyState, Spinner, Tooltip, ToastContainer, useToast,
+    EmptyState, Spinner, Tooltip, ToastContainer, useToast, SeloChip,
   };
 
 })();

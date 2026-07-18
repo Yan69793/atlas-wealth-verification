@@ -172,7 +172,7 @@
     const managerName  = row.manager ? row.manager.name : '';
 
     return {
-      row, cat, comp, obs, inception, histMonths,
+      row, cat, comp, obs, inception, histMonths, month,
       plBase, varPat, accumData, twrData, twrTotal,
       cdiData, cdiTotal, ibovTotal, ipcaTotal, concentrated, hasVencto,
       statusSlug, monthLabel, today, managerName,
@@ -185,7 +185,7 @@
 
   function renderReportHTML(data) {
     const {
-      row, cat, comp, obs, inception, histMonths,
+      row, cat, comp, obs, inception, histMonths, month,
       varPat, accumData, twrData, twrTotal, cdiData, cdiTotal, ibovTotal, ipcaTotal,
       concentrated, hasVencto, statusSlug, monthLabel, today, managerName,
     } = data;
@@ -295,10 +295,15 @@ ${row.findings.map(f => {
 
     // Trilha de auditoria: torna visivel o metodo e as regras, o diferencial que
     // o consolidador nao entrega. So valores verdadeiros: a formula como metodologia,
-    // as 7 regras, o desvio de continuidade real (row.continuidade) e as datas. O
-    // selo do mes so aparece se houver overlay window._AtlasSelos (mesmo padrao de
-    // _AtlasRealData); a demo nao estampa selo falso.
-    var _selo = (window._AtlasSelos && window._AtlasSelos.meses && window._AtlasSelos.meses[month]) || null;
+    // as 7 regras, o desvio de continuidade real (row.continuidade) e as datas.
+    // Selo (N0.4): D.getSeloInfo le exclusivamente de window._AtlasSelos (overlay
+    // LGPD real). Sem overlay, mostra o estado honesto "nao selado" -- nunca um
+    // checksum de demonstracao -- para nao sugerir uma cadeia de custodia que nao
+    // existe neste ambiente.
+    var _selo = D.getSeloInfo ? D.getSeloInfo(month) : { selado: false };
+    var _seloTxt = _selo.selado
+      ? 'Selo ' + escH(String(_selo.checksum || '').slice(0, 12))
+      : 'Não selado (ambiente demo)';
     const auditTrailHTML = `<section class="section">
 <div class="section-title">Trilha de Auditoria</div>
 <p style="font-size:11px;line-height:1.6;margin:0 0 8px;color:#3C3830;">
@@ -309,7 +314,7 @@ Desvio de continuidade apurado neste mês: <strong>${rFmtPct(row.continuidade ||
 <strong>Regras aplicadas:</strong> conciliação de PL, continuidade de saldo, rentabilidade reportada, spread de rentabilidade, cotas sem operação, come-cotas e aderência de alocação.
 </div>
 <div style="display:flex;justify-content:space-between;font-size:9px;color:#9A9188;text-transform:uppercase;letter-spacing:.06em;border-top:1px solid #DDD8D0;margin-top:8px;padding-top:6px;">
-<span>Referência ${monthLabel} · Verificado em ${today}${_selo ? ' · Selo ' + escH(String(_selo).slice(0,12)) : ''}</span>
+<span>Referência ${monthLabel} · Verificado em ${today} · ${_seloTxt}</span>
 <span>${escH(BRAND.product)}</span>
 </div>
 </section>`;
