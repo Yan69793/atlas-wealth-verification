@@ -130,9 +130,13 @@
     const firstRow = histMonths.length ? D.getRow(code, histMonths[0]) : null;
     const plBase   = firstRow && firstRow.plPrev > 0 ? firstRow.plPrev : (firstRow ? firstRow.plCurr : 1);
 
+    let _accumLast = 0;
     const accumData = histMonths.map(m => {
       const r = D.getRow(code, m);
-      return { month: m, value: r ? (r.plCurr - plBase) / plBase : 0 };
+      // Mes com PL: retorno acumulado real. Mes sem PL (gap na serie real): mantem
+      // o ultimo valor em vez de mergulhar para -100% (plCurr 0 daria -1).
+      if (r && r.plCurr > 0) _accumLast = (r.plCurr - plBase) / plBase;
+      return { month: m, value: _accumLast };
     });
 
     // TWR = ∏(1 + rent) − 1
@@ -365,7 +369,7 @@ td { padding: 5px 7px; border-bottom: 1px solid #E3DDD5; color: #3C3830; vertica
   <div class="kpi-cell"><div class="kpi-lbl">PL Anterior</div><div class="kpi-val">${rFmtBRL(row.plPrev)}</div></div>
   <div class="kpi-cell"><div class="kpi-lbl">PL Atual</div><div class="kpi-val">${rFmtBRL(row.plCurr)}</div></div>
   <div class="kpi-cell"><div class="kpi-lbl">Rent. Mês</div><div class="kpi-val ${row.rent >= 0 ? 'pos' : 'neg'}">${rFmtPct(row.rent)}</div><div class="kpi-sub">vs CDI ${row.vsCDI >= 0 ? '+' : ''}${rFmtPct(row.vsCDI, 3)}</div></div>
-  <div class="kpi-cell"><div class="kpi-lbl">TWR desde ${rFmtMonth(inception)}</div><div class="kpi-val ${twrTotal >= 0 ? 'pos' : 'neg'}">${rFmtPct(twrTotal)}</div></div>
+  <div class="kpi-cell"><div class="kpi-lbl">TWR desde ${rFmtMonth(histMonths[0] || inception)}</div><div class="kpi-val ${twrTotal >= 0 ? 'pos' : 'neg'}">${rFmtPct(twrTotal)}</div></div>
   <div class="kpi-cell"><div class="kpi-lbl">CDI mesmo período</div><div class="kpi-val">${rFmtPct(cdiTotal)}</div></div>
 </div>
 
