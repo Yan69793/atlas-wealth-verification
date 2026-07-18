@@ -280,6 +280,27 @@ ${row.findings.map(f => {
 </section>`
       : '';
 
+    // Trilha de auditoria: torna visivel o metodo e as regras, o diferencial que
+    // o consolidador nao entrega. So valores verdadeiros: a formula como metodologia,
+    // as 7 regras, o desvio de continuidade real (row.continuidade) e as datas. O
+    // selo do mes so aparece se houver overlay window._AtlasSelos (mesmo padrao de
+    // _AtlasRealData); a demo nao estampa selo falso.
+    var _selo = (window._AtlasSelos && window._AtlasSelos.meses && window._AtlasSelos.meses[month]) || null;
+    const auditTrailHTML = `<section class="section">
+<div class="section-title">Trilha de Auditoria</div>
+<p style="font-size:11px;line-height:1.6;margin:0 0 8px;color:#3C3830;">
+Método de conciliação patrimonial: <strong>PL esperado = PL base + compras &#8722; vendas + eventos &#8722; impostos</strong>.
+Desvio de continuidade apurado neste mês: <strong>${rFmtPct(row.continuidade || 0, 3)}</strong> (tolerância 0,300%).
+</p>
+<div style="font-size:10px;color:#3C3830;line-height:1.7;">
+<strong>Regras aplicadas:</strong> conciliação de PL, continuidade de saldo, rentabilidade reportada, spread de rentabilidade, cotas sem operação, come-cotas e aderência de alocação.
+</div>
+<div style="display:flex;justify-content:space-between;font-size:9px;color:#9A9188;text-transform:uppercase;letter-spacing:.06em;border-top:1px solid #DDD8D0;margin-top:8px;padding-top:6px;">
+<span>Referência ${monthLabel} · Verificado em ${today}${_selo ? ' · Selo ' + escH(String(_selo).slice(0,12)) : ''}</span>
+<span>${escH(BRAND.product)}</span>
+</div>
+</section>`;
+
     return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -371,6 +392,7 @@ td { padding: 5px 7px; border-bottom: 1px solid #E3DDD5; color: #3C3830; vertica
 ${historicoHTML}
 ${findingsHTML}
 ${obsHTML}
+${auditTrailHTML}
 <div class="footnotes">
   (*) Retorno Acumulado: variação patrimonial relativa ao PL no início do período, inclui efeito de aportes e resgates.<br>
   (**) TWR: método CFA/GIPS — &#8719;(1 + r&#8345;) &#8722; 1, elimina distorções por aportes e resgates.<br>
