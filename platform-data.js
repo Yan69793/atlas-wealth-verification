@@ -132,6 +132,12 @@
     { id:'DELTA_PB',  name:'Delta Private Banking',   codes:CATALOG.filter(function(p){return p.mgr==='DELTA_PB';}).map(function(p){return p.code;}), roaTarget:0.0043 },
   ];
 
+  // Snapshot dos 40 codigos/gestores ficticios de demo, capturado antes de
+  // qualquer injecao. Com dado real carregado, injectRealData() os remove --
+  // apresentar ao board nao pode misturar carteira ficticia com real.
+  var DEMO_CODES = CATALOG.map(function(p) { return p.code; });
+  var DEMO_MANAGER_IDS = MANAGERS.map(function(m) { return m.id; });
+
   // beta e sigma por perfil de risco
   var RISK_PARAMS = {
     'conservador':        { beta:0.20, sigma:0.0018 },
@@ -378,10 +384,15 @@
     // Conjunto real de meses: todos os meses com dados reais (cdiRates cobre 30 meses)
     var REAL_MONTHS = Object.keys(CDI_RATES).sort();
 
-    // Limpar entradas anteriores (idempotencia)
+    // Limpar entradas anteriores (idempotencia) + as 40 ficticias de demo:
+    // com dado real presente, o catalogo passa a ser so real -- nao mistura
+    // carteira de demonstracao com carteira real na mesma tela/apresentacao.
     for (var i = CATALOG.length - 1; i >= 0; i--) {
-      if (codes.indexOf(CATALOG[i].code) >= 0) CATALOG.splice(i, 1);
+      if (codes.indexOf(CATALOG[i].code) >= 0 || DEMO_CODES.indexOf(CATALOG[i].code) >= 0) CATALOG.splice(i, 1);
     }
+    DEMO_CODES.forEach(function(c) {
+      delete _portfolioData[c]; delete _codeMap[c];
+    });
     codes.forEach(function(c) {
       delete _portfolioData[c]; delete _codeMap[c];
       if (_compCache) {
@@ -391,11 +402,12 @@
     });
     var ss = D.statusScript || {};
     for (var sk in ss) { if (ss.hasOwnProperty(sk)) delete STATUS_SCRIPT[sk]; }
-    // Remove todos os managers injetados anteriormente (idempotencia)
+    // Remove todos os managers injetados anteriormente (idempotencia) e os
+    // 4 gestores ficticios de demo.
     var realManagerIds = (D.managers || []).map(function(m) { return m.id; });
     realManagerIds.push('REAIS'); // fallback legado
     for (var j = MANAGERS.length - 1; j >= 0; j--) {
-      if (realManagerIds.indexOf(MANAGERS[j].id) >= 0) MANAGERS.splice(j, 1);
+      if (realManagerIds.indexOf(MANAGERS[j].id) >= 0 || DEMO_MANAGER_IDS.indexOf(MANAGERS[j].id) >= 0) MANAGERS.splice(j, 1);
     }
 
     // CATALOG + _codeMap
@@ -1286,36 +1298,43 @@
       'I0: MONTHS e MONTH_LABELS fora de sync: ' + MONTHS.length + ' vs ' + MONTH_LABELS.length);
     if (MONTHS.length !== MONTH_LABELS.length) errs++;
 
-    // I1: 40 fictícias + N reais (depende de window._AtlasRealData)
+    // I1: com window._AtlasRealData presente, injectRealData() substitui as 40
+    // ficticias pelas N reais (nao soma); sem overlay, ficam as 40 ficticias.
     var _realN = (typeof window !== 'undefined' && window._AtlasRealData && window._AtlasRealData.portfolios)
       ? window._AtlasRealData.portfolios.length : 0;
-    var _expectedCat = 40 + _realN;
+    var _expectedCat = _realN > 0 ? _realN : 40;
     console.assert(CATALOG.length === _expectedCat, 'I1: esperado ' + _expectedCat + ' carteiras, obtido ' + CATALOG.length);
     if (CATALOG.length !== _expectedCat) errs++;
 
-    // I2: PL total Abr/2026 — range adapta ao número de carteiras reais
-    var stats = dashboardStats('2026-04');
-    var _plMin = _realN > 0 ? 1.4e9 : 1.0e9;
-    var _plMax = _realN > 0 ? 2.0e9 : 1.6e9;
-    console.assert(stats.plTotal >= _plMin && stats.plTotal <= _plMax,
-      'I2: PL Abr/2026 fora do intervalo: ' + (stats.plTotal/1e9).toFixed(3) + ' bi');
-    if (stats.plTotal < _plMin || stats.plTotal > _plMax) errs++;
+    // I2-I5: invariantes calibrados sobre o STATUS_SCRIPT e o gerador
+    // deterministico das 40 ficticias de demo. Com dado real presente, as
+    // ficticias saem do catalogo (I1) e esses numeros fixos deixam de existir
+    // -- checar seria validar contra dado que nao esta mais la, nao contra o
+    // real (que nao tem valor esperado hardcoded aqui).
+    if (_realN === 0) {
+      // I2: PL total Abr/2026
+      var stats = dashboardStats('2026-04');
+      var _plMin = 1.0e9, _plMax = 1.6e9;
+      console.assert(stats.plTotal >= _plMin && stats.plTotal <= _plMax,
+        'I2: PL Abr/2026 fora do intervalo: ' + (stats.plTotal/1e9).toFixed(3) + ' bi');
+      if (stats.plTotal < _plMin || stats.plTotal > _plMax) errs++;
 
-    // I3: Abr/2026 → exatamente 2 CORRIGIR, 5 COM ALERTA
-    console.assert(stats.corrigir === 2, 'I3: esperado 2 CORRIGIR em Abr/2026, obtido ' + stats.corrigir);
-    if (stats.corrigir !== 2) errs++;
-    console.assert(stats.alerta === 5, 'I3: esperado 5 COM ALERTA em Abr/2026, obtido ' + stats.alerta);
-    if (stats.alerta !== 5) errs++;
+      // I3: Abr/2026 → exatamente 2 CORRIGIR, 5 COM ALERTA
+      console.assert(stats.corrigir === 2, 'I3: esperado 2 CORRIGIR em Abr/2026, obtido ' + stats.corrigir);
+      if (stats.corrigir !== 2) errs++;
+      console.assert(stats.alerta === 5, 'I3: esperado 5 COM ALERTA em Abr/2026, obtido ' + stats.alerta);
+      if (stats.alerta !== 5) errs++;
 
-    // I4: Ago/2025 → pelo menos 5 CORRIGIR
-    var statsAgo = dashboardStats('2025-08');
-    console.assert(statsAgo.corrigir >= 5, 'I4: esperado >=5 CORRIGIR em Ago/2025, obtido ' + statsAgo.corrigir);
-    if (statsAgo.corrigir < 5) errs++;
+      // I4: Ago/2025 → pelo menos 5 CORRIGIR
+      var statsAgo = dashboardStats('2025-08');
+      console.assert(statsAgo.corrigir >= 5, 'I4: esperado >=5 CORRIGIR em Ago/2025, obtido ' + statsAgo.corrigir);
+      if (statsAgo.corrigir < 5) errs++;
 
-    // I5: >=4 recidivas
-    var rec = recidivas();
-    console.assert(rec.length >= 4, 'I5: esperado >=4 recidivas, obtido ' + rec.length);
-    if (rec.length < 4) errs++;
+      // I5: >=4 recidivas
+      var rec = recidivas();
+      console.assert(rec.length >= 4, 'I5: esperado >=4 recidivas, obtido ' + rec.length);
+      if (rec.length < 4) errs++;
+    }
 
     // I6: PL positivo em todos os meses para carteiras após inception
     var plFail = 0;

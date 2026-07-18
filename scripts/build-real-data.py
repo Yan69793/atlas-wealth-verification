@@ -12,7 +12,11 @@ def fix_mojibake(s):
 def js_str(s):
     return s.replace('\\', '\\\\').replace("'", "\\'")
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# Raiz dos dados (onde vive audits/). Mesma convencao do pipeline-all.mjs:
+# quando core/ e consumido como instancia separada da raiz de dados, o dado
+# real fica um nivel acima. Precedencia: ATLAS_DATA_ROOT > diretorio-pai.
+CORE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROOT = os.environ.get('ATLAS_DATA_ROOT', CORE_DIR)
 
 # 30 meses: 2024-01 a 2026-06
 months_order = []
@@ -23,7 +27,7 @@ for y in range(2024, 2027):
 
 # Carrega name map
 name_map = {}
-map_path = os.path.join(ROOT, 'audit-engine', 'name-map.json')
+map_path = os.path.join(CORE_DIR, 'audit-engine', 'name-map.json')
 if os.path.exists(map_path):
     with open(map_path, 'r', encoding='utf-8') as f:
         name_map = json.load(f).get('mappings', {})
@@ -188,7 +192,7 @@ lines.append('};')
 
 output = '\n'.join(lines) + '\n'
 
-out_path = os.path.join(ROOT, 'platform-data-real.js')
+out_path = os.path.join(CORE_DIR, 'platform-data-real.js')
 with open(out_path, 'w', encoding='utf-8') as f:
     f.write(output)
 
