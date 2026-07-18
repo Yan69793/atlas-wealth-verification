@@ -151,6 +151,14 @@
     });
     const cdiTotal = cdiAcc - 1;
 
+    let ibovAcc = 1, ipcaAcc = 1;
+    histMonths.forEach(m => {
+      ibovAcc *= (1 + (D.IBOV ? (D.IBOV[m] || 0) : 0));
+      ipcaAcc *= (1 + (D.IPCA ? (D.IPCA[m] || 0) : 0));
+    });
+    const ibovTotal = ibovAcc - 1;
+    const ipcaTotal = ipcaAcc - 1;
+
     const varPat      = plBase > 0 ? (row.plCurr - plBase) / plBase : 0;
     const concentrated = comp.filter(a => a.pct >= 0.25).slice(0, 3);
     const hasVencto    = comp.some(a => a.vencto);
@@ -162,7 +170,7 @@
     return {
       row, cat, comp, obs, inception, histMonths,
       plBase, varPat, accumData, twrData, twrTotal,
-      cdiData, cdiTotal, concentrated, hasVencto,
+      cdiData, cdiTotal, ibovTotal, ipcaTotal, concentrated, hasVencto,
       statusSlug, monthLabel, today, managerName,
     };
   }
@@ -174,7 +182,7 @@
   function renderReportHTML(data) {
     const {
       row, cat, comp, obs, inception, histMonths,
-      varPat, accumData, twrData, twrTotal, cdiData, cdiTotal,
+      varPat, accumData, twrData, twrTotal, cdiData, cdiTotal, ibovTotal, ipcaTotal,
       concentrated, hasVencto, statusSlug, monthLabel, today, managerName,
     } = data;
     const code = row.code || cat.code || '';
@@ -362,13 +370,24 @@ td { padding: 5px 7px; border-bottom: 1px solid #E3DDD5; color: #3C3830; vertica
 </div>
 
 <section class="section">
-  <div class="section-title">Retorno Acumulado — desde ${rFmtMonth(inception)}</div>
+  <div class="section-title">Retorno Acumulado — desde ${rFmtMonth(histMonths[0] || inception)}</div>
   ${chartSVG}
   <div class="legend">
     <span class="legend-item"><svg width="24" height="10"><line x1="0" y1="5" x2="24" y2="5" stroke="#05305F" stroke-width="2"/></svg>Retorno Acumulado</span>
     <span class="legend-item"><svg width="24" height="10"><line x1="0" y1="5" x2="24" y2="5" stroke="#05305F" stroke-width="1.5" stroke-dasharray="5,3"/></svg>TWR</span>
     <span class="legend-item"><svg width="24" height="10"><line x1="0" y1="5" x2="24" y2="5" stroke="#9A9188" stroke-width="1.5" stroke-dasharray="3,3"/></svg>CDI Acum.</span>
   </div>
+</section>
+
+<section class="section">
+  <div class="section-title">Comparação com benchmarks — no período desde ${rFmtMonth(histMonths[0] || inception)}</div>
+  <div style="display:flex;gap:24px;flex-wrap:wrap;font-size:13px;">
+    <div><span style="color:#9A9188;">Carteira (TWR)</span> <strong style="font-family:'Courier New',monospace;color:${twrTotal>=0?'#065F46':'#991B1B'};">${rFmtPct(twrTotal)}</strong></div>
+    <div><span style="color:#9A9188;">CDI</span> <strong style="font-family:'Courier New',monospace;">${rFmtPct(cdiTotal)}</strong></div>
+    <div><span style="color:#9A9188;">IBOV</span> <strong style="font-family:'Courier New',monospace;">${rFmtPct(ibovTotal)}</strong></div>
+    <div><span style="color:#9A9188;">IPCA</span> <strong style="font-family:'Courier New',monospace;">${rFmtPct(ipcaTotal)}</strong></div>
+  </div>
+  <p style="font-size:9px;color:#9A9188;margin-top:7px;">Retorno acumulado no período. Fontes: CDI e IPCA do Banco Central (IPCA série IBGE/SGS 433), IBOV do Ibovespa (Yahoo Finance ^BVSP). Séries até Jun/26.</p>
 </section>
 
 <section class="section">
