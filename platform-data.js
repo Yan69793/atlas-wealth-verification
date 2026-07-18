@@ -164,10 +164,10 @@
   ];
 
   var MANAGERS = [
-    { id:'AXIOM_AM',  name:'Axiom Asset Management',  codes:CATALOG.filter(function(p){return p.mgr==='AXIOM_AM';}).map(function(p){return p.code;}), roaTarget:0.0052 },
-    { id:'BEACON_WM', name:'Beacon Wealth Management', codes:CATALOG.filter(function(p){return p.mgr==='BEACON_WM';}).map(function(p){return p.code;}), roaTarget:0.0048 },
-    { id:'CREST_FO',  name:'Crest Family Office',     codes:CATALOG.filter(function(p){return p.mgr==='CREST_FO';}).map(function(p){return p.code;}), roaTarget:0.0055 },
-    { id:'DELTA_PB',  name:'Delta Private Banking',   codes:CATALOG.filter(function(p){return p.mgr==='DELTA_PB';}).map(function(p){return p.code;}), roaTarget:0.0043 },
+    { id:'AXIOM_AM',  name:'Axiom Asset Management',  codes:CATALOG.filter(function(p){return p.mgr==='AXIOM_AM';}).map(function(p){return p.code;}), roaTarget:0.00052 },
+    { id:'BEACON_WM', name:'Beacon Wealth Management', codes:CATALOG.filter(function(p){return p.mgr==='BEACON_WM';}).map(function(p){return p.code;}), roaTarget:0.00048 },
+    { id:'CREST_FO',  name:'Crest Family Office',     codes:CATALOG.filter(function(p){return p.mgr==='CREST_FO';}).map(function(p){return p.code;}), roaTarget:0.00055 },
+    { id:'DELTA_PB',  name:'Delta Private Banking',   codes:CATALOG.filter(function(p){return p.mgr==='DELTA_PB';}).map(function(p){return p.code;}), roaTarget:0.00043 },
   ];
 
   // beta e sigma por perfil de risco
@@ -463,12 +463,12 @@
             id: m.id,
             name: m.name,
             codes: validCodes,
-            roaTarget: m.roaTarget || 0.0050
+            roaTarget: m.roaTarget || 0.0005
           });
         }
       });
     } else {
-      MANAGERS.push({ id:'REAIS', name:'Carteiras Reais', codes:codes.slice(), roaTarget:0.0050 });
+      MANAGERS.push({ id:'REAIS', name:'Carteiras Reais', codes:codes.slice(), roaTarget:0.0005 });
     }
 
     // Mapeia mes → indice no array MONTHS
@@ -1229,9 +1229,12 @@
     if (!monthData) return [];
     var alerts = [];
 
-    // Regra 1: ROA < 0.3% no mês
-    if (monthData.roa < 0.003) {
-      alerts.push({ rule:'ROA Mês Baixo', text:'ROA do mês (' + (monthData.roa*100).toFixed(3) + '%) abaixo do piso de 0,300%.', severity:'CORRIGIR' });
+    // Regra 1: ROA mensal abaixo do piso. Piso e alvos de gestor estao na escala do
+    // ROA mensal real (receita/AUM ~0,05%/mes); antes estavam 10x acima, o que fazia
+    // TODO mes disparar este alerta e TODO gestor cair em ABAIXO no ranking.
+    var ROA_PISO = 0.0003;
+    if (monthData.roa < ROA_PISO) {
+      alerts.push({ rule:'ROA Mês Baixo', text:'ROA do mês (' + (monthData.roa*100).toFixed(3) + '%) abaixo do piso de ' + (ROA_PISO*100).toFixed(3) + '%.', severity:'CORRIGIR' });
     }
 
     // Regra 2: anomalia de fee (Out/2025)
