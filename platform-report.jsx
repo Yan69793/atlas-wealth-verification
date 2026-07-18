@@ -196,6 +196,7 @@
     const _dataLabel = _mode === 'demo' ? 'Dados sintéticos'
       : _mode === 'imported' ? 'Dados importados pelo usuário'
       : 'Dados de carteira reais';
+    const _hasPrior = row.plPrevTrue > 0; // sem mes anterior no dataset: nao inventa PL anterior
 
     const chartSVG = linePath([
       { color: '#05305F', width: 2,   data: accumData },
@@ -366,7 +367,7 @@ td { padding: 5px 7px; border-bottom: 1px solid #E3DDD5; color: #3C3830; vertica
 </div>
 
 <div class="kpi-grid">
-  <div class="kpi-cell"><div class="kpi-lbl">PL Anterior</div><div class="kpi-val">${rFmtBRL(row.plPrev)}</div></div>
+  <div class="kpi-cell"><div class="kpi-lbl">PL Anterior</div><div class="kpi-val">${_hasPrior ? rFmtBRL(row.plPrev) : '—'}</div></div>
   <div class="kpi-cell"><div class="kpi-lbl">PL Atual</div><div class="kpi-val">${rFmtBRL(row.plCurr)}</div></div>
   <div class="kpi-cell"><div class="kpi-lbl">Rent. Mês</div><div class="kpi-val ${row.rent >= 0 ? 'pos' : 'neg'}">${rFmtPct(row.rent)}</div><div class="kpi-sub">vs CDI ${row.vsCDI >= 0 ? '+' : ''}${rFmtPct(row.vsCDI, 3)}</div></div>
   <div class="kpi-cell"><div class="kpi-lbl">TWR desde ${rFmtMonth(histMonths[0] || inception)}</div><div class="kpi-val ${twrTotal >= 0 ? 'pos' : 'neg'}">${rFmtPct(twrTotal)}</div></div>

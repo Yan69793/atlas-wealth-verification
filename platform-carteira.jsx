@@ -667,6 +667,9 @@
     const contVariant = row && row.continuidade >= 0.003 ? 'red' : undefined;
     const prevMonthIdx = D.MONTHS.indexOf(selectedMonth) - 1;
     const prevMonthLabel = prevMonthIdx >= 0 ? fmtMonthLabel(D.MONTHS[prevMonthIdx]) : '—';
+    // Sem mes anterior no dataset (import de mes unico, ou inception): nao mostrar
+    // R$ 0 / Var % 0 contraditorios. plPrevTrue e o PL real do mes anterior.
+    const hasPrior = !!(row && row.plPrevTrue > 0);
 
     const TABS = useMemo(() => [
       { key: 'composicao',    label: 'Composição' },
@@ -723,19 +726,19 @@
         {row ? (
           <>
             <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(5, 1fr)', marginBottom: 10 }}>
-              <KPITile label="PL Anterior"  value={fmtCompactBRL(row.plPrev)} sub={prevMonthLabel} />
+              <KPITile label="PL Anterior"  value={hasPrior ? fmtCompactBRL(row.plPrev) : '—'} sub={hasPrior ? prevMonthLabel : 'sem mês anterior'} />
               <KPITile label="PL Atual"     value={fmtCompactBRL(row.plCurr)} sub={fmtMonthLabel(selectedMonth)} />
               <KPITile
                 label="Var. R$"
-                value={(row.varBRL >= 0 ? '+' : '') + fmtCompactBRL(row.varBRL)}
+                value={hasPrior ? ((row.varBRL >= 0 ? '+' : '') + fmtCompactBRL(row.varBRL)) : '—'}
                 sub="vs mês anterior"
-                variant={row.varBRL < -row.plPrev * 0.05 ? 'amber' : undefined}
+                variant={hasPrior && row.varBRL < -row.plPrev * 0.05 ? 'amber' : undefined}
               />
               <KPITile
                 label="Var. %"
-                value={(row.varPct >= 0 ? '+' : '') + fmtPct(row.varPct, 2)}
+                value={hasPrior ? ((row.varPct >= 0 ? '+' : '') + fmtPct(row.varPct, 2)) : '—'}
                 sub="vs mês anterior"
-                variant={row.varPct < -0.05 ? 'amber' : undefined}
+                variant={hasPrior && row.varPct < -0.05 ? 'amber' : undefined}
               />
               <KPITile
                 label="Rent. Mês"
