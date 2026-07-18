@@ -104,22 +104,27 @@ all_codes = sorted(all_codes)
 # contadas em separado -- nao sao uma relacao de cliente independente, sao uma
 # visao de conferencia sobre contas que ja existem. Confirmado carteira a
 # carteira em 18/07/2026: RIM_Consolidado (BR+CH) = RIM + RIM_CH + Stella23,
-# EFSS_Consolidado = EFSS + EFSS_ND, MMR_ACRB_Consolidado = MMR 1+2+3, todos
-# batendo ao centavo, todo mes, desde o inicio do historico (2024). Confirma
-# tambem: nenhum codigo _Consolidado tem fee proprio em fees-from-planilha.json
-# -- a area de negocio nunca tratou "Consolidado" como conta faturavel.
-# Ficam de fora do overlay (nao contam pra AUM/receita do dashboard nem do
-# rollup por gestor). A conciliacao do PDF em si continua existindo em
-# audits/<mes>/audit.json, isto so afeta o que aparece agregado no dashboard.
+# EFSS_Consolidado = EFSS + EFSS_ND, MMR_ACRB_Consolidado = MMR 1+2+3,
+# DDA_Consolidado = DDA + MPL (achado por ultimo: dentro do proprio ativos[] do
+# DDA_Consolidado o fundo MANDRILINVESTIMENTOBBFIMCP aparece duas vezes, uma
+# batendo ao centavo com MPL inteira, outra com DDA inteira menos a liquidez).
+# Todos batendo ao centavo, todo mes, desde o inicio do historico (2024).
+# Confirma tambem: nenhum codigo _Consolidado tem fee proprio em
+# fees-from-planilha.json -- a area de negocio nunca tratou "Consolidado" como
+# conta faturavel. Ficam de fora do overlay (nao contam pra AUM/receita do
+# dashboard nem do rollup por gestor). A conciliacao do PDF em si continua
+# existindo em audits/<mes>/audit.json, isto so afeta o agregado do dashboard.
 #
-# EXCECAO -- mantidos, NAO excluidos, apesar do sufixo bater: CABM_TMBM_Consolidado
-# e DDA_Consolidado. CABM_TMBM_Consolidado: so 49% do valor explicado pelo par
-# CABM_TMBM, estavel ha 2 anos -- sobra outra metade nao identificada.
-# DDA_Consolidado: proporcao instavel (8% em dez/2025, salta pra 64% em jan/2026)
-# -- parece problema diferente, nao double count simples. Decisao do operador
-# em 18/07/2026: nao assumir double count por semelhanca de nome sozinha nesses
-# dois, manter contando ate identificar o componente exato.
-MANTER_APESAR_DO_SUFIXO = {'CABM_TMBM_Consolidado', 'DDA_Consolidado'}
+# EXCECAO -- mantido, NAO excluido, apesar do sufixo bater: CABM_TMBM_Consolidado.
+# So 49% do valor explicado pelo par CABM_TMBM, estavel ha 2 anos. Investigado
+# a fundo em 18/07/2026: cruzei cada ativo (e toda combinacao de 2-3 ativos) do
+# documento contra o PL de TODAS as outras carteiras do mes -- nenhum match real,
+# so coincidencia espuria esperada numa busca combinatoria desse tamanho. Ao
+# contrario de RIM/EFSS/MMR_ACRB/DDA, aqui nao ha carteira irma rastreada em
+# lugar nenhum do sistema que explique o residuo (~R$ 20 mi). Decisao do
+# operador: manter contando ate ter o PDF de origem ou confirmacao de quem
+# administra a conta -- nao excluir por semelhanca de nome sem prova.
+MANTER_APESAR_DO_SUFIXO = {'CABM_TMBM_Consolidado'}
 codigos_consolidado = sorted(
     c for c in all_codes if '_Consolidado' in c and c not in MANTER_APESAR_DO_SUFIXO
 )
