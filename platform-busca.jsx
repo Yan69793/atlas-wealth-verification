@@ -14,6 +14,8 @@
     const [debouncedQuery, setDebouncedQuery] = useState('');
     const [month,         setMonth]         = useState(selectedMonth);
 
+    const visMonths = useMemo(() => (D.visibleMonths ? D.visibleMonths().months : D.MONTHS), []);
+
     useEffect(() => {
       const t = setTimeout(() => setDebouncedQuery(query), 200);
       return () => clearTimeout(t);
@@ -69,7 +71,7 @@
           <div>
             <label style={{ fontSize: '0.714rem', color: 'var(--muted)', display: 'block', marginBottom: 4 }}>Mês</label>
             <select className="filter-select" value={month} onChange={e => setMonth(e.target.value)}>
-              {D.MONTHS.map(m => <option key={m} value={m}>{fmtMonthLabel(m)}</option>)}
+              {visMonths.map(m => <option key={m} value={m}>{fmtMonthLabel(m)}</option>)}
             </select>
           </div>
         </div>

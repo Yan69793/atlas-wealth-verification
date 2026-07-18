@@ -151,6 +151,10 @@
     const [refMonth,      setRefMonth]      = useState(selectedMonth);
     const [baselineMonth, setBaselineMonth] = useState(getPrevMonth(selectedMonth));
 
+    // Seletores locais desta pagina nao devem oferecer mes sem dado (a janela
+    // MONTHS vai ate Dez/26 so para aceitar ingestao do mes corrente).
+    const visMonths = useMemo(() => (D.visibleMonths ? D.visibleMonths().months : D.MONTHS), []);
+
     useEffect(() => {
       setRefMonth(selectedMonth);
       setBaselineMonth(getPrevMonth(selectedMonth));
@@ -198,7 +202,7 @@
               value={refMonth}
               onChange={e => setRefMonth(e.target.value)}
             >
-              {D.MONTHS.map(m => (
+              {visMonths.map(m => (
                 <option key={m} value={m}>{fmtMonthLabel(m)}</option>
               ))}
             </select>
@@ -212,7 +216,7 @@
               value={baselineMonth}
               onChange={e => setBaselineMonth(e.target.value)}
             >
-              {D.MONTHS.map(m => (
+              {visMonths.map(m => (
                 <option key={m} value={m}>{fmtMonthLabel(m)}</option>
               ))}
             </select>
