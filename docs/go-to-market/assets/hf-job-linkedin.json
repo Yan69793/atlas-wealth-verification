@@ -1,0 +1,22 @@
+[
+  {
+    "id": "92e35cb4-2692-4982-934e-1614432c85b2",
+    "status": "completed",
+    "display_name": "Nano Banana Pro",
+    "job_set_type": "nano_banana_2",
+    "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3F4NfmpJivtLwBqYB7dU0nWDEud/hf_20260718_033900_92e35cb4-2692-4982-934e-1614432c85b2.png",
+    "created_at": 1784345940.806462,
+    "params": {
+      "width": 2048,
+      "height": 2048,
+      "aspect_ratio": "1:1",
+      "resolution": "2k",
+      "batch_size": 1,
+      "input_images": [],
+      "input_image": null,
+      "application": null,
+      "surface": null,
+      "prompt": "LinkedIn B2B ad for institutional wealth verification SaaS, square 1:1, deep navy field, single elegant abstract icon merging a shield scale and verification checkmark in thin gold and off-white, vast negative space, Swiss grid, no small text, no clutter, enterprise fintech 2026 quiet luxury"
+    }
+  }
+]

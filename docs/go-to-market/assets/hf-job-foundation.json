@@ -1,0 +1,22 @@
+[
+  {
+    "id": "f752e5e4-bbc9-414f-afc9-1276b81a2cc0",
+    "status": "completed",
+    "display_name": "Nano Banana Pro",
+    "job_set_type": "nano_banana_2",
+    "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3F4NfmpJivtLwBqYB7dU0nWDEud/hf_20260718_034013_f752e5e4-bbc9-414f-afc9-1276b81a2cc0.png",
+    "created_at": 1784346013.706501,
+    "params": {
+      "width": 2752,
+      "height": 1536,
+      "aspect_ratio": "16:9",
+      "resolution": "2k",
+      "batch_size": 1,
+      "input_images": [],
+      "input_image": null,
+      "application": null,
+      "surface": null,
+      "prompt": "Abstract multi-custodian reconciliation metaphor for enterprise wealth software, dark charcoal and deep blue space, luminous thin gold data threads connecting many source nodes into one verified core, no charts with fake numbers, no UI chrome, pure data foundation aesthetic, cinematic minimal high-end SaaS brand film still"
+    }
+  }
+]

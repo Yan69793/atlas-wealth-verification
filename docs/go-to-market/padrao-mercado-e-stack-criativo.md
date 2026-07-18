@@ -64,21 +64,37 @@ em asset público, emoji, gradiente neon, 3D genérico de “AI brain”.
 
 ---
 
-## 4. Assets gerados nesta rodada
+## 4. Assets gerados
 
 Pasta: `docs/go-to-market/assets/`
 
+### 4.1 Imagine (xAI) — rodada anterior
+
 | Arquivo | Função |
 |---|---|
-| `hero-glass-panels.jpg` | Hero 16:9 (painéis de verificação) |
-| `hero-verification.jpg` | Ad quadrado / ícone de prova |
-| `metaphor-data-foundation.jpg` | Multi-fonte → um nó verificado |
-| `proof-report-seal.jpg` | Entregável: relatório + selo |
-| `hero-cinematic.mp4` | Motion 6s do hero glass |
+| `hero-glass-panels.jpg` | Hero 16:9 (baseline) |
+| `hero-verification.jpg` | Ad quadrado |
+| `metaphor-data-foundation.jpg` | Multi-fonte → nó |
+| `proof-report-seal.jpg` | Relatório + selo |
+| `hero-cinematic.mp4` | Motion 6s |
+
+### 4.2 Higgsfield Nano Banana 2 (`nano_banana_2`) — 2026-07-18
+
+Conta free, 10 créditos. GPT Image 2 high e Seedance exigem plano pago /
+créditos além do saldo. Modelo usado: **Nano Banana 2k** (2 cr/imagem).
+
+| Arquivo | Formato | Job |
+|---|---|---|
+| `hf-hero-glass.png` | 16:9 2k | `c934ab90-…` |
+| `hf-linkedin-icon.png` | 1:1 2k | `92e35cb4-…` |
+| `hf-proof-seal.png` | 3:2 2k | `9b328c2b-…` |
+| `hf-data-foundation.png` | 16:9 2k | `f752e5e4-…` |
+
+Metadados: `hf-job-*.json`. Saldo ao fim: **0 créditos**.
 
 Landing com números e copy exatos (código):
 
-- `docs/go-to-market/pitch-institucional.html`
+- `docs/go-to-market/pitch-institucional.html` (galeria HF + KPIs demo)
 
 ---
 

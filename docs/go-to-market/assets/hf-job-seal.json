@@ -1,0 +1,22 @@
+[
+  {
+    "id": "9b328c2b-f247-410f-8507-c4330a4525ea",
+    "status": "completed",
+    "display_name": "Nano Banana Pro",
+    "job_set_type": "nano_banana_2",
+    "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3F4NfmpJivtLwBqYB7dU0nWDEud/hf_20260718_033934_9b328c2b-f247-410f-8507-c4330a4525ea.png",
+    "created_at": 1784345974.211174,
+    "params": {
+      "width": 2528,
+      "height": 1696,
+      "aspect_ratio": "3:2",
+      "resolution": "2k",
+      "batch_size": 1,
+      "input_images": [],
+      "input_image": null,
+      "application": null,
+      "surface": null,
+      "prompt": "Quiet luxury finance still life, premium closed audit report folder on dark desk, embossed gold verification seal, soft spotlight, navy and gold only, shallow depth of field, no readable client names or numbers, Addepar grade restraint, photoreal"
+    }
+  }
+]

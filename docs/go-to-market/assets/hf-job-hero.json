@@ -1,0 +1,22 @@
+[
+  {
+    "id": "c934ab90-fcbf-4838-ab1d-5c46acefca3d",
+    "status": "completed",
+    "display_name": "Nano Banana Pro",
+    "job_set_type": "nano_banana_2",
+    "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3F4NfmpJivtLwBqYB7dU0nWDEud/hf_20260718_033821_c934ab90-fcbf-4838-ab1d-5c46acefca3d.png",
+    "created_at": 1784345901.346582,
+    "params": {
+      "width": 2752,
+      "height": 1536,
+      "aspect_ratio": "16:9",
+      "resolution": "2k",
+      "batch_size": 1,
+      "input_images": [],
+      "input_image": null,
+      "application": null,
+      "surface": null,
+      "prompt": "Premium institutional wealth-tech brand hero, deep navy nearly black background, thin gold accents only, layered translucent glass panels suggesting portfolio books under verification, soft luminous audit seal, large empty left third for headline, Swiss quiet luxury, cinematic light, no people, no bank logos, no readable fake UI text or numbers, photoreal glass metal, Addepar Aleta grade restraint"
+    }
+  }
+]
