@@ -52,13 +52,29 @@ for m in months_order:
             all_codes.add(canonical_name(c['nome']))
 all_codes = sorted(all_codes)
 
+# Status por carteira/mes vem de d['results'][].status (nao de d['carteiras']),
+# no vocabulario do audit-engine ('LIBERAR', 'LIBERAR COM ALERTA', 'CORRIGIR').
+# O SPA usa 'LIBERAR' / 'COM ALERTA' / 'CORRIGIR' -- mapeado abaixo.
+STATUS_MAP = {
+    'LIBERAR': 'LIBERAR',
+    'LIBERAR COM ALERTA': 'COM ALERTA',
+    'CORRIGIR': 'CORRIGIR',
+}
+results_status_by_nome = {}
+for m in months_order:
+    if m not in all_data:
+        continue
+    results_status_by_nome[m] = {r['nome']: r.get('status') for r in all_data[m].get('results', [])}
+
 # PL and rentRef per month (canonical name)
 pl_by_code = {}
 rent_by_code = {}
 inception_by_code = {}
+status_by_code = {}
 for code in all_codes:
     pl_by_code[code] = {}
     rent_by_code[code] = {}
+    status_by_code[code] = {}
     inception_by_code[code] = '2026-06'
     for m in months_order:
         if m not in all_data:
@@ -73,6 +89,10 @@ for code in all_codes:
                     # rentRef: None para offshore (mantido), valor real para os demais
                     rr = c.get('rentRef')
                     rent_by_code[code][m] = rr  # None ou float
+                    raw_status = results_status_by_nome.get(m, {}).get(c['nome'])
+                    mapped = STATUS_MAP.get(raw_status)
+                    if mapped:
+                        status_by_code[code][m] = mapped
                 if m < inception_by_code[code]:
                     inception_by_code[code] = m
                 break
@@ -147,7 +167,13 @@ for m in months_order:
 lines.append(',\n'.join(cdi_lines))
 lines.append('  },')
 lines.append('')
-lines.append('  statusScript: {},')
+lines.append('  statusScript: {')
+status_entries = []
+for code in all_codes:
+    for m, st in status_by_code[code].items():
+        status_entries.append(f"    '{js_str(code)}|{m}': '{js_str(st)}'")
+lines.append(',\n'.join(status_entries))
+lines.append('  },')
 lines.append('')
 
 # Portfolios with plByMonth and rentByMonth
@@ -209,11 +235,19 @@ for code in all_codes:
         else:
             total_rent_present += 1
 
+status_counts = {'LIBERAR': 0, 'COM ALERTA': 0, 'CORRIGIR': 0}
+for code in all_codes:
+    for m, st in status_by_code[code].items():
+        if st in status_counts:
+            status_counts[st] += 1
+
 print(f'Generated {out_path}')
 print(f'  Portfolios: {len(all_codes)}')
 print(f'  Compositions: {len(comps)}')
 print(f'  Months: {len(months_order)}')
 print(f'  CDI rates: {len(cdi_rates)}')
 print(f'  rentRef: {total_rent_present} presentes, {total_rent_null} null (offshore)')
+print(f'  statusScript entries: {sum(len(v) for v in status_by_code.values())} '
+      f'(LIBERAR {status_counts["LIBERAR"]}, COM ALERTA {status_counts["COM ALERTA"]}, CORRIGIR {status_counts["CORRIGIR"]})')
 print(f'  Size: {len(output):,} chars')
 print(f'  Mojibake: {mojibake_hits}')
