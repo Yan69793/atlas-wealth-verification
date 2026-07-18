@@ -36,6 +36,54 @@ if os.path.exists(map_path):
 def canonical_name(nome):
     return name_map.get(nome, nome)
 
+# Fee e gestor reais (LGPD, arquivos na raiz de dados, nao versionados).
+# Resolucao por codigo canonico: match direto, senao por heranca de sufixo
+# (mesmo catalogo de sufixos de scripts/patch-names-v2.mjs, na raiz), senao
+# fallback pro MFEE global (aplicado no runtime, platform-data.js, nao aqui).
+fees_map = {}
+fees_path = os.path.join(ROOT, 'fees-from-planilha.json')
+if os.path.exists(fees_path):
+    with open(fees_path, 'r', encoding='utf-8') as f:
+        fees_map = json.load(f)
+    print(f'Fees da planilha: {len(fees_map)} codigos')
+
+managers_planilha = {'gerentes': {}, 'code_to_gerente': {}}
+managers_path = os.path.join(ROOT, 'managers-from-planilha.json')
+if os.path.exists(managers_path):
+    with open(managers_path, 'r', encoding='utf-8') as f:
+        managers_planilha = json.load(f)
+    print(f'Gestores da planilha: {len(managers_planilha["gerentes"])} gestores, '
+          f'{len(managers_planilha["code_to_gerente"])} codigos atribuidos')
+
+# Sufixos de variante (mesmo mandato/cliente, book de custodiante diferente por
+# moeda/consolidacao). Busca por substring, nao endswith: "RIM_Consolidado
+# (BR+CH)" tem o sufixo no meio da string, nao no final -- endswith sozinho
+# (o que patch-names-v2.mjs usa) erra esse caso.
+SUFFIXES = ['_Consolidado', '_CH', '_OFF', '_ND', '_CA', '_CAYMAN', '_ERF', '_KBV', '_CLCS']
+
+def strip_suffix(code):
+    matches = [i for i in (code.find(s) for s in SUFFIXES) if i > 0]
+    if not matches:
+        return None
+    return code[:min(matches)]
+
+def resolve_fee(code):
+    if code in fees_map:
+        return fees_map[code], 'direto'
+    base = strip_suffix(code)
+    if base and base in fees_map:
+        return fees_map[base], 'herdado'
+    return None, 'fallback'
+
+def resolve_gerente(code):
+    c2g = managers_planilha.get('code_to_gerente', {})
+    if code in c2g:
+        return c2g[code], 'direto'
+    base = strip_suffix(code)
+    if base and base in c2g:
+        return c2g[base], 'herdado'
+    return None, 'sem_gestor'
+
 # Carrega todos os audit.json
 all_data = {}
 for m in months_order:
@@ -51,6 +99,33 @@ for m in months_order:
         for c in all_data[m]['carteiras']:
             all_codes.add(canonical_name(c['nome']))
 all_codes = sorted(all_codes)
+
+# Resolve fee e gestor por codigo canonico, antes de qualquer outro processamento.
+fee_by_code = {}
+fee_origin = {}
+gerente_by_code = {}
+gerente_origin = {}
+for code in all_codes:
+    fv, forig = resolve_fee(code)
+    if fv is not None:
+        fee_by_code[code] = fv
+    fee_origin[code] = forig
+    gv, gorig = resolve_gerente(code)
+    if gv is not None:
+        gerente_by_code[code] = gv
+    gerente_origin[code] = gorig
+
+fee_diretos = [c for c in all_codes if fee_origin[c] == 'direto']
+fee_herdados = [c for c in all_codes if fee_origin[c] == 'herdado']
+fee_fallback = [c for c in all_codes if fee_origin[c] == 'fallback']
+sem_gestor = [c for c in all_codes if gerente_origin[c] == 'sem_gestor']
+
+print(f'Fee: {len(fee_diretos)} diretos, {len(fee_herdados)} herdados por sufixo, '
+      f'{len(fee_fallback)} em fallback (MFEE global)')
+print(f'Gestor: {len(all_codes) - len(sem_gestor)} atribuidos, {len(sem_gestor)} '
+      f'sem gestor (nao aparecem na aba Por Gestor)')
+if sem_gestor:
+    print('  Sem gestor:', ', '.join(sorted(sem_gestor)))
 
 # Status por carteira/mes vem de d['results'][].status (nao de d['carteiras']),
 # no vocabulario do audit-engine ('LIBERAR', 'LIBERAR COM ALERTA', 'CORRIGIR').
@@ -96,6 +171,12 @@ for code in all_codes:
                 if m < inception_by_code[code]:
                     inception_by_code[code] = m
                 break
+
+if fee_fallback:
+    print('  Fallback (codigo: PL mais recente):')
+    for c in sorted(fee_fallback):
+        latest = max(pl_by_code[c].values()) if pl_by_code[c] else 0
+        print(f'    {c}: R$ {latest:,.2f}')
 
 # Compositions — latest available per portfolio
 comps = {}
@@ -176,6 +257,24 @@ lines.append(',\n'.join(status_entries))
 lines.append('  },')
 lines.append('')
 
+lines.append('  managers: [')
+by_gerente = {}
+for code in all_codes:
+    g = gerente_by_code.get(code)
+    if g:
+        by_gerente.setdefault(g, []).append(code)
+gerente_ids = sorted(by_gerente.keys())
+manager_lines = []
+for gid in gerente_ids:
+    ginfo = managers_planilha.get('gerentes', {}).get(gid, {})
+    gname = ginfo.get('name', gid)
+    groa = ginfo.get('roaTarget', 0.005)
+    codes_js = ', '.join(f"'{js_str(c)}'" for c in sorted(by_gerente[gid]))
+    manager_lines.append(f"    {{ id:'{js_str(gid)}', name:'{js_str(gname)}', codes:[{codes_js}], roaTarget:{groa} }}")
+lines.append(',\n'.join(manager_lines))
+lines.append('  ],')
+lines.append('')
+
 # Portfolios with plByMonth and rentByMonth
 lines.append('  portfolios: [')
 for i, code in enumerate(all_codes):
@@ -184,11 +283,12 @@ for i, code in enumerate(all_codes):
     inception = inception_by_code.get(code, '2024-01')
     latest_pl = max((v for v in pl_month.values()), default=0)
     comma = ',' if i < len(all_codes) - 1 else ''
+    fee_field = f", fee:{fee_by_code[code]}" if code in fee_by_code else ""
     lines.append(
         f"    {{ code:'{js_str(code)}', name:'{js_str(code)}', "
         f"risk:'moderado', inception:'{inception}', pl:{latest_pl}, "
         f"plByMonth:{json.dumps(pl_month)}, "
-        f"rentByMonth:{json.dumps(rent_month)} }}{comma}"
+        f"rentByMonth:{json.dumps(rent_month)}{fee_field} }}{comma}"
     )
 lines.append('  ],')
 lines.append('')
@@ -249,5 +349,7 @@ print(f'  CDI rates: {len(cdi_rates)}')
 print(f'  rentRef: {total_rent_present} presentes, {total_rent_null} null (offshore)')
 print(f'  statusScript entries: {sum(len(v) for v in status_by_code.values())} '
       f'(LIBERAR {status_counts["LIBERAR"]}, COM ALERTA {status_counts["COM ALERTA"]}, CORRIGIR {status_counts["CORRIGIR"]})')
+print(f'  Fee: {len(fee_diretos)} diretos, {len(fee_herdados)} herdados, {len(fee_fallback)} fallback')
+print(f'  Managers: {len(gerente_ids)} gestores, {len(all_codes) - len(sem_gestor)} carteiras atribuidas, {len(sem_gestor)} sem gestor')
 print(f'  Size: {len(output):,} chars')
 print(f'  Mojibake: {mojibake_hits}')
