@@ -135,13 +135,20 @@ operador (deploy, chave, conta Cloudflare, GitHub).
    por tenant, e logo no cabeçalho do relatório.
 2. **Benchmark de mercado** (CDI já existe no dado; adicionar IBOV e IPCA como
    série de comparação no relatório e na aba de carteira). Conecta com VIX Radar
-   e Radar Quant como fonte.
+   e Radar Quant como fonte. `[Fato]` séries e bloco de benchmarks no relatório
+   exportável já presentes no SPA em 2026-07-18 (demo); falta fonte oficial
+   estável na instância e política de atraso de série.
 3. **Trilha de auditoria visível**: estampar no relatório o selo (checksum) do
    mês, a data de fechamento e o método de conciliação. Transforma o diferencial
-   invisível em prova para o cliente e para a auditoria ANBIMA.
+   invisível em prova para o cliente e para a auditoria ANBIMA. Método já no
+   relatório; selo operacional = task N0.4 do plano 2026-07-18.
 4. **Autenticação real + RBAC leve + log de acesso** no Worker da instância.
    Parte é **operator-gated** (Cloudflare Access).
 5. **Portal / entrega ao cliente** do relatório white-label.
+6. **Workflow de exceção** (fila CORRIGIR com dono/SLA e bloqueio de export):
+   task N0.3 do plano 2026-07-18, prioridade de uso mensal do ICP.
+7. **KPI de ROI operacional** no Dashboard (auto-LIBERAR %, heurística FTE):
+   task N0.5.
 
 ### P2, pagar dívida e diferenciar (6 a 18 meses)
 - Ingestão assistida por IA para books fora do padrão (hoje some carteira; o
@@ -195,6 +202,9 @@ senha cosmética que já foi removida. Atualizar quando conveniente.
 
 ## Fontes
 
+- Pesquisa de nicho e backlog de melhorias (2026-07-18):
+  `docs/pesquisa-nicho-melhorias-2026-07.md` e plano executável
+  `docs/superpowers/plans/2026-07-18-p0-melhorias-nicho.md`
 - AAWZ Hub, plataforma para assessorias/consultorias CVM 19/wealths (categorias
   de mercado, dor de 1,2 FTE/mês): https://aawzpartners.com/plataforma-tecnologia-assessoria-investimento/
 - Smartbrain, consolidação para family offices: https://smartbrain.com.br/family-offices-tendencias/
