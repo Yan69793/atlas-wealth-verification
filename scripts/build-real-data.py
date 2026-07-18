@@ -100,6 +100,25 @@ for m in months_order:
             all_codes.add(canonical_name(c['nome']))
 all_codes = sorted(all_codes)
 
+# Extratos consolidados de custodiante (sufixo _Consolidado) somam carteiras ja
+# contadas em separado -- nao sao uma relacao de cliente independente, sao uma
+# visao de conferencia sobre contas que ja existem. Confirmado carteira a
+# carteira em 18/07/2026: RIM_Consolidado (BR+CH) = RIM + RIM_CH + Stella23,
+# EFSS_Consolidado = EFSS + EFSS_ND, MMR_ACRB_Consolidado = MMR 1+2+3, todos
+# batendo ao centavo, todo mes, desde o inicio do historico (2024). Confirma
+# tambem: nenhum codigo _Consolidado tem fee proprio em fees-from-planilha.json
+# -- a area de negocio nunca tratou "Consolidado" como conta faturavel.
+# Ficam de fora do overlay (nao contam pra AUM/receita do dashboard nem do
+# rollup por gestor). A conciliacao do PDF em si continua existindo em
+# audits/<mes>/audit.json, isto so afeta o que aparece agregado no dashboard.
+codigos_consolidado = sorted(c for c in all_codes if '_Consolidado' in c)
+if codigos_consolidado:
+    print(f'Excluidos do overlay (visao consolidada, ja contada via carteiras '
+          f'individuais): {len(codigos_consolidado)}')
+    for c in codigos_consolidado:
+        print(f'  {c}')
+    all_codes = [c for c in all_codes if c not in set(codigos_consolidado)]
+
 # Resolve fee e gestor por codigo canonico, antes de qualquer outro processamento.
 fee_by_code = {}
 fee_origin = {}
