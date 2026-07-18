@@ -180,6 +180,10 @@
     const code = row.code || cat.code || '';
     const DEFAULT_OBS = 'Conciliação aprovada sem ressalvas.';
     const BRAND = window.AtlasBrand || { product: 'ATLAS Wealth Verification', tenant: 'Meridian Advisory', reportLabel: 'Relatório de Carteira', confidentiality: 'Uso Interno' };
+    const _mode = (D.getDataMode && D.getDataMode()) || 'demo';
+    const _dataLabel = _mode === 'demo' ? 'Dados sintéticos'
+      : _mode === 'imported' ? 'Dados importados pelo usuário'
+      : 'Dados de carteira reais';
 
     const chartSVG = linePath([
       { color: '#05305F', width: 2,   data: accumData },
@@ -370,7 +374,7 @@ ${obsHTML}
 <div class="footnotes">
   (*) Retorno Acumulado: variação patrimonial relativa ao PL no início do período, inclui efeito de aportes e resgates.<br>
   (**) TWR: método CFA/GIPS — &#8719;(1 + r&#8345;) &#8722; 1, elimina distorções por aportes e resgates.<br>
-  Dados sintéticos — ${escH(BRAND.product)} · ${escH(BRAND.tenant)} (uso interno).
+  ${_dataLabel} — ${escH(BRAND.product)} · ${escH(BRAND.tenant)} (uso interno).
 </div>
 
 <footer class="rpt-footer">

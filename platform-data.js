@@ -506,6 +506,12 @@
 
     D.portfolios.forEach(function(p) { _portfolioData[p.code] = realPd(p); });
 
+    // Overlay de dado real aplicado: o app nao esta em modo sintetico. Corrige o
+    // relatorio e o disclaimer de risco, que diziam "sinteticos" mesmo numa
+    // instancia com dado de cliente (o banner de login ja tinha sido removido pelo
+    // mesmo motivo).
+    _dataMode = 'real';
+
     // STATUS_SCRIPT
     for (var sk2 in ss) { if (ss.hasOwnProperty(sk2)) STATUS_SCRIPT[sk2] = ss[sk2]; }
 

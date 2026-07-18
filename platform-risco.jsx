@@ -650,7 +650,9 @@
           fontSize:'0.714rem', color:'var(--muted)', lineHeight:1.7,
         }}>
           <strong style={{ color:'var(--body)' }}>Nota metodologica:</strong>{' '}
-          Score calculado sobre dados sinteticos com finalidade exclusivamente demonstrativa.
+          {(window.AtlasData && window.AtlasData.getDataMode && window.AtlasData.getDataMode() !== 'demo')
+            ? 'Score calculado sobre dados de carteira reais, para uso interno. '
+            : 'Score calculado sobre dados sinteticos com finalidade exclusivamente demonstrativa. '}
           Framework baseado em FINRA Rule 2111 (suitability), FINRA Notice 12-03 (risk monitoring),
           IOSCO Principles of Liquidity Risk Management e BIS BCBS 239 (risk data aggregation).
           Nao constitui recomendacao de investimento nem substitui analise de risco regulatoria formal.
