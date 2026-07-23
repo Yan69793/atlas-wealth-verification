@@ -61,7 +61,26 @@ __pycache__/
 /audits/
 /reports/
 /SmartBrain/
-Verificação Mensal de Carteiras Mirabaud/
+# Carteiras reais: permitir código-fonte do app, bloquear dados LGPD
+Verificação Mensal de Carteiras Mirabaud/**/*
+!Verificação Mensal de Carteiras Mirabaud/carteiras-app/
+Verificação Mensal de Carteiras Mirabaud/carteiras-app/**/*
+!Verificação Mensal de Carteiras Mirabaud/carteiras-app/index.html
+!Verificação Mensal de Carteiras Mirabaud/carteiras-app/deploy.py
+!Verificação Mensal de Carteiras Mirabaud/carteiras-app/src/
+Verificação Mensal de Carteiras Mirabaud/carteiras-app/src/**/*
+!Verificação Mensal de Carteiras Mirabaud/carteiras-app/src/*.jsx
+!Verificação Mensal de Carteiras Mirabaud/carteiras-app/src/*.css
+!Verificação Mensal de Carteiras Mirabaud/carteiras-app/src/*.js
+!Verificação Mensal de Carteiras Mirabaud/carteiras-app/public/
+Verificação Mensal de Carteiras Mirabaud/carteiras-app/public/**/*
+!Verificação Mensal de Carteiras Mirabaud/carteiras-app/public/data/
+Verificação Mensal de Carteiras Mirabaud/carteiras-app/public/data/**/*
+!Verificação Mensal de Carteiras Mirabaud/carteiras-app/public/data/.gitkeep
+!Verificação Mensal de Carteiras Mirabaud/CLAUDE.md
+!Verificação Mensal de Carteiras Mirabaud/verificacao-carteiras-v2/
+!Verificação Mensal de Carteiras Mirabaud/verificacao-carteiras-v2/**/*
+!Verificação Mensal de Carteiras Mirabaud/verificacao-carteiras-v2.skill
 Verificação Mensal de Carteiras/
 Verificação de carteiras/
 
