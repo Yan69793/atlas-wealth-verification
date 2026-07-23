@@ -1513,9 +1513,63 @@ th.sort-asc .th-sort-icon, th.sort-desc .th-sort-icon { opacity: 1; }
 .heat-absent { color: var(--muted); opacity: 0.45; }
 
 /* =========================================================
-   PRINT (para relatório inline)
+   PRINT (para relatório inline — G16)
+   Esconde chrome, força fundo branco, garante quebras de página
+   inteligentes e remove elementos interativos.
 ========================================================= */
 @media print {
-  .sidebar, .topbar { display: none !important; }
-  .main-content { margin: 0; padding: 0; }
+  /* Chrome da aplicação */
+  .sidebar, .topbar, .sidebar-overlay, .topbar-hamburger,
+  .toast-container, .btn, .toolbar, .chip-group,
+  .chart-range-btns, .tabs, .search-wrap,
+  .topbar-month-select, .topbar-theme-select { display: none !important; }
+
+  /* Layout de página */
+  .app-shell { display: block !important; }
+  .main-content {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+  }
+
+  /* Fundo e cor forçados para papel */
+  body {
+    background: #fff !important;
+    color: #000 !important;
+    font-size: 11pt !important;
+  }
+
+  /* Garantir que cartões e tabelas não quebrem no meio */
+  .card, .kpi-tile, .chart-wrap, table, .finding-card {
+    break-inside: avoid;
+    box-shadow: none !important;
+    border: 1px solid #ddd !important;
+  }
+
+  /* Tabelas: texto legível, sem scroll */
+  .table-wrap {
+    overflow-x: visible !important;
+    box-shadow: none !important;
+  }
+
+  thead th {
+    position: static !important;
+    background: #f5f5f5 !important;
+    color: #000 !important;
+  }
+
+  /* KPIs em grid de impressão */
+  .kpi-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+
+  /* Links mantêm URL visível */
+  a { color: #000 !important; }
+
+  /* Esconder elementos decorativos */
+  .badge, .chip, .recidiva-badge { border: 1px solid #999 !important; }
+
+  /* Evitar viúvas/orfãs */
+  h1, h2, h3, h4, .page-title { break-after: avoid; }
 }
+

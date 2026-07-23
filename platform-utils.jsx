@@ -617,13 +617,55 @@
   }
 
   /* ===========================================================
+     DOWNLOAD — exportação CSV/JSON (G09)
+     Gera arquivo e dispara download via Blob URL, sem dependência externa.
+  =========================================================== */
+
+  function downloadCSV(rows, filename) {
+    if (!rows || !rows.length) return;
+    // Pega headers da primeira linha
+    var headers = Object.keys(rows[0]);
+    var lines = [headers.join(';')];
+    rows.forEach(function(row) {
+      var vals = headers.map(function(h) {
+        var v = row[h];
+        if (v == null) return '';
+        var s = String(v).replace(/;/g, ',');
+        return s;
+      });
+      lines.push(vals.join(';'));
+    });
+    var blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = (filename || 'export') + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function downloadJSON(data, filename) {
+    var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = (filename || 'export') + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  /* ===========================================================
      EXPORTS
   =========================================================== */
 
   window.AtlasUtils = {
     fmt, fmtBRL, fmtCompactBRL, fmtPct, fmtPctRaw, fmtMonthLabel,
     signClass, computeDrawdown, storage, navigate, useRouter,
-    getBlockingExceptions,
+    getBlockingExceptions, downloadCSV, downloadJSON,
   };
 
   window.AtlasIcons = { Icon };

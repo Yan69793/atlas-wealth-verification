@@ -12,6 +12,57 @@
   const OBS_DEFAULT = 'Conciliação aprovada sem ressalvas.';
 
   /* ============================================================
+     RISK ATTRIBUTION SECTION (G03)
+  ============================================================ */
+  const ALLOC_COLORS = ['#05305F','#C4A228','#2B6CB0','#276749','#9A9188','#553C9A','#C05621','#D97706'];
+
+  function RiskAttributionSection({ code, month }) {
+    const attr = useMemo(() => (D.riskAttribution ? D.riskAttribution(code, month) : null), [code, month]);
+    if (!attr || !attr.classes || !attr.classes.length) return null;
+
+    var maxContrib = Math.max.apply(null, attr.classes.map(function(c) { return c.contribScore; })) || 1;
+
+    return (
+      <div className="card" style={{ marginBottom: 12, padding: '14px 16px 12px' }}>
+        <div className="card-title" style={{ marginBottom: 10 }}>
+          Contribuicao ao Risco
+          <span style={{ fontSize: '0.714rem', fontWeight: 400, color: 'var(--muted)', marginLeft: 8 }}>
+            Score total: {attr.scoreTotal}/100 ({attr.nivel})
+          </span>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {attr.classes.map(function(item, i) {
+            var barW = Math.max(3, Math.round((item.contribScore / maxContrib) * 100));
+            return (
+              <div key={item.cls} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{
+                  width: 10, height: 10, borderRadius: 2,
+                  background: ALLOC_COLORS[i % ALLOC_COLORS.length], flexShrink: 0,
+                }} />
+                <div style={{ width: 100, fontSize: '0.786rem', color: 'var(--body)', flexShrink: 0 }}>
+                  {item.cls}
+                </div>
+                <div style={{ flex: 1, height: 6, background: 'var(--paper-mid)', borderRadius: 3, overflow: 'hidden' }}>
+                  <div style={{
+                    width: barW + '%', height: '100%', borderRadius: 3,
+                    background: item.contribScore >= 15 ? 'var(--red)' : item.contribScore >= 8 ? 'var(--amber)' : 'var(--green)',
+                  }} />
+                </div>
+                <div style={{
+                  fontFamily: 'var(--font-mono)', fontSize: '0.714rem', fontWeight: 600,
+                  color: 'var(--body)', minWidth: 28, textAlign: 'right',
+                }}>
+                  {item.contribScore}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  /* ============================================================
      TAB — COMPOSIÇÃO
   ============================================================ */
   function TabComposicao({ code, month, row }) {
@@ -77,6 +128,7 @@
             </div>
           </div>
         </div>
+        <RiskAttributionSection code={code} month={month} />
         <div className="table-wrap">
           <table>
             <thead>
@@ -733,6 +785,25 @@
             >
               <Icon name="dashboard" size={14} />
               Dashboard
+            </button>
+            <button
+              className="btn btn--ghost btn--sm"
+              onClick={() => {
+                var comp = D.getComposition(code, selectedMonth) || [];
+                var rows = comp.map(function(a) {
+                  return {
+                    Ativo: a.name, Classe: a.cls, Part_Pct: a.pct != null ? (a.pct * 100).toFixed(2) : '',
+                    Saldo_Final: a.saldoFinal, Var_BRL: a.varBRL,
+                    Rent_Ativo_Pct: a.retAtivo != null ? (a.retAtivo * 100).toFixed(2) : '',
+                    Contrib_Pct: a.contrib != null ? (a.contrib * 100).toFixed(2) : '',
+                    Custodiante: a.inst || '',
+                  };
+                });
+                window.AtlasUtils.downloadCSV(rows, 'atlas_composicao_' + code + '_' + selectedMonth);
+              }}
+            >
+              <Icon name="export" size={14} />
+              CSV
             </button>
             <button
               className="btn btn--primary btn--sm"

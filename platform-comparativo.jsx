@@ -2,7 +2,7 @@
 (() => {
   const { useState, useMemo, useEffect } = React;
 
-  const { fmtCompactBRL, fmtPct, fmtMonthLabel, signClass, navigate } = window.AtlasUtils;
+  const { fmtCompactBRL, fmtPct, fmtMonthLabel, signClass, navigate, downloadCSV } = window.AtlasUtils;
   const { Icon }                                                        = window.AtlasIcons;
   const { KPITile, EmptyState }                                         = window.AtlasUI;
   const D = window.AtlasData;
@@ -174,8 +174,23 @@
 
     const plDelta = comp.plTotalA - comp.plTotalB;
 
-    function handleExport(tipo) {
-      addToast('Exportação ' + tipo + ' disponível na versão completa.', 'info');
+    function handleExportCSV() {
+      var rows = comp.rows.map(function(r) {
+        return {
+          Carteira: r.code, Nome: r.name, Gestor: r.manager,
+          PL_Ref: r.plA, PL_Baseline: r.plB, Var_PL: r.delta,
+          Var_Pct: r.deltaPct != null ? (r.deltaPct * 100).toFixed(2) : '',
+          Rent_Ref: r.rentA != null ? (r.rentA * 100).toFixed(2) : '',
+          Rent_Baseline: r.rentB != null ? (r.rentB * 100).toFixed(2) : '',
+          Status_Ref: r.statusA, Achados: r.nAchadosA || 0,
+        };
+      });
+      downloadCSV(rows, 'atlas_comparativo_' + refMonth + '_vs_' + baselineMonth);
+    }
+
+    function handleExportPDF() {
+      addToast('Gerando PDF para impressao...', 'info');
+      window.print();
     }
 
     const labelA = fmtMonthLabel(refMonth);
@@ -305,13 +320,13 @@
             Todas as carteiras ({comp.rows.length})
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn btn--ghost" onClick={() => handleExport('Excel')}
+            <button className="btn btn--ghost" onClick={handleExportCSV}
               style={{ fontSize: '0.786rem', padding: '6px 14px' }}>
-              Exportar Excel
+              <Icon name="export" size={14} /> Exportar CSV
             </button>
-            <button className="btn btn--ghost" onClick={() => handleExport('PDF')}
+            <button className="btn btn--ghost" onClick={handleExportPDF}
               style={{ fontSize: '0.786rem', padding: '6px 14px' }}>
-              Exportar PDF
+              Imprimir PDF
             </button>
           </div>
         </div>

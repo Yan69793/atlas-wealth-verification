@@ -280,12 +280,28 @@
             ))}
           </select>
         </div>
+
+        <button
+          className="btn btn--ghost"
+          onClick={() => {
+            if (document.fullscreenElement) {
+              document.exitFullscreen();
+            } else {
+              document.documentElement.requestFullscreen();
+            }
+          }}
+          title="Modo apresentacao (F11)"
+          style={{ padding: '6px 10px', minHeight: 36 }}
+        >
+          <Icon name="trending_up" size={16} />
+          <span style={{ fontSize: '0.786rem' }}>Tela cheia</span>
+        </button>
       </header>
     );
   }
 
   /* ============================================================
-     PÁGINAS PLACEHOLDER (etapas 2-8)
+     PAGINAS PLACEHOLDER (etapas 2-8)
   ============================================================ */
 
   // Cada página será substituída na etapa correspondente.

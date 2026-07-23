@@ -1628,6 +1628,82 @@
 
   window.BENCHMARKS = { monthly_cdi: CDI, monthly_ipca: IPCA, monthly_ibov: IBOV, month_labels: MONTH_LABELS };
 
+  // G10: compila alertas do mes a partir de thresholds definidos.
+  // Retorna array de { code, name, type, severity, text }.
+  function getAlertas(month) {
+    var alertas = [];
+    var mi = MONTHS.indexOf(month);
+    if (mi < 0) return alertas;
+
+    // Thresholds (sobrescreviveis via localStorage atlas_alerts_config)
+    var cfg = { varPL: 0.10, rentBelowCDI: 3, alertaStreak: 3 };
+    try {
+      var saved = JSON.parse(localStorage.getItem('atlas_alerts_config') || '{}');
+      if (saved.varPL != null) cfg.varPL = saved.varPL;
+      if (saved.rentBelowCDI != null) cfg.rentBelowCDI = saved.rentBelowCDI;
+      if (saved.alertaStreak != null) cfg.alertaStreak = saved.alertaStreak;
+    } catch(e) {}
+
+    CATALOG.forEach(function(p) {
+      var row = getRow(p.code, month);
+      if (!row || row.plCurr <= 0) return;
+
+      // 1. Variacao anomala de PL (> threshold)
+      if (Math.abs(row.varPct) > cfg.varPL) {
+        alertas.push({
+          code: p.code, name: p.name, type: 'VAR_PL',
+          severity: 'COM ALERTA',
+          text: 'Variacao de PL de ' + (row.varPct * 100).toFixed(1) + '% no mes — acima do threshold de ' + (cfg.varPL * 100).toFixed(0) + '%.'
+        });
+      }
+
+      // 2. Rentabilidade abaixo do CDI por N meses consecutivos
+      var belowCount = 0;
+      for (var j = mi; j >= 0 && j > mi - cfg.rentBelowCDI; j--) {
+        var retJ = _portfolioData[p.code].retArr[j] || 0;
+        var cdiJ = CDI[MONTHS[j]] || 0;
+        if (retJ < cdiJ) belowCount++; else break;
+      }
+      if (belowCount >= cfg.rentBelowCDI) {
+        alertas.push({
+          code: p.code, name: p.name, type: 'BELOW_CDI',
+          severity: 'INFO',
+          text: 'Rentabilidade abaixo do CDI por ' + belowCount + ' meses consecutivos.'
+        });
+      }
+
+      // 3. Status CORRIGIR novo (entrou neste mes, nao estava no anterior)
+      if (row.status === 'CORRIGIR' && mi > 0) {
+        var prevStatus = getStatus(p.code, MONTHS[mi - 1]);
+        if (prevStatus !== 'CORRIGIR') {
+          alertas.push({
+            code: p.code, name: p.name, type: 'NEW_CORRIGIR',
+            severity: 'CORRIGIR',
+            text: 'Carteira entrou em status CORRIGIR neste mes.'
+          });
+        }
+      }
+
+      // 4. Sequencia de COM ALERTA >= N meses
+      var alertaStreak = 0;
+      for (var k = mi; k >= 0; k--) {
+        if (getStatus(p.code, MONTHS[k]) === 'COM ALERTA') alertaStreak++; else break;
+      }
+      if (alertaStreak >= cfg.alertaStreak) {
+        alertas.push({
+          code: p.code, name: p.name, type: 'ALERTA_STREAK',
+          severity: 'COM ALERTA',
+          text: 'Carteira com status COM ALERTA ha ' + alertaStreak + ' meses consecutivos.'
+        });
+      }
+    });
+
+    // Ordena por severidade: CORRIGIR > COM ALERTA > INFO
+    var sevOrder = { 'CORRIGIR': 0, 'COM ALERTA': 1, 'INFO': 2 };
+    alertas.sort(function(a, b) { return (sevOrder[a.severity] || 9) - (sevOrder[b.severity] || 9); });
+    return alertas;
+  }
+
   window.AtlasData = {
     MONTHS: MONTHS,
     MONTH_LABELS: MONTH_LABELS,
@@ -1675,6 +1751,7 @@
     restoreDemo: restoreDemo,
     getDataMode: getDataMode,
     getSeloInfo: getSeloInfo,
+    getAlertas: getAlertas,
     validate: validate,
   };
 

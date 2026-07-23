@@ -4,7 +4,7 @@
 
   // AtlasData/Utils/Icons/Charts/UI carregam antes das páginas — safe no IIFE.
   // AtlasContexts é definido por platform-app.jsx (último) — acessar só dentro do componente.
-  const { fmtCompactBRL, fmtPct, fmtMonthLabel, signClass, navigate } = window.AtlasUtils;
+  const { fmtCompactBRL, fmtPct, fmtMonthLabel, signClass, navigate, downloadCSV } = window.AtlasUtils;
   const { Icon }      = window.AtlasIcons;
   const { Badge, Chip, KPITile, EmptyState, SeloChip } = window.AtlasUI;
   const D = window.AtlasData;
@@ -116,9 +116,71 @@
   }
 
   /* ============================================================
+     ALERTAS SECTION (G10)
+  ============================================================ */
+  function AlertsSection({ month, onNavigate }) {
+    const alertas = useMemo(() => (D.getAlertas ? D.getAlertas(month) : []), [month]);
+    const [showAll, setShowAll] = useState(false);
+
+    if (!alertas.length) return null;
+
+    const sevStyle = {
+      'CORRIGIR':    { bg: 'var(--red-bg)', border: 'rgba(139,26,26,0.2)', icon: 'alert' },
+      'COM ALERTA':  { bg: 'var(--amber-bg)', border: 'rgba(139,90,0,0.2)', icon: 'info' },
+      'INFO':        { bg: 'rgba(5,48,95,0.04)', border: 'rgba(5,48,95,0.1)', icon: 'info' },
+    };
+
+    const displayed = showAll ? alertas : alertas.slice(0, 4);
+
+    return (
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+          <Icon name="alert" size={14} style={{ color: 'var(--amber)' }} />
+          <span style={{ fontWeight: 600, fontSize: '0.857rem', color: 'var(--heading)' }}>
+            Alertas do mes ({alertas.length})
+          </span>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {displayed.map((a, i) => {
+            var s = sevStyle[a.severity] || sevStyle['INFO'];
+            return (
+              <div
+                key={a.code + '_' + i}
+                onClick={() => onNavigate(a.code)}
+                style={{
+                  display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px 12px',
+                  background: s.bg, borderRadius: 'var(--r-sm)', border: '1px solid ' + s.border,
+                  cursor: 'pointer', fontSize: '0.786rem', lineHeight: 1.4,
+                }}
+              >
+                <Icon name={s.icon} size={12} style={{ flexShrink: 0, marginTop: 2, color: 'var(--muted)' }} />
+                <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, fontSize: '0.714rem', flexShrink: 0 }}>
+                  {a.code}
+                </span>
+                <span style={{ color: 'var(--body)', flex: 1 }}>{a.text}</span>
+              </div>
+            );
+          })}
+        </div>
+        {alertas.length > 4 && (
+          <button
+            onClick={() => setShowAll(!showAll)}
+            style={{
+              background: 'none', border: 'none', color: 'var(--navy)', cursor: 'pointer',
+              fontSize: '0.714rem', padding: '4px 0', marginTop: 4,
+            }}
+          >
+            {showAll ? 'Mostrar menos' : 'Mostrar todos (' + alertas.length + ')'}
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  /* ============================================================
      TOOLBAR — chips + busca
   ============================================================ */
-  function Toolbar({ filter, onFilter, search, onSearch }) {
+  function Toolbar({ filter, onFilter, search, onSearch, rows, month }) {
     const statusFilters = [
       { label: 'Todos', value: 'todos' },
       { label: 'Liberar', value: 'LIBERAR', variant: 'green' },
@@ -140,6 +202,19 @@
           ))}
         </div>
         <div className="toolbar-spacer" />
+        <button className="btn btn--ghost" onClick={() => {
+          var csvRows = rows.map(r => ({
+            Carteira: r.code, Nome: r.name, Status: r.status,
+            PL_Atual: r.plCurr, Variacao_Pct: r.varPct != null ? (r.varPct * 100).toFixed(2) : '',
+            Rentabilidade_Pct: r.rent != null ? (r.rent * 100).toFixed(2) : '',
+            vs_CDI_Pct: r.vsCDI != null ? (r.vsCDI * 100).toFixed(2) : '',
+            Gestor: (r.manager && r.manager.name) || '',
+            Achados: r.nAchados || 0, Receita: r.revenue || 0
+          }));
+          downloadCSV(csvRows, 'atlas_carteiras_' + month);
+        }} style={{ fontSize: '0.786rem', padding: '6px 12px', whiteSpace: 'nowrap' }}>
+          <Icon name="export" size={14} /> Exportar CSV
+        </button>
         <div className="search-wrap">
           <Icon name="search" size={14} />
           <input
@@ -235,43 +310,75 @@
   /* ============================================================
      PL TOTAL CHART — Recharts AreaChart
   ============================================================ */
+  const BENCHMARKS = { CDI: { label: 'CDI', color: '#9A9188', dash: '5 3', get: m => D.CDI[m] || 0 },
+    IPCA: { label: 'IPCA', color: '#276749', dash: '3 3', get: m => D.getIPCA ? D.getIPCA(m) : 0 },
+    IBOV: { label: 'IBOV', color: '#C05621', dash: '2 2', get: m => D.getIBOV ? D.getIBOV(m) : 0 } };
+
   function PlChart({ range, onRange }) {
     const {
       AreaChart, Area, XAxis, YAxis,
       CartesianGrid, Tooltip, Legend, ResponsiveContainer,
     } = window.Recharts;
 
-    const months    = rangeMonths(range);
-    const twrSeries = D.twrAgregado(months[0], months[months.length - 1]);
+    const [bench, setBench] = useState(() => {
+      try { return JSON.parse(localStorage.getItem('atlas_platform_v1') || '{}')?.ui?.plBench || 'CDI'; } catch { return 'CDI'; }
+    });
 
-    let twrRun = 1;
-    let cdiAcc = 1;
-    const chartData = months.map((m, i) => {
-      const pl  = +((twrRun - 1) * 100).toFixed(3);
-      const cdi = +((cdiAcc - 1) * 100).toFixed(3);
+    useEffect(() => {
+      try {
+        var d = JSON.parse(localStorage.getItem('atlas_platform_v1') || '{}');
+        d.ui = d.ui || {};
+        d.ui.plBench = bench;
+        localStorage.setItem('atlas_platform_v1', JSON.stringify(d));
+      } catch {}
+    }, [bench]);
+
+    var months    = rangeMonths(range);
+    var twrSeries = D.twrAgregado(months[0], months[months.length - 1]);
+    var bk = BENCHMARKS[bench] || BENCHMARKS['CDI'];
+
+    var twrRun = 1;
+    var bkAcc = 1;
+    var chartData = months.map(function(m, i) {
+      var pl  = +((twrRun - 1) * 100).toFixed(3);
+      var bv  = +((bkAcc - 1) * 100).toFixed(3);
       twrRun *= (1 + (twrSeries[i] ? twrSeries[i].twr : 0));
-      cdiAcc *= (1 + (D.CDI[m] || 0));
+      bkAcc  *= (1 + bk.get(m));
       return {
         label: D.MONTH_LABELS[D.MONTHS.indexOf(m)] || m.slice(5),
-        pl,
-        cdi,
+        pl: pl,
+        bk: bv,
       };
     });
 
-    const tickInterval = months.length > 8 ? Math.ceil(months.length / 7) : 0;
-    const fmtY  = v => v.toFixed(1) + '%';
-    const fmtTT = (value, name) => [value.toFixed(2) + '%', name === 'pl' ? 'Retorno TWR' : 'CDI acum.'];
+    var tickInterval = months.length > 8 ? Math.ceil(months.length / 7) : 0;
+    var fmtY  = function(v) { return v.toFixed(1) + '%'; };
+    var fmtTT = function(value, name) { return [value.toFixed(2) + '%', name === 'pl' ? 'Retorno TWR' : bk.label + ' acum.']; };
 
     return (
       <div className="chart-wrap" style={{ marginTop: 20 }}>
         <div className="card-header">
-          <div className="card-title">Retorno TWR vs CDI</div>
-          <div className="chart-range-btns">
-            {RANGES.map(r => (
-              <button key={r} className={`range-btn${range === r ? ' active' : ''}`} onClick={() => onRange(r)}>
-                {r}
-              </button>
-            ))}
+          <div className="card-title">Retorno TWR vs {bk.label}</div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <select
+              className="filter-select"
+              value={bench}
+              onChange={function(e) { setBench(e.target.value); }}
+              style={{ fontSize: '0.714rem', padding: '3px 24px 3px 8px', minHeight: 28 }}
+            >
+              {Object.keys(BENCHMARKS).map(function(k) {
+                return <option key={k} value={k}>{BENCHMARKS[k].label}</option>;
+              })}
+            </select>
+            <div className="chart-range-btns" style={{ marginBottom: 0 }}>
+              {RANGES.map(function(r) {
+                return (
+                  <button key={r} className={'range-btn' + (range === r ? ' active' : '')} onClick={function() { onRange(r); }}>
+                    {r}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
         <ResponsiveContainer width="100%" height={240} debounce={50}>
@@ -281,9 +388,9 @@
                 <stop offset="5%" stopColor="#05305F" stopOpacity={0.18} />
                 <stop offset="95%" stopColor="#05305F" stopOpacity={0} />
               </linearGradient>
-              <linearGradient id="dashGradCDI" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#9A9188" stopOpacity={0.08} />
-                <stop offset="95%" stopColor="#9A9188" stopOpacity={0} />
+              <linearGradient id="dashGradBK" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor={bk.color} stopOpacity={0.10} />
+                <stop offset="95%" stopColor={bk.color} stopOpacity={0} />
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="#E3DDD5" vertical={false} />
@@ -294,20 +401,20 @@
               contentStyle={{ fontSize: 12, borderRadius: 4, border: '1px solid #E3DDD5', background: '#F9F7F4' }}
             />
             <Legend
-              formatter={name => name === 'pl' ? 'Retorno TWR' : 'CDI acum.'}
+              formatter={function(name) { return name === 'pl' ? 'Retorno TWR' : bk.label + ' acum.'; }}
               iconType="line"
               wrapperStyle={{ fontSize: 12, paddingTop: 8 }}
             />
             <Area type="monotone" dataKey="pl"
               stroke="#05305F" strokeWidth={2} fill="url(#dashGradPL)"
               dot={false} activeDot={{ r: 4, fill: '#05305F' }} />
-            <Area type="monotone" dataKey="cdi"
-              stroke="#9A9188" strokeWidth={1.5} strokeDasharray="5 3"
-              fill="url(#dashGradCDI)" dot={false} activeDot={{ r: 4, fill: '#9A9188' }} />
+            <Area type="monotone" dataKey="bk"
+              stroke={bk.color} strokeWidth={1.5} strokeDasharray={bk.dash}
+              fill="url(#dashGradBK)" dot={false} activeDot={{ r: 4, fill: bk.color }} />
           </AreaChart>
         </ResponsiveContainer>
         <div style={{ fontSize: '0.714rem', color: 'var(--muted)', marginTop: 4, textAlign: 'right' }}>
-          Variação % acumulada no período selecionado
+          Variacao % acumulada no periodo selecionado
         </div>
       </div>
     );
@@ -398,6 +505,8 @@
           onNavigate={f => setFilter(f)}
         />
 
+        <AlertsSection month={selectedMonth} onNavigate={code => navigate('#/carteira/' + code)} />
+
         <PlChart range={range} onRange={setRange} />
 
         <Toolbar
@@ -405,6 +514,8 @@
           onFilter={handleFilterChange}
           search={search}
           onSearch={setSearch}
+          rows={filteredRows}
+          month={selectedMonth}
         />
 
         <PortfolioTable

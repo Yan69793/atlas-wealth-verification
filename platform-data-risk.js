@@ -236,10 +236,63 @@
     };
   }
 
+  // G03: decompoe o score de risco por classe de ativo.
+  // Retorna array de { cls, pct, contribScore, concentracaoRisk, mercadoRisk, liquidezRisk }
+  function riskAttribution(code, month) {
+    var rs = riskScore(code, month);
+    if (!rs) return null;
+    var comp = D.getComposition(code, month);
+    if (!comp || !comp.length) return null;
+
+    // Agrega pct por classe
+    var classPcts = {};
+    comp.forEach(function(item) {
+      classPcts[item.cls] = (classPcts[item.cls] || 0) + item.pct;
+    });
+
+    // Classes de risco conhecidas (alinhado com RISKY_CLS e LESS_LIQUID_CLS)
+    var RISKY = { 'Acoes': true, 'Multimercado': true, 'FII': true, 'Internacional': true };
+    var LESS_LIQUID = { 'FII': true, 'Previdencia': true, 'Internacional': true };
+
+    var result = [];
+    Object.keys(classPcts).forEach(function(cls) {
+      var pct = classPcts[cls];
+      // Contribuicao proporcional ao score de concentracao
+      var concRisk = Math.min(25, pct > 0.50 ? 15 : pct > 0.35 ? 10 : pct > 0.25 ? 5 : 0);
+      // Mercado: classes arriscadas contribuem mais
+      var mktRisk = RISKY[cls] ? Math.round(pct * 18) : 0;
+      // Liquidez: classes menos liquidas
+      var liqRisk = LESS_LIQUID[cls] ? Math.round(pct * 12) : 0;
+      var contrib = Math.min(rs.score, concRisk + mktRisk + liqRisk);
+
+      result.push({
+        cls: cls,
+        pct: pct,
+        contribScore: contrib,
+        concentracaoRisk: concRisk,
+        mercadoRisk: mktRisk,
+        liquidezRisk: liqRisk,
+      });
+    });
+
+    // Ordena por contribuicao decrescente
+    result.sort(function(a, b) { return b.contribScore - a.contribScore; });
+
+    // Normaliza para que o total nao ultrapasse o score real
+    var totalContrib = result.reduce(function(s, r) { return s + r.contribScore; }, 0);
+    if (totalContrib > 0 && totalContrib > rs.score) {
+      var scale = rs.score / totalContrib;
+      result.forEach(function(r) { r.contribScore = Math.round(r.contribScore * scale); });
+    }
+
+    return { classes: result, scoreTotal: rs.score, nivel: rs.nivel };
+  }
+
   D.STRESS_SHOCKS = STRESS_SHOCKS;
   D.RISK_CONFIG   = RISK_CONFIG;
   D.riskScore     = riskScore;
   D.riskDashboard = riskDashboard;
   D.riskStress    = riskStress;
+  D.riskAttribution = riskAttribution;
 
 })();

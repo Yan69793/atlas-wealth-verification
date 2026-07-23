@@ -2,7 +2,7 @@
 (() => {
   const { useState, useMemo, useEffect } = React;
 
-  const { fmtCompactBRL, fmtPct, fmtMonthLabel, signClass, navigate, storage } = window.AtlasUtils;
+  const { fmtCompactBRL, fmtPct, fmtMonthLabel, signClass, navigate, storage, downloadCSV } = window.AtlasUtils;
   const { Icon }                                = window.AtlasIcons;
   const { Badge, SeverityBadge, KPITile, EmptyState } = window.AtlasUI;
   const D = window.AtlasData;
@@ -469,8 +469,19 @@
         <div className="page-header">
           <div className="page-eyebrow">Verificação Global</div>
           <h1 className="page-title">Achados & Exceções</h1>
-          <div className="page-subtitle">
-            {fmtMonthLabel(selectedMonth)} &middot; {D.CATALOG.length} carteiras analisadas
+          <div className="page-subtitle" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
+            <span>{fmtMonthLabel(selectedMonth)} &middot; {D.CATALOG.length} carteiras analisadas</span>
+            <button className="btn btn--ghost" onClick={() => {
+              var rows = findingsArr.map(function(f) {
+                return {
+                  Carteira: f.code, Titulo: f.title, Severidade: f.severity,
+                  Categoria: f.category || '', Mes: f.month,
+                };
+              });
+              downloadCSV(rows, 'atlas_achados_' + selectedMonth);
+            }} style={{ fontSize: '0.786rem', padding: '6px 12px', whiteSpace: 'nowrap' }}>
+              <Icon name="export" size={14} /> Exportar CSV
+            </button>
           </div>
         </div>
 
