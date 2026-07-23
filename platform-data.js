@@ -427,25 +427,18 @@
     // Conjunto real de meses: todos os meses com dados reais (cdiRates cobre 30 meses)
     var REAL_MONTHS = Object.keys(CDI_RATES).sort();
 
-    // Limpar entradas anteriores (idempotencia)
-    for (var i = CATALOG.length - 1; i >= 0; i--) {
-      if (codes.indexOf(CATALOG[i].code) >= 0) CATALOG.splice(i, 1);
+    // Limpar TODAS as entradas demo antes de injetar dados reais.
+    // O inject anterior so removia entradas cujo code batia com os reais,
+    // deixando vazar dados ficticios quando os codigos nao coincidiam.
+    CATALOG.length = 0;
+    MANAGERS.length = 0;
+    Object.keys(_portfolioData).forEach(function(c) { delete _portfolioData[c]; });
+    Object.keys(_codeMap).forEach(function(c) { delete _codeMap[c]; });
+    if (_compCache) {
+      Object.keys(_compCache).forEach(function(k) { delete _compCache[k]; });
     }
-    codes.forEach(function(c) {
-      delete _portfolioData[c]; delete _codeMap[c];
-      if (_compCache) {
-        REAL_MONTHS.forEach(function(m) { delete _compCache[c+'|'+m]; });
-      }
-      REAL_MONTHS.forEach(function(m) { delete _importCompositions[c+'|'+m]; });
-    });
-    var ss = D.statusScript || {};
-    for (var sk in ss) { if (ss.hasOwnProperty(sk)) delete STATUS_SCRIPT[sk]; }
-    // Remove todos os managers injetados anteriormente (idempotencia)
-    var realManagerIds = (D.managers || []).map(function(m) { return m.id; });
-    realManagerIds.push('REAIS'); // fallback legado
-    for (var j = MANAGERS.length - 1; j >= 0; j--) {
-      if (realManagerIds.indexOf(MANAGERS[j].id) >= 0) MANAGERS.splice(j, 1);
-    }
+    Object.keys(_importCompositions).forEach(function(k) { delete _importCompositions[k]; });
+    Object.keys(STATUS_SCRIPT).forEach(function(k) { delete STATUS_SCRIPT[k]; });
 
     // CATALOG + _codeMap
     D.portfolios.forEach(function(p) {
@@ -535,6 +528,7 @@
     _dataMode = 'real';
 
     // STATUS_SCRIPT
+    var ss = D.statusScript || {};
     for (var sk2 in ss) { if (ss.hasOwnProperty(sk2)) STATUS_SCRIPT[sk2] = ss[sk2]; }
 
     // _importCompositions (usa PL do mes correspondente quando disponivel)
