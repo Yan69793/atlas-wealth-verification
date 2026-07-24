@@ -1,1 +1,17 @@
-{"version":"0.0.1","configurations":[{"name":"atlas-dev","runtimeExecutable":"python","runtimeArgs":["-m","http.server","4730"],"port":4730}]}
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "atlas-spa",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "7821", "--directory", "E:/Diretorio/Claude/ATLAS"],
+      "port": 7821
+    },
+    {
+      "name": "audit-engine-server",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["--env-file=E:/Diretorio/Claude/ATLAS/audit-engine/.env", "E:/Diretorio/Claude/ATLAS/audit-engine/dist/src/server.js"],
+      "port": 3456
+    }
+  ]
+}
