@@ -158,3 +158,5 @@ desktop.ini
 
 # Diretorio de publicacao gerado por scripts/build-deploy.mjs
 /dist-deploy/
+AI_OPERATING_SYSTEM/
+graphify-out/
