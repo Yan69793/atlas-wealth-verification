@@ -50,6 +50,7 @@ AtlasData, AtlasParsers, AtlasUtils, AtlasIcons, AtlasCharts, AtlasUI, AtlasCont
 
 1. Rodar `git status` — working tree deve estar limpo (exceto pelas mudanças intencionais)
 2. Rodar `npm test` — todos os checks devem passar antes do commit
+3. Para alterações não triviais, delegar a revisão final ao subagente `code-reviewer` (`.claude/agents/code-reviewer.md`). O agente implementador não pode substituir essa revisão por uma simples releitura própria. Após receber o parecer, corrigir todos os problemas materiais e rodar de novo as validações
 
 ## Testes
 
