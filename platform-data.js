@@ -1,4 +1,4 @@
-﻿/* platform-data.js — ATLAS Wealth Verification
+/* platform-data.js — ATLAS Wealth Verification
    Gerador determinístico de dados fictícios.
    Seed: 20260411  |  Não contém dados reais. */
 
@@ -458,7 +458,7 @@
             var rent = (rentByMonth && rentByMonth[rm] != null) ? rentByMonth[rm] : null;
             // Fallback para CDI quando rentRef e null (offshore)
             retArr[idx] = (rent != null) ? rent : (CDI_RATES[rm] || 0);
-            feeArr[idx] = plByMonth[rm] * (p.fee != null ? p.fee : MFEE);
+            feeArr[idx] = plByMonth[rm] * (p.fee != null ? p.fee / 12 : MFEE);
             // rpp: reported PL do mes anterior (para verificacao de conciliacao)
             if (idx > 0) rpp[idx] = plByMonth[rm];
           }
@@ -475,7 +475,7 @@
           if (idx2 > 0) rpp[idx2] = pl;
         }
       }
-      return { fee:MFEE, plArr:plArr, nnmArr:z(), retArr:retArr, feeArr:feeArr, reportedPlPrevArr:rpp };
+       return { fee:(p.fee != null ? p.fee / 12 : MFEE), plArr:plArr, nnmArr:z(), retArr:retArr, feeArr:feeArr, reportedPlPrevArr:rpp };
     }
 
     D.portfolios.forEach(function(p) { _portfolioData[p.code] = realPd(p); });
@@ -1061,7 +1061,7 @@
         revenue += pd.feeArr[mi] || 0;
         nnm += pd.nnmArr[mi] || 0;
       });
-      var roa = aum > 0 ? revenue / aum : 0;
+      var roa = aum > 0 ? (revenue / aum) * 12 : 0;
       return { month: m, label: MONTH_LABELS[mi], aum: aum, nnm: nnm, roa: roa, clients: CATALOG.length, revenue: revenue };
     });
   }
@@ -1076,7 +1076,7 @@
         aum += pd.plArr[mi] || 0;
         revenue += pd.feeArr[mi] || 0;
       });
-      var roa = aum > 0 ? revenue / aum : 0;
+      var roa = aum > 0 ? (revenue / aum) * 12 : 0;
       var attainment = mgr.roaTarget > 0 ? roa / mgr.roaTarget : 0;
       var badge = attainment >= 1.0 ? 'ACIMA' : attainment >= 0.85 ? 'PROX.' : 'ABAIXO';
       return {
@@ -1096,7 +1096,7 @@
     var rows = mgr.codes.map(function(code) { return getRow(code, month); }).filter(Boolean);
     var totalAum = rows.reduce(function(s,r){return s+r.plCurr;},0);
     var totalRev = rows.reduce(function(s,r){return s+r.revenue;},0);
-    var roa = totalAum > 0 ? totalRev / totalAum : 0;
+    var roa = totalAum > 0 ? (totalRev / totalAum) * 12 : 0;
     var attainment = mgr.roaTarget > 0 ? roa / mgr.roaTarget : 0;
     return { manager: mgr, rows: rows, totalAum: totalAum, totalRev: totalRev, roa: roa, attainment: attainment };
   }
@@ -1118,7 +1118,7 @@
           revenueYTD += pd.feeArr[j] || 0;
         }
       }
-      var roa = pl > 0 ? revenue / pl : 0;
+      var roa = pl > 0 ? (revenue / pl) * 12 : 0;
       var seg = pl > 50e6 ? 'Ultra' : pl > 20e6 ? 'Large' : pl > 5e6 ? 'Mid' : pl > 1e6 ? 'Small' : 'Micro';
       var mgr = getManagerForCode(p.code);
       return {
