@@ -47,7 +47,7 @@
 
     // LineChart: ROA% por mês
     const chartSeries = [{
-      label: 'ROA % a.m.',
+      label: 'ROA % a.a.',
       color: 'var(--navy)',
       width: 2,
       data: series.map(s => ({ month: s.month, value: s.roa })),
@@ -70,7 +70,7 @@
                 <th style={{ minWidth: 100 }}>Período</th>
                 <th className="num">AUM</th>
                 <th className="num">NNM</th>
-                <th className="num">ROA % a.m.</th>
+                <th className="num">ROA % a.a.</th>
                 <th className="num">Clientes</th>
                 <th className="num">Receita</th>
               </tr>
@@ -233,7 +233,7 @@
                 <th className="num">Carteiras</th>
                 <th className="num">AUM</th>
                 <th className="num">Receita</th>
-                <th className="num">ROA % a.m.</th>
+                <th className="num">ROA % a.a.</th>
                 <th className="num">Meta ROA</th>
                 <th className="num">Atingimento</th>
                 <th>vs Meta</th>
@@ -413,7 +413,7 @@
                   <th>Segmento</th>
                   <th className="num">AUM</th>
                   <th className="num">NNM YTD</th>
-                  <th className="num">ROA % a.m.</th>
+                  <th className="num">ROA % a.a.</th>
                   <th className="num">Receita YTD</th>
                   <th>Status</th>
                 </tr>

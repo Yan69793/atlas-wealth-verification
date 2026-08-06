@@ -130,9 +130,15 @@ function d_stamp() {
   return last.meta.processadoEm;
 }
 
+/* historico.json/platform-historico.js sao lidos pelo SPA a partir de __dirname
+   (onde este script e o index.html vivem) -- nao de ROOT, que so aponta a raiz
+   dos audits/ quando ela e externa (--root/ATLAS_DATA_ROOT). Escrever em ROOT
+   deixaria o arquivo na raiz de dados, onde o app rodando de core/ nunca o ve. */
+const OUT_DIR = __dirname;
+
 /* historico.json: artefato de dados, para o relatorio do comite e consumo fora
    do browser. */
-fs.writeFileSync(path.join(ROOT, 'historico.json'), JSON.stringify(out));
+fs.writeFileSync(path.join(OUT_DIR, 'historico.json'), JSON.stringify(out));
 
 /* platform-historico.js: e o arquivo que o index.html carrega de fato
    (window.HISTORICO_DATA, lido por platform-tendencia.jsx).
@@ -143,8 +149,9 @@ fs.writeFileSync(path.join(ROOT, 'historico.json'), JSON.stringify(out));
    (fev-jun/2026) enquanto 37 ja estavam ingeridos. O gerador passa a escrever
    o nome que o app carrega, e a ponte deixa de existir. */
 const js = 'window.HISTORICO_DATA = ' + JSON.stringify(out) + ';\n';
-fs.writeFileSync(path.join(ROOT, 'platform-historico.js'), js);
+fs.writeFileSync(path.join(OUT_DIR, 'platform-historico.js'), js);
 
-console.log(`Raiz: ${ROOT}`);
+console.log(`Raiz dos dados: ${ROOT}`);
+console.log(`Saida (historico.json/platform-historico.js): ${OUT_DIR}`);
 console.log(`historico.json + platform-historico.js gerados: ${MESES.length} meses (${MESES[0]} a ${MESES[MESES.length - 1]}), ${Object.keys(carteiras).length} carteiras unicas, ${recorrentes.length} achados recorrentes rastreados.`);
 console.log('Top 5 recorrencias:', recorrentes.slice(0, 5).map(r => `${r.nome} (${r.categoria}, ${r.mesesConsecutivos}m, desde ${r.desdeMes})`).join(' | '));

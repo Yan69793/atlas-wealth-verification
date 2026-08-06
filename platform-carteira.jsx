@@ -389,7 +389,7 @@
         .map(m => {
           const row = D.getRow(code, m);
           if (!row) return null;
-          const roa = row.plCurr > 0 ? row.revenue / row.plCurr : 0;
+          const roa = row.plCurr > 0 ? (row.revenue / row.plCurr) * 12 : 0;
           return {
             month: m,
             label: D.MONTH_LABELS[D.MONTHS.indexOf(m)] || m,
@@ -410,7 +410,7 @@
       .reduce((acc, s) => acc + s.revenue, 0);
 
     const chartSeries = [
-      { label: 'ROA Mês', color: 'var(--navy)',  width: 2,   data: series.map(s => ({ month: s.month, value: s.roa })) },
+      { label: 'ROA % a.a.', color: 'var(--navy)',  width: 2,   data: series.map(s => ({ month: s.month, value: s.roa })) },
       { label: 'Meta',    color: 'var(--amber)', dash: '4 2', width: 1.5, data: series.map(s => ({ month: s.month, value: roaTarget })) },
     ];
 
@@ -419,11 +419,11 @@
         {/* ROA Chart */}
         <div className="chart-wrap" style={{ marginBottom: 20 }}>
           <div className="card-header">
-            <div className="card-title">ROA Mensal vs Meta</div>
+            <div className="card-title">ROA Anual vs Meta</div>
           </div>
           <LineChart series={chartSeries} height={180} />
           <div style={{ fontSize: '0.714rem', color: 'var(--muted)', marginTop: 8, textAlign: 'right' }}>
-            Meta ROA: {fmtPct(roaTarget, 4)} a.m. · Gestor: {mgr ? mgr.name : '—'}
+            Meta ROA: {fmtPct(roaTarget, 4)} a.a. · Gestor: {mgr ? mgr.name : '—'}
           </div>
         </div>
 
