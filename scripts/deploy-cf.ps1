@@ -44,12 +44,10 @@ $files = @(
   "docs\templates\atlas_template.csv"
 )
 
-# Opcionais LGPD (so se existirem na raiz)
-$optFiles = @(
-  "platform-data-real.js",
-  "platform-data-audit.js",
-  "platform-historico.js"
-)
+# LGPD: NUNCA incluir overlays de dado real no Pages.
+# O incidente de 15/07/2026 foi causado por deploy da árvore inteira.
+# O dado real vive no R2, servido pelo Worker com autenticação.
+# Pages é demo público — apenas sintéticos.
 
 Write-Host "Copiando arquivos de producao..." -ForegroundColor Cyan
 
@@ -63,15 +61,6 @@ foreach ($f in $files) {
     if ($DryRun) { Write-Host "  [DRY] $f" -ForegroundColor Gray }
   } else {
     Write-Warning "Arquivo esperado nao encontrado: $f"
-  }
-}
-
-foreach ($f in $optFiles) {
-  $src = Join-Path $root $f
-  if (Test-Path $src) {
-    $dst = Join-Path $dist $f
-    Copy-Item $src $dst
-    Write-Host "  [LGPD] $f incluido" -ForegroundColor DarkYellow
   }
 }
 

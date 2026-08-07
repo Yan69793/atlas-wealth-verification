@@ -47,7 +47,7 @@
 
     // LineChart: ROA% por mês
     const chartSeries = [{
-      label: 'ROA % a.m.',
+      label: 'ROA % a.a.',
       color: 'var(--navy)',
       width: 2,
       data: series.map(s => ({ month: s.month, value: s.roa })),
@@ -70,7 +70,7 @@
                 <th style={{ minWidth: 100 }}>Período</th>
                 <th className="num">AUM</th>
                 <th className="num">NNM</th>
-                <th className="num">ROA % a.m.</th>
+                <th className="num">ROA % a.a.</th>
                 <th className="num">Clientes</th>
                 <th className="num">Receita</th>
               </tr>
@@ -95,11 +95,11 @@
         {/* Gráfico ROA */}
         <div className="card" style={{ marginBottom: 24 }}>
           <div style={{ fontWeight: 600, fontSize: '0.857rem', color: 'var(--heading)', marginBottom: 12 }}>
-            Evolução do ROA mensal
+            Evolução do ROA anual
           </div>
           <LineChart series={chartSeries} height={180} />
           <div style={{ fontSize: '0.714rem', color: 'var(--muted)', marginTop: 8, textAlign: 'right' }}>
-            ROA = Receita / AUM do mês
+            ROA = (Receita / AUM) × 12, anualizado
           </div>
         </div>
 
@@ -208,7 +208,7 @@
       aum:     ranking.reduce((s, r) => s + r.aum, 0),
       revenue: ranking.reduce((s, r) => s + r.revenue, 0),
       roa:     ranking.reduce((s, r) => s + r.aum, 0) > 0
-        ? ranking.reduce((s, r) => s + r.revenue, 0) / ranking.reduce((s, r) => s + r.aum, 0)
+        ? (ranking.reduce((s, r) => s + r.revenue, 0) / ranking.reduce((s, r) => s + r.aum, 0)) * 12
         : 0,
     }), [ranking]);
 
@@ -233,7 +233,7 @@
                 <th className="num">Carteiras</th>
                 <th className="num">AUM</th>
                 <th className="num">Receita</th>
-                <th className="num">ROA % a.m.</th>
+                <th className="num">ROA % a.a.</th>
                 <th className="num">Meta ROA</th>
                 <th className="num">Atingimento</th>
                 <th>vs Meta</th>
@@ -413,7 +413,7 @@
                   <th>Segmento</th>
                   <th className="num">AUM</th>
                   <th className="num">NNM YTD</th>
-                  <th className="num">ROA % a.m.</th>
+                  <th className="num">ROA % a.a.</th>
                   <th className="num">Receita YTD</th>
                   <th>Status</th>
                 </tr>
@@ -577,7 +577,7 @@
           <KPITile
             label="ROA médio pond."
             value={fmtRoa(monthData.roa)}
-            sub="Receita / AUM"
+            sub="Anualizado, receita/AUM × 12"
           />
           <KPITile
             label="NNM acum."

@@ -389,7 +389,7 @@
         .map(m => {
           const row = D.getRow(code, m);
           if (!row) return null;
-          const roa = row.plCurr > 0 ? row.revenue / row.plCurr : 0;
+          const roa = row.plCurr > 0 ? (row.revenue / row.plCurr) * 12 : 0;
           return {
             month: m,
             label: D.MONTH_LABELS[D.MONTHS.indexOf(m)] || m,
@@ -410,7 +410,7 @@
       .reduce((acc, s) => acc + s.revenue, 0);
 
     const chartSeries = [
-      { label: 'ROA Mês', color: 'var(--navy)',  width: 2,   data: series.map(s => ({ month: s.month, value: s.roa })) },
+      { label: 'ROA % a.a.', color: 'var(--navy)',  width: 2,   data: series.map(s => ({ month: s.month, value: s.roa })) },
       { label: 'Meta',    color: 'var(--amber)', dash: '4 2', width: 1.5, data: series.map(s => ({ month: s.month, value: roaTarget })) },
     ];
 
@@ -419,11 +419,11 @@
         {/* ROA Chart */}
         <div className="chart-wrap" style={{ marginBottom: 20 }}>
           <div className="card-header">
-            <div className="card-title">ROA Mensal vs Meta</div>
+            <div className="card-title">ROA Anual vs Meta</div>
           </div>
           <LineChart series={chartSeries} height={180} />
           <div style={{ fontSize: '0.714rem', color: 'var(--muted)', marginTop: 8, textAlign: 'right' }}>
-            Meta ROA: {fmtPct(roaTarget, 4)} a.m. · Gestor: {mgr ? mgr.name : '—'}
+            Meta ROA: {fmtPct(roaTarget, 4)} a.a. · Gestor: {mgr ? mgr.name : '—'}
           </div>
         </div>
 
@@ -435,8 +435,8 @@
                 <th>Mês</th>
                 <th className="num">PL (R$)</th>
                 <th className="num">Receita</th>
-                <th className="num">Fee Efetivo</th>
-                <th className="num">ROA Mês</th>
+                <th className="num">Fee % a.a.</th>
+                <th className="num">ROA % a.a.</th>
                 <th className="num">Meta ROA</th>
                 <th>Status</th>
               </tr>
@@ -450,7 +450,7 @@
                     <td style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.857rem' }}>{s.label}</td>
                     <td className="num">{fmtCompactBRL(s.pl)}</td>
                     <td className="num">{fmtCompactBRL(s.revenue)}</td>
-                    <td className="num">{fmtPct(s.fee, 4)}</td>
+                    <td className="num">{fmtPct(s.fee * 12, 4)}</td>
                     <td className="num">{fmtPct(s.roa, 4)}</td>
                     <td className="num">{fmtPct(roaTarget, 4)}</td>
                     <td><span className={badgeCls}>{badge}</span></td>

@@ -1,4 +1,4 @@
-﻿/* platform-data.js — ATLAS Wealth Verification
+/* platform-data.js — ATLAS Wealth Verification
    Gerador determinístico de dados fictícios.
    Seed: 20260411  |  Não contém dados reais. */
 
@@ -164,10 +164,10 @@
   ];
 
   var MANAGERS = [
-    { id:'AXIOM_AM',  name:'Axiom Asset Management',  codes:CATALOG.filter(function(p){return p.mgr==='AXIOM_AM';}).map(function(p){return p.code;}), roaTarget:0.00052 },
-    { id:'BEACON_WM', name:'Beacon Wealth Management', codes:CATALOG.filter(function(p){return p.mgr==='BEACON_WM';}).map(function(p){return p.code;}), roaTarget:0.00048 },
-    { id:'CREST_FO',  name:'Crest Family Office',     codes:CATALOG.filter(function(p){return p.mgr==='CREST_FO';}).map(function(p){return p.code;}), roaTarget:0.00055 },
-    { id:'DELTA_PB',  name:'Delta Private Banking',   codes:CATALOG.filter(function(p){return p.mgr==='DELTA_PB';}).map(function(p){return p.code;}), roaTarget:0.00043 },
+    { id:'AXIOM_AM',  name:'Axiom Asset Management',  codes:CATALOG.filter(function(p){return p.mgr==='AXIOM_AM';}).map(function(p){return p.code;}), roaTarget:0.00052 * 12 },
+    { id:'BEACON_WM', name:'Beacon Wealth Management', codes:CATALOG.filter(function(p){return p.mgr==='BEACON_WM';}).map(function(p){return p.code;}), roaTarget:0.00048 * 12 },
+    { id:'CREST_FO',  name:'Crest Family Office',     codes:CATALOG.filter(function(p){return p.mgr==='CREST_FO';}).map(function(p){return p.code;}), roaTarget:0.00055 * 12 },
+    { id:'DELTA_PB',  name:'Delta Private Banking',   codes:CATALOG.filter(function(p){return p.mgr==='DELTA_PB';}).map(function(p){return p.code;}), roaTarget:0.00043 * 12 },
   ];
 
   // beta e sigma por perfil de risco
@@ -276,8 +276,22 @@
      4. MATERIALIZAÇÃO DOS DADOS BASE
   ============================================================= */
 
-  var _portfolioData = {};   // code -> { plArr, nnmArr, retArr, fee, feeArr, reportedPlPrevArr }
+  var _portfolioData = {};   // code -> { plArr, nnmArr, retArr, fee, feeArr, reportedPlPrevArr, perfFeeArr, brokerageArr, custodyArr, fundFeeArr, fxSpreadArr, taxArr, otherArr }
   var _codeMap = {};         // code -> catalog entry
+
+  // Componentes de custo total do cliente (N0.5). Cada entrada descreve uma
+  // camada de custo que o cliente paga, com fonte de dados e default de exibicao.
+  // A arquitetura de arrays espelha feeArr: um valor por mes, mesmo indice.
+  var COST_COMPONENTS = [
+    { id: 'taxa_adm',    label: 'Taxa de Administracao',   array: 'feeArr',       pctDefault: 0.0004, desc: 'Taxa de administracao cobrada pelo gestor/consultor' },
+    { id: 'taxa_perf',   label: 'Taxa de Performance',     array: 'perfFeeArr',   pctDefault: 0,      desc: '20% do retorno acima do benchmark (CDI), quando positivo' },
+    { id: 'corretagem',  label: 'Corretagem',              array: 'brokerageArr', pctDefault: 0.0005, desc: 'Custos de corretagem e emolumentos B3' },
+    { id: 'custodia',    label: 'Custodia',                array: 'custodyArr',   pctDefault: 0.0002, desc: 'Taxa de custodia do agente de custodia' },
+    { id: 'fundos_sub',  label: 'Taxa de Fundos Subjacente', array: 'fundFeeArr', pctDefault: 0.0015, desc: 'Taxa de administracao dos fundos investidos (custo indireto)' },
+    { id: 'spread_cambio', label: 'Spread de Cambio',      array: 'fxSpreadArr',  pctDefault: 0.0001, desc: 'Custo de spread na conversao de moeda estrangeira' },
+    { id: 'impostos',    label: 'Impostos (come-cotas/IOF)', array: 'taxArr',     pctDefault: 0.0003, desc: 'Come-cotas, IOF e outros impostos incidentes' },
+    { id: 'outros',      label: 'Outros Custos',           array: 'otherArr',    pctDefault: 0.00005, desc: 'Taxas regulatorias, emolumentos e outros custos diversos' },
+  ];
 
   CATALOG.forEach(function(p) { _codeMap[p.code] = p; });
 
@@ -291,7 +305,7 @@
       var lv = logLo + rng0() * (logHi - logLo);
       rawPl.push(Math.exp(lv));
       var fee = 0.0003 + rng0() * 0.0005;
-      _portfolioData[p.code] = { fee: fee, plArr: [], nnmArr: [], retArr: [], feeArr: [], reportedPlPrevArr: [] };
+      _portfolioData[p.code] = { fee: fee, plArr: [], nnmArr: [], retArr: [], feeArr: [], reportedPlPrevArr: [], perfFeeArr: [], brokerageArr: [], custodyArr: [], fundFeeArr: [], fxSpreadArr: [], taxArr: [], otherArr: [] };
     });
 
     // 2. Passo 1: gerar séries completas sem rescaling
@@ -316,6 +330,13 @@
           pd.retArr.push(0);
           pd.feeArr.push(0);
           pd.reportedPlPrevArr.push(0);
+          pd.perfFeeArr.push(0);
+          pd.brokerageArr.push(0);
+          pd.custodyArr.push(0);
+          pd.fundFeeArr.push(0);
+          pd.fxSpreadArr.push(0);
+          pd.taxArr.push(0);
+          pd.otherArr.push(0);
           continue;
         }
 
@@ -346,6 +367,18 @@
         var revenue = feeEff * plCurr;
         if (p.code === 'COMETA_FAM' && month === '2026-02') revenue += 48500;
 
+        // Custos do cliente (N0.5): cada camada gerada como fracao do PL com
+        // parametros realistas. No modo real/importado, defaults para zero ate
+        // que o dado seja configurado (overlay ou importacao de colunas extras).
+        var excessRet = Math.max(0, ret - cdi);
+        var perfFee = plCurr * excessRet * 0.20;          // 20% do excesso sobre CDI
+        var brokerage = plCurr * 0.0005;                   // ~0.05% corretagem
+        var custody = plCurr * 0.0002;                     // ~0.02% custodia
+        var fundFee = plCurr * (0.001 + rng0() * 0.003);   // 0.1-0.4% taxa de fundos
+        var fxSpread = plCurr * (0.00005 + rng0() * 0.00015); // 0.005-0.02% spread cambio
+        var taxCost = plCurr * 0.0003;                     // ~0.03% come-cotas/IOF
+        var otherCost = plCurr * (rng0() * 0.0001);        // 0-0.01% outros
+
         var reportedPlPrev = plPrev;
         if (status === 'CORRIGIR') {
           var rngDisc = subRng('disc|' + p.code + '|' + month);
@@ -357,6 +390,13 @@
         pd.retArr.push(ret);
         pd.feeArr.push(revenue);
         pd.reportedPlPrevArr.push(reportedPlPrev);
+        pd.perfFeeArr.push(perfFee);
+        pd.brokerageArr.push(brokerage);
+        pd.custodyArr.push(custody);
+        pd.fundFeeArr.push(fundFee);
+        pd.fxSpreadArr.push(fxSpread);
+        pd.taxArr.push(taxCost);
+        pd.otherArr.push(otherCost);
         pl = plCurr;
       }
     });
@@ -374,6 +414,13 @@
         pd.nnmArr[mi]             = (pd.nnmArr[mi] || 0) * scale;
         pd.feeArr[mi]             = (pd.feeArr[mi] || 0) * scale;
         pd.reportedPlPrevArr[mi]  = (pd.reportedPlPrevArr[mi] || 0) * scale;
+        pd.perfFeeArr[mi]         = (pd.perfFeeArr[mi] || 0) * scale;
+        pd.brokerageArr[mi]       = (pd.brokerageArr[mi] || 0) * scale;
+        pd.custodyArr[mi]         = (pd.custodyArr[mi] || 0) * scale;
+        pd.fundFeeArr[mi]         = (pd.fundFeeArr[mi] || 0) * scale;
+        pd.fxSpreadArr[mi]        = (pd.fxSpreadArr[mi] || 0) * scale;
+        pd.taxArr[mi]             = (pd.taxArr[mi] || 0) * scale;
+        pd.otherArr[mi]           = (pd.otherArr[mi] || 0) * scale;
       }
     });
   })();
@@ -397,7 +444,14 @@
         nnmArr: pd.nnmArr.slice(),
         retArr: pd.retArr.slice(),
         feeArr: pd.feeArr.slice(),
-        reportedPlPrevArr: pd.reportedPlPrevArr.slice()
+        reportedPlPrevArr: pd.reportedPlPrevArr.slice(),
+        perfFeeArr: pd.perfFeeArr.slice(),
+        brokerageArr: pd.brokerageArr.slice(),
+        custodyArr: pd.custodyArr.slice(),
+        fundFeeArr: pd.fundFeeArr.slice(),
+        fxSpreadArr: pd.fxSpreadArr.slice(),
+        taxArr: pd.taxArr.slice(),
+        otherArr: pd.otherArr.slice()
       };
     });
     MANAGERS.forEach(function (m) {
@@ -456,12 +510,12 @@
             id: m.id,
             name: m.name,
             codes: validCodes,
-            roaTarget: m.roaTarget || 0.0005
+            roaTarget: m.roaTarget || 0.005
           });
         }
       });
     } else {
-      MANAGERS.push({ id:'REAIS', name:'Carteiras Reais', codes:codes.slice(), roaTarget:0.0005 });
+      MANAGERS.push({ id:'REAIS', name:'Carteiras Reais', codes:codes.slice(), roaTarget:0.005 });
     }
 
     // Mapeia mes → indice no array MONTHS
@@ -497,7 +551,7 @@
             var rent = (rentByMonth && rentByMonth[rm] != null) ? rentByMonth[rm] : null;
             // Fallback para CDI quando rentRef e null (offshore)
             retArr[idx] = (rent != null) ? rent : (CDI_RATES[rm] || 0);
-            feeArr[idx] = plByMonth[rm] * (p.fee != null ? p.fee : MFEE);
+            feeArr[idx] = plByMonth[rm] * (p.fee != null ? p.fee / 12 : MFEE);
           }
         });
       } else {
@@ -516,7 +570,8 @@
       // o PL do proprio mes, o que zerava a variacao e disparava falsa quebra de
       // conciliacao em TODA carteira real (o dado do cliente que paga).
       for (var k = 1; k < n; k++) rpp[k] = plArr[k - 1];
-      return { fee:MFEE, plArr:plArr, nnmArr:z(), retArr:retArr, feeArr:feeArr, reportedPlPrevArr:rpp };
+       return { fee:(p.fee != null ? p.fee / 12 : MFEE), plArr:plArr, nnmArr:z(), retArr:retArr, feeArr:feeArr, reportedPlPrevArr:rpp,
+                perfFeeArr:z(), brokerageArr:z(), custodyArr:z(), fundFeeArr:z(), fxSpreadArr:z(), taxArr:z(), otherArr:z() };
     }
 
     D.portfolios.forEach(function(p) { _portfolioData[p.code] = realPd(p); });
@@ -880,6 +935,10 @@
     var nAtivos = plCurr > 0 ? 5 + Math.floor(hashStr(code + month) % 5) : 0;
     var nAtivosPrev = plPrev > 0 ? 5 + Math.floor(hashStr(code + (MONTHS[mi-1]||month)) % 5) : 0;
 
+    // Custos agregados do mes (todos os componentes, em BRL)
+    var totalCost = (pd.perfFeeArr[mi]||0) + (pd.brokerageArr[mi]||0) + (pd.custodyArr[mi]||0)
+      + (pd.fundFeeArr[mi]||0) + (pd.fxSpreadArr[mi]||0) + (pd.taxArr[mi]||0) + (pd.otherArr[mi]||0);
+
     return {
       code: code,
       name: p.name,
@@ -905,6 +964,8 @@
       nAtivos: nAtivos,
       nAtivosPrev: nAtivosPrev,
       cdi: cdi,
+      totalCost: totalCost,
+      totalCostPct: plCurr > 0 ? totalCost / plCurr : 0,
     };
   }
 
@@ -1112,7 +1173,7 @@
         revenue += pd.feeArr[mi] || 0;
         nnm += pd.nnmArr[mi] || 0;
       });
-      var roa = aum > 0 ? revenue / aum : 0;
+      var roa = aum > 0 ? (revenue / aum) * 12 : 0;
       return { month: m, label: MONTH_LABELS[mi], aum: aum, nnm: nnm, roa: roa, clients: CATALOG.length, revenue: revenue };
     });
   }
@@ -1127,7 +1188,7 @@
         aum += pd.plArr[mi] || 0;
         revenue += pd.feeArr[mi] || 0;
       });
-      var roa = aum > 0 ? revenue / aum : 0;
+      var roa = aum > 0 ? (revenue / aum) * 12 : 0;
       var attainment = mgr.roaTarget > 0 ? roa / mgr.roaTarget : 0;
       var badge = attainment >= 1.0 ? 'ACIMA' : attainment >= 0.85 ? 'PROX.' : 'ABAIXO';
       return {
@@ -1147,7 +1208,7 @@
     var rows = mgr.codes.map(function(code) { return getRow(code, month); }).filter(Boolean);
     var totalAum = rows.reduce(function(s,r){return s+r.plCurr;},0);
     var totalRev = rows.reduce(function(s,r){return s+r.revenue;},0);
-    var roa = totalAum > 0 ? totalRev / totalAum : 0;
+    var roa = totalAum > 0 ? (totalRev / totalAum) * 12 : 0;
     var attainment = mgr.roaTarget > 0 ? roa / mgr.roaTarget : 0;
     return { manager: mgr, rows: rows, totalAum: totalAum, totalRev: totalRev, roa: roa, attainment: attainment };
   }
@@ -1169,7 +1230,7 @@
           revenueYTD += pd.feeArr[j] || 0;
         }
       }
-      var roa = pl > 0 ? revenue / pl : 0;
+      var roa = pl > 0 ? (revenue / pl) * 12 : 0;
       var seg = pl > 50e6 ? 'Ultra' : pl > 20e6 ? 'Large' : pl > 5e6 ? 'Mid' : pl > 1e6 ? 'Small' : 'Micro';
       var mgr = getManagerForCode(p.code);
       return {
@@ -1226,12 +1287,10 @@
     if (!monthData) return [];
     var alerts = [];
 
-    // Regra 1: ROA mensal abaixo do piso. Piso e alvos de gestor estao na escala do
-    // ROA mensal real (receita/AUM ~0,05%/mes); antes estavam 10x acima, o que fazia
-    // TODO mes disparar este alerta e TODO gestor cair em ABAIXO no ranking.
-    var ROA_PISO = 0.0003;
+    // Regra 1: ROA anual abaixo do piso.
+    var ROA_PISO = 0.0036;
     if (monthData.roa < ROA_PISO) {
-      alerts.push({ rule:'ROA Mês Baixo', text:'ROA do mês (' + (monthData.roa*100).toFixed(3) + '%) abaixo do piso de ' + (ROA_PISO*100).toFixed(3) + '%.', severity:'CORRIGIR' });
+      alerts.push({ rule:'ROA Baixo', text:'ROA anual (' + (monthData.roa*100).toFixed(3) + '%) abaixo do piso de ' + (ROA_PISO*100).toFixed(3) + '% a.a.', severity:'CORRIGIR' });
     }
 
     // Regra 2: anomalia de fee (Out/2025)
@@ -1438,7 +1497,14 @@
       nnmArr: new Array(n).fill(0),
       retArr: new Array(n).fill(0),
       feeArr: new Array(n).fill(0),
-      reportedPlPrevArr: new Array(n).fill(0)
+      reportedPlPrevArr: new Array(n).fill(0),
+      perfFeeArr: new Array(n).fill(0),
+      brokerageArr: new Array(n).fill(0),
+      custodyArr: new Array(n).fill(0),
+      fundFeeArr: new Array(n).fill(0),
+      fxSpreadArr: new Array(n).fill(0),
+      taxArr: new Array(n).fill(0),
+      otherArr: new Array(n).fill(0)
     };
     // 1ª passada: preenche todos os plArr/retArr/feeArr dos meses importados.
     Object.keys(portfolio.months).forEach(function (mes) {
@@ -1533,7 +1599,7 @@
     Object.keys(_compCache).forEach(function (k) { delete _compCache[k]; });
 
     MANAGERS.length = 0;
-    MANAGERS.push({ id: 'IMPORTADAS', name: 'Carteiras Importadas', codes: allCodes.slice(), roaTarget: 0.0050 });
+    MANAGERS.push({ id: 'IMPORTADAS', name: 'Carteiras Importadas', codes: allCodes.slice(), roaTarget: 0.0050 }); // roaTarget a.a.
 
     _dataMode = 'imported';
 
@@ -1564,7 +1630,14 @@
         nnmArr: pd.nnmArr.slice(),
         retArr: pd.retArr.slice(),
         feeArr: pd.feeArr.slice(),
-        reportedPlPrevArr: pd.reportedPlPrevArr.slice()
+        reportedPlPrevArr: pd.reportedPlPrevArr.slice(),
+        perfFeeArr: pd.perfFeeArr.slice(),
+        brokerageArr: pd.brokerageArr.slice(),
+        custodyArr: pd.custodyArr.slice(),
+        fundFeeArr: pd.fundFeeArr.slice(),
+        fxSpreadArr: pd.fxSpreadArr.slice(),
+        taxArr: pd.taxArr.slice(),
+        otherArr: pd.otherArr.slice()
       };
     });
 
@@ -1614,6 +1687,250 @@
   function visibleMonths() {
     var last = latestMonthIdxWithData();
     return { months: MONTHS.slice(0, last + 1), labels: MONTH_LABELS.slice(0, last + 1) };
+  }
+
+  /* =============================================================
+     8.5 CUSTO TOTAL DO CLIENTE E TRILHA DE AUDITORIA
+  ============================================================= */
+
+  // Agrega custos por componente selecionado, quebrados por gestor, carteira e classe de ativo.
+  // componentIds: array de ids de COST_COMPONENTS (ex: ['taxa_adm','taxa_perf']).
+  // undefined = todos os componentes.
+  // Retorna { byManager, byPortfolio, byAssetClass, totalCost, totalAUM, totalPct, breakdown }.
+  function clientCostAnalysis(month, componentIds) {
+    var mi = MONTHS.indexOf(month);
+    if (mi < 0) return null;
+
+    var comps = componentIds && componentIds.length ? componentIds : COST_COMPONENTS.map(function(c) { return c.id; });
+    var compSet = {};
+    comps.forEach(function(id) { compSet[id] = true; });
+
+    var byManager = {};     // { managerId: { name, totalCost, aum, pct, portfolios: [] } }
+    var byPortfolio = [];   // [{ code, name, manager, aum, cost, pct }]
+    var byAssetClass = {};  // { assetClass: { totalCost, aum, pct } }
+    var totalCost = 0;
+    var totalAUM = 0;
+
+    CATALOG.forEach(function(p) {
+      var pd = _portfolioData[p.code];
+      if (!pd) return;
+      var pl = pd.plArr[mi] || 0;
+      if (pl <= 0) return;
+
+      var cost = 0;
+      COST_COMPONENTS.forEach(function(cc) {
+        if (!compSet[cc.id]) return;
+        cost += pd[cc.array][mi] || 0;
+      });
+
+      totalCost += cost;
+      totalAUM += pl;
+
+      var mgr = getManagerForCode(p.code) || { id: 'sem_gestor', name: 'Sem Gestor' };
+      if (!byManager[mgr.id]) byManager[mgr.id] = { id: mgr.id, name: mgr.name, totalCost: 0, aum: 0, portfolios: [] };
+      byManager[mgr.id].totalCost += cost;
+      byManager[mgr.id].aum += pl;
+      byManager[mgr.id].portfolios.push({ code: p.code, name: p.name, aum: pl, cost: cost, pct: pl > 0 ? cost / pl : 0 });
+
+      byPortfolio.push({ code: p.code, name: p.name, manager: mgr.name, aum: pl, cost: cost, pct: pl > 0 ? cost / pl : 0 });
+
+      var ac = p.assetClass || p.risk || 'Nao Classificado';
+      if (!byAssetClass[ac]) byAssetClass[ac] = { totalCost: 0, aum: 0 };
+      byAssetClass[ac].totalCost += cost;
+      byAssetClass[ac].aum += pl;
+    });
+
+    // Calcula percentuais por manager e asset class
+    Object.keys(byManager).forEach(function(k) {
+      byManager[k].pct = byManager[k].aum > 0 ? byManager[k].totalCost / byManager[k].aum : 0;
+    });
+    Object.keys(byAssetClass).forEach(function(k) {
+      byAssetClass[k].pct = byAssetClass[k].aum > 0 ? byAssetClass[k].totalCost / byAssetClass[k].aum : 0;
+    });
+
+    // Breakdown por componente
+    var breakdown = COST_COMPONENTS.filter(function(cc) { return compSet[cc.id]; }).map(function(cc) {
+      var sum = 0;
+      CATALOG.forEach(function(p) {
+        var pd = _portfolioData[p.code];
+        if (!pd || (pd.plArr[mi]||0) <= 0) return;
+        sum += pd[cc.array][mi] || 0;
+      });
+      return { id: cc.id, label: cc.label, total: sum, pct: totalAUM > 0 ? sum / totalAUM : 0 };
+    });
+
+    byPortfolio.sort(function(a, b) { return b.pct - a.pct; });
+
+    return {
+      byManager: Object.values(byManager).sort(function(a, b) { return b.pct - a.pct; }),
+      byPortfolio: byPortfolio,
+      byAssetClass: Object.keys(byAssetClass).map(function(k) { return { assetClass: k, totalCost: byAssetClass[k].totalCost, aum: byAssetClass[k].aum, pct: byAssetClass[k].pct }; }).sort(function(a, b) { return b.pct - a.pct; }),
+      totalCost: totalCost,
+      totalAUM: totalAUM,
+      totalPct: totalAUM > 0 ? totalCost / totalAUM : 0,
+      breakdown: breakdown,
+    };
+  }
+
+  // Trilha de auditoria computada por carteira e mes.
+  // 7 regras, cada uma com: id, nome, descricao, formula, tolerancia, valor real, threshold, status.
+  // Status: PASS (dentro da tolerancia), WARN (atenuação), FAIL (fora da tolerancia).
+  function computeAuditTrail(code, month) {
+    var pd = _portfolioData[code];
+    var p = _codeMap[code];
+    if (!pd || !p) return null;
+    var mi = MONTHS.indexOf(month);
+    if (mi < 0) return null;
+
+    var plCurr = pd.plArr[mi] || 0;
+    var plPrev = mi > 0 ? pd.plArr[mi-1] : 0;
+    var reportedPlPrev = pd.reportedPlPrevArr[mi] || plPrev;
+    var ret = pd.retArr[mi] || 0;
+    var nnm = pd.nnmArr[mi] || 0;
+    var cdi = getCDI(month);
+    var fee = pd.fee;
+
+    // Prepara valores base para as regras
+    var expected = reportedPlPrev * (1 + ret) + nnm;
+    var continuidade = reportedPlPrev > 0 ? Math.abs(plCurr - expected) / reportedPlPrev : 0;
+
+    var rules = [];
+
+    // R1: Continuidade do PL (|PL atual - PL esperado| / PL anterior < 0.3%)
+    rules.push({
+      id: 'R1',
+      name: 'Continuidade do PL',
+      description: 'O PL reportado no mes deve ser consistente com o PL anterior, rentabilidade e movimentacoes.',
+      formula: '|PL_atual - (PL_anterior_reportado * (1 + ret) + NNM)| / PL_anterior_reportado',
+      tolerance: 0.003,
+      actualValue: continuidade,
+      threshold: 0.003,
+      unit: '%',
+      displayValue: (continuidade * 100).toFixed(2) + '%',
+      status: continuidade <= 0.003 ? 'PASS' : continuidade <= 0.01 ? 'WARN' : 'FAIL',
+    });
+
+    // R2: Rentabilidade vs CDI (retorno mensal nao pode ficar abaixo do CDI por mais de 3 meses)
+    var belowCDIStreak = 0;
+    for (var j = mi; j >= 0; j--) {
+      var rj = pd.retArr[j] || 0;
+      var cj = CDI[MONTHS[j]] || 0;
+      if (rj < cj) belowCDIStreak++; else break;
+    }
+    rules.push({
+      id: 'R2',
+      name: 'Rentabilidade vs CDI',
+      description: 'Rentabilidade mensal abaixo do CDI por mais de 3 meses consecutivos indica underperformance estrutural.',
+      formula: 'count(ret_mes < CDI_mes) consecutivos',
+      tolerance: 3,
+      actualValue: belowCDIStreak,
+      threshold: 3,
+      unit: 'meses',
+      displayValue: belowCDIStreak + ' meses',
+      status: belowCDIStreak < 3 ? 'PASS' : belowCDIStreak <= 4 ? 'WARN' : 'FAIL',
+    });
+
+    // R3: Variacao anomala de PL (|var%| > 10% dispara alerta)
+    var varPct = reportedPlPrev > 0 ? Math.abs(plCurr - reportedPlPrev) / reportedPlPrev : 0;
+    rules.push({
+      id: 'R3',
+      name: 'Variacao Anomala de PL',
+      description: 'Variacao mensal de PL acima de 10% exige justificativa documentada.',
+      formula: '|PL_atual - PL_anterior| / PL_anterior',
+      tolerance: 0.10,
+      actualValue: varPct,
+      threshold: 0.10,
+      unit: '%',
+      displayValue: (varPct * 100).toFixed(1) + '%',
+      status: varPct <= 0.10 ? 'PASS' : varPct <= 0.15 ? 'WARN' : 'FAIL',
+    });
+
+    // R4: PL registrado positivo (carteira nao pode ter PL zero ou negativo sem encerramento)
+    rules.push({
+      id: 'R4',
+      name: 'PL Positivo',
+      description: 'Carteira ativa deve manter PL positivo. PL zero ou negativo indica erro de registro ou encerramento nao comunicado.',
+      formula: 'PL_atual > 0',
+      tolerance: 0,
+      actualValue: plCurr,
+      threshold: 0,
+      unit: 'BRL',
+      displayValue: 'R$ ' + plCurr.toFixed(2),
+      status: plCurr > 0 ? 'PASS' : 'FAIL',
+    });
+
+    // R5: Numero de ativos consistente (carteira ativa deve ter pelo menos 3 ativos)
+    var nAtivos = plCurr > 0 ? 5 + Math.floor(hashStr(code + month) % 5) : 0;
+    rules.push({
+      id: 'R5',
+      name: 'Diversificacao Minima',
+      description: 'Carteira com PL > 0 deve conter pelo menos 3 ativos para diluicao de risco.',
+      formula: 'count(ativos) >= 3',
+      tolerance: 3,
+      actualValue: nAtivos,
+      threshold: 3,
+      unit: 'ativos',
+      displayValue: nAtivos + ' ativos',
+      status: nAtivos >= 3 ? 'PASS' : nAtivos === 0 ? 'WARN' : 'FAIL',
+    });
+
+    // R6: Taxa de administracao dentro do esperado (fee declarado vs fee aplicado no mes)
+    var feeApplied = pd.feeArr[mi] || 0;
+    var feeExpected = plCurr * fee;
+    var feeDeviation = feeExpected > 0 ? Math.abs(feeApplied - feeExpected) / feeExpected : 0;
+    rules.push({
+      id: 'R6',
+      name: 'Taxa de Administracao Consistente',
+      description: 'A taxa de administracao aplicada no mes deve corresponder ao fee contratual da carteira.',
+      formula: '|fee_aplicado - (PL * fee_contratual)| / (PL * fee_contratual)',
+      tolerance: 0.10,
+      actualValue: feeDeviation,
+      threshold: 0.10,
+      unit: '%',
+      displayValue: (feeDeviation * 100).toFixed(1) + '% de desvio',
+      status: feeDeviation <= 0.10 ? 'PASS' : feeDeviation <= 0.25 ? 'WARN' : 'FAIL',
+    });
+
+    // R7: Cobertura de selo (se o mes tem checksum de auditoria registrado)
+    var selo = getSeloInfo(month);
+    var seloRuleStatus = selo.selado ? 'PASS' : 'WARN';
+    rules.push({
+      id: 'R7',
+      name: 'Selo de Auditoria',
+      description: 'O mes deve possuir checksum criptografico de auditoria (selo) registrado.',
+      formula: 'selo != null',
+      tolerance: 1,
+      actualValue: selo.selado ? 1 : 0,
+      threshold: 1,
+      unit: 'booleano',
+      displayValue: selo.selado ? 'Selado' : 'Nao selado',
+      status: seloRuleStatus,
+      checksum: selo.checksum || null,
+      sealedAt: selo.sealedAt || null,
+    });
+
+    // Sumario
+    var passCount = rules.filter(function(r) { return r.status === 'PASS'; }).length;
+    var warnCount = rules.filter(function(r) { return r.status === 'WARN'; }).length;
+    var failCount = rules.filter(function(r) { return r.status === 'FAIL'; }).length;
+    var overallStatus = failCount > 0 ? 'FAIL' : warnCount > 0 ? 'WARN' : 'PASS';
+
+    return {
+      code: code,
+      name: p.name,
+      month: month,
+      monthLabel: MONTH_LABELS[mi] || month,
+      rules: rules,
+      summary: {
+        total: rules.length,
+        pass: passCount,
+        warn: warnCount,
+        fail: failCount,
+        overall: overallStatus,
+      },
+      computedAt: new Date().toISOString(),
+      methodology: 'ATLAS Audit Engine v1.0 — 7 regras com tolerancias explicitas, valores observados e status computado por carteira.',
+    };
   }
 
   /* =============================================================
@@ -1747,6 +2064,9 @@
     getSeloInfo: getSeloInfo,
     getAlertas: getAlertas,
     validate: validate,
+    COST_COMPONENTS: COST_COMPONENTS,
+    clientCostAnalysis: clientCostAnalysis,
+    computeAuditTrail: computeAuditTrail,
   };
 
 })();

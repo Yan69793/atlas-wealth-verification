@@ -160,6 +160,7 @@
     { id:'comparativo', label:'Comparativo',         icon:'compare',    path:'#/comparativo' },
     { id:'achados',     label:'Achados & Exceções',  icon:'findings',   path:'#/achados'     },
     { id:'tendencia',   label:'Tendência do Ciclo',  icon:'trend',      path:'#/tendencia'   },
+    { id:'custos',      label:'Transp. de Custos',   icon:'revenue',    path:'#/custos'      },
     { id:'receitas',    label:'Receitas & ROA',      icon:'revenue',    path:'#/receitas'    },
     { id:'busca',       label:'Busca por Ativo',     icon:'search',     path:'#/busca'       },
   ];
@@ -333,6 +334,7 @@
     if (path === '/achados') return 'achados';
     if (path === '/comparativo') return 'comparativo';
     if (path === '/receitas') return 'receitas';
+    if (path === '/custos') return 'custos';
     if (path === '/cadastro') return 'cadastro';
     if (path === '/busca') return 'busca';
     if (path === '/risco') return 'risco';
@@ -418,6 +420,11 @@
         return pages.Receitas
           ? React.createElement(pages.Receitas)
           : <PlaceholderPage title="Receitas & ROA" etapa={7} />;
+
+      case 'custos':
+        return pages.Custos
+          ? React.createElement(pages.Custos)
+          : <PlaceholderPage title="Transparência de Custos" etapa="custos" />;
 
       case 'cadastro':
         return pages.Cadastro

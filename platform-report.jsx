@@ -293,31 +293,90 @@ ${row.findings.map(f => {
 </section>`
       : '';
 
-    // Trilha de auditoria: torna visivel o metodo e as regras, o diferencial que
-    // o consolidador nao entrega. So valores verdadeiros: a formula como metodologia,
-    // as 7 regras, o desvio de continuidade real (row.continuidade) e as datas.
+    // Trilha de Auditoria como Produto: 7 regras computadas por carteira com
+    // metodo visivel, tolerancias explicitas, valores observados e status
+    // verde/ambar/vermelho. Se não houver engine de auditoria no escopo (modo
+    // demo sem D.computeAuditTrail), renderiza o bloco generico como fallback.
     // Selo (N0.4): D.getSeloInfo le exclusivamente de window._AtlasSelos (overlay
-    // LGPD real). Sem overlay, mostra o estado honesto "nao selado" -- nunca um
-    // checksum de demonstracao -- para nao sugerir uma cadeia de custodia que nao
-    // existe neste ambiente.
+    // LGPD real). Sem overlay, mostra o estado honesto "nao selado".
+    var _trail = D.computeAuditTrail ? D.computeAuditTrail(code, month) : null;
     var _selo = D.getSeloInfo ? D.getSeloInfo(month) : { selado: false };
     var _seloTxt = _selo.selado
       ? 'Selo ' + escH(String(_selo.checksum || '').slice(0, 12))
       : 'Não selado (ambiente demo)';
-    const auditTrailHTML = `<section class="section">
-<div class="section-title">Trilha de Auditoria</div>
-<p style="font-size:11px;line-height:1.6;margin:0 0 8px;color:#3C3830;">
-Método de conciliação patrimonial: <strong>PL esperado = PL base + compras &#8722; vendas + eventos &#8722; impostos</strong>.
-Desvio de continuidade apurado neste mês: <strong>${rFmtPct(row.continuidade || 0, 3)}</strong> (tolerância 0,300%).
-</p>
-<div style="font-size:10px;color:#3C3830;line-height:1.7;">
-<strong>Regras aplicadas:</strong> conciliação de PL, continuidade de saldo, rentabilidade reportada, spread de rentabilidade, cotas sem operação, come-cotas e aderência de alocação.
-</div>
-<div style="display:flex;justify-content:space-between;font-size:9px;color:#9A9188;text-transform:uppercase;letter-spacing:.06em;border-top:1px solid #DDD8D0;margin-top:8px;padding-top:6px;">
-<span>Referência ${monthLabel} · Verificado em ${today} · ${_seloTxt}</span>
-<span>${escH(BRAND.product)}</span>
-</div>
-</section>`;
+
+    var _trailHTML = '';
+    if (_trail && _trail.rules && _trail.rules.length) {
+      var _overallBadge = _trail.summary.overall === 'PASS'
+        ? '<span style="background:#ECFDF5;color:#065F46;padding:2px 10px;border-radius:3px;font-size:10px;font-weight:600;">APROVADO</span>'
+        : _trail.summary.overall === 'WARN'
+        ? '<span style="background:#FFFBEB;color:#92400E;padding:2px 10px;border-radius:3px;font-size:10px;font-weight:600;">ATENÇÃO</span>'
+        : '<span style="background:#FEF2F2;color:#991B1B;padding:2px 10px;border-radius:3px;font-size:10px;font-weight:600;">REPROVADO</span>';
+
+      var _rulesRows = _trail.rules.map(function(r) {
+        var _rBadge = r.status === 'PASS'
+          ? '<span style="background:#ECFDF5;color:#065F46;padding:1px 6px;border-radius:2px;font-size:9px;font-weight:600;">PASSOU</span>'
+          : r.status === 'WARN'
+          ? '<span style="background:#FFFBEB;color:#92400E;padding:1px 6px;border-radius:2px;font-size:9px;font-weight:600;">ATENÇÃO</span>'
+          : '<span style="background:#FEF2F2;color:#991B1B;padding:1px 6px;border-radius:2px;font-size:9px;font-weight:600;">FALHOU</span>';
+        var _rBar = r.status === 'PASS' ? '#10B981' : r.status === 'WARN' ? '#F59E0B' : '#EF4444';
+
+        var _extra = '';
+        if (r.id === 'R7' && r.checksum) {
+          _extra = '<div style="font-size:9px;color:#9A9188;margin-top:2px;">Checksum: ' + escH(String(r.checksum).slice(0, 16)) + '</div>';
+        }
+
+        return '<tr>' +
+          '<td style="width:32px;padding-top:7px;">' + _rBadge + '</td>' +
+          '<td style="padding-top:7px;">' +
+            '<div style="font-weight:600;font-size:11px;color:#0D1520;">' + escH(r.id) + ': ' + escH(r.name) + '</div>' +
+            '<div style="font-size:9px;color:#9A9188;margin-top:1px;">' + escH(r.description) + '</div>' +
+            '<div style="font-size:9px;color:#6B6258;margin-top:3px;">Formula: ' + escH(r.formula) + ' · Tolerancia: ' + escH(String(r.threshold)) + ' ' + escH(r.unit || '') + ' · Apurado: <strong>' + escH(r.displayValue) + '</strong></div>' +
+            _extra +
+          '</td>' +
+          '<td style="width:6px;padding-top:7px;vertical-align:top;"><div style="width:4px;height:100%;min-height:40px;background:' + _rBar + ';border-radius:2px;"></div></td>' +
+        '</tr>';
+      }).join('');
+
+      _trailHTML = '<section class="section">' +
+        '<div class="section-title">Trilha de Auditoria</div>' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">' +
+          '<div>' +
+            '<p style="font-size:11px;line-height:1.6;margin:0;color:#3C3830;">' +
+            'Auditoria computada por carteira: <strong>' + _trail.rules.length + ' regras</strong> verificadas com tolerancias explicitas e valores observados.' +
+            '</p>' +
+            '<p style="font-size:10px;color:#6B6258;margin:4px 0 0;">' +
+            escH(_trail.summary.pass) + ' passaram · ' + escH(_trail.summary.warn) + ' atencao · ' + escH(_trail.summary.fail) + ' falharam' +
+            '</p>' +
+          '</div>' +
+          '<div>' + _overallBadge + '</div>' +
+        '</div>' +
+        '<table style="width:100%;border-collapse:collapse;">' +
+        '<thead><tr><th></th><th>Regra</th><th></th></tr></thead>' +
+        '<tbody>' + _rulesRows + '</tbody>' +
+        '</table>' +
+        '<div style="display:flex;justify-content:space-between;font-size:9px;color:#9A9188;text-transform:uppercase;letter-spacing:.06em;border-top:1px solid #DDD8D0;margin-top:10px;padding-top:6px;">' +
+        '<span>Referência ' + monthLabel + ' · Verificado em ' + today + ' · ' + _seloTxt + '</span>' +
+        '<span>' + escH(BRAND.product) + '</span>' +
+        '</div>' +
+        '</section>';
+    } else {
+      // Fallback: bloco generico quando computeAuditTrail nao esta disponivel
+      _trailHTML = '<section class="section">' +
+        '<div class="section-title">Trilha de Auditoria</div>' +
+        '<p style="font-size:11px;line-height:1.6;margin:0 0 8px;color:#3C3830;">' +
+        'Metodo de conciliacao patrimonial: <strong>PL esperado = PL base + compras &#8722; vendas + eventos &#8722; impostos</strong>.' +
+        ' Desvio de continuidade apurado neste mes: <strong>' + rFmtPct(row.continuidade || 0, 3) + '</strong> (tolerancia 0,300%).' +
+        '</p>' +
+        '<div style="font-size:10px;color:#3C3830;line-height:1.7;">' +
+        '<strong>Regras aplicadas:</strong> conciliacao de PL, continuidade de saldo, rentabilidade reportada, spread de rentabilidade, cotas sem operacao, come-cotas e aderencia de alocacao.' +
+        '</div>' +
+        '<div style="display:flex;justify-content:space-between;font-size:9px;color:#9A9188;text-transform:uppercase;letter-spacing:.06em;border-top:1px solid #DDD8D0;margin-top:8px;padding-top:6px;">' +
+        '<span>Referencia ' + monthLabel + ' · Verificado em ' + today + ' · ' + _seloTxt + '</span>' +
+        '<span>' + escH(BRAND.product) + '</span>' +
+        '</div>' +
+        '</section>';
+    }
 
     return `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -421,7 +480,7 @@ td { padding: 5px 7px; border-bottom: 1px solid #E3DDD5; color: #3C3830; vertica
 ${historicoHTML}
 ${findingsHTML}
 ${obsHTML}
-${auditTrailHTML}
+${_trailHTML}
 <div class="footnotes">
   (*) Retorno Acumulado: variação patrimonial relativa ao PL no início do período, inclui efeito de aportes e resgates.<br>
   (**) TWR: método CFA/GIPS — &#8719;(1 + r&#8345;) &#8722; 1, elimina distorções por aportes e resgates.<br>
