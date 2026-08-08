@@ -133,7 +133,9 @@ Localiza todas as carteiras com exposição a um ativo ou classe específica. Ú
 
 ### Importação de Extratos
 
-Módulo planejado para ingestão de extratos em PDF, Excel, CSV e Markdown. **Ainda não implementado** — a especificação está definida; é a próxima etapa de desenvolvimento.
+Ingestão de extratos pela tela `#/importar`. **CSV** e **XLSX** são estáveis (template em `docs/templates/atlas_template.csv`); **PDF** está em beta/experimental, restrito aos books no layout "Relatório Mensal". Markdown não é suportado.
+
+Os dados importados substituem o conjunto demo em todas as telas e vivem somente em memória do navegador — atualizar a página recarrega o demo. Nada é persistido nem enviado a serviço externo: a extração de PDF roda local, via pdf.js.
 
 ### Cadastro & Compliance
 
@@ -219,7 +221,7 @@ A perda estimada é calculada pela exposição de cada carteira às classes afet
 | Dados sintéticos | Todos os dados exibidos foram gerados algoritmicamente para fins de demonstração. Não representam carteiras reais. |
 | App sem autenticacao propria | Por desenho. Servir com dado real exige perimetro na frente (Cloudflare Access). |
 | Sem backend ou persistência | O sistema é 100% estático. Alterações não são salvas. |
-| Importação não implementada | O parser de PDF/Excel/CSV/Markdown está especificado mas aguarda desenvolvimento. |
+| Importação de PDF em beta | CSV e XLSX são estáveis. O parser de PDF cobre só o layout "Relatório Mensal" e é experimental. Markdown não é suportado. |
 | Sem controle de permissões | Todos os usuários têm acesso total no protótipo. |
 
 > **Não usar em ambiente produtivo sem backend, autenticação real e política de dados formal (LGPD).**
