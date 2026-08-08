@@ -2,7 +2,9 @@
 
 **Versão:** 0.1 · **Ambiente:** Protótipo / Demo  
 **Repositório:** https://github.com/Yan69793/atlas-wealth-verification  
-**Acesso:** local, via `npm run serve` (http://localhost:7821). Nao ha deploy publico.
+**Acesso:** instância com dado real em https://atlas.szuchmacher.com.br (atrás do
+Cloudflare Access); demo sintético em https://atlas-wealth-63u.pages.dev; local via
+`npm run serve` (http://localhost:7821).
 
 ---
 
@@ -57,7 +59,12 @@ npm run serve
 
 ### Acesso
 
-- **URL:** `http://localhost:7821`
+- **Instância (dado real):** `https://atlas.szuchmacher.com.br` — Worker
+  `atlas-instancia` atrás do Cloudflare Access, que valida o JWT antes de servir
+  overlay ou `/api/data/YYYY-MM`.
+- **Demo (dado sintético):** `https://atlas-wealth-63u.pages.dev` — sem perímetro,
+  publicado por `scripts/deploy-cf.ps1`.
+- **Local:** `http://localhost:7821` via `npm run serve`.
 - O app nao pede senha: autenticacao e responsabilidade do perimetro do deploy.
 
 > Os dados exibidos são completamente sintéticos. Nenhuma informação real é carregada ou transmitida.

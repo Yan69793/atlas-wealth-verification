@@ -18,6 +18,22 @@ npm run serve
 # Abre em http://localhost:7821
 ```
 
+## Onde o sistema está no ar
+
+| Ambiente | URL | O que serve | Perímetro |
+|---|---|---|---|
+| Instância (dado real) | `https://atlas.szuchmacher.com.br` | Worker `atlas-instancia`: SPA + overlays LGPD + `/api/data/YYYY-MM` a partir do R2 (`ATLAS_DATA`) | Cloudflare Access; o Worker valida o JWT por conta própria |
+| Demo (dado sintético) | `https://atlas-wealth-63u.pages.dev` | SPA com o dataset demo, publicado por `scripts/deploy-cf.ps1` | Nenhum — por isso só sobe pelo allowlist de `scripts/build-deploy.mjs` |
+| Local | `http://localhost:7821` | `npm run serve` sobre a árvore do repositório | Nenhum; nada a proteger com dado sintético |
+
+O código do Worker não vive neste repositório — ele está na árvore de instância,
+junto dos overlays LGPD. Aqui ficam só o SPA e os scripts que montam o diretório
+publicável.
+
+`workers_dev` fica desligado de propósito: um hostname `*.workers.dev` responde
+fora da app do Access e serviria o mesmo binding de dados sem perímetro nenhum.
+Foi por um hostname de preview que dado real vazou uma vez, em 15/07/2026.
+
 ## Como rodar os testes
 
 ```bash
