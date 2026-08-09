@@ -191,11 +191,27 @@
     } = data;
     const code = row.code || cat.code || '';
     const DEFAULT_OBS = 'Conciliação aprovada sem ressalvas.';
-    const BRAND = window.AtlasBrand || { product: 'ATLAS Wealth Verification', tenant: 'Meridian Advisory', reportLabel: 'Relatório de Carteira', confidentiality: 'Uso Interno' };
+    const BRAND = window.AtlasBrand || { product: 'ATLAS Wealth Verification', tenant: '', reportLabel: 'Relatório de Carteira', confidentiality: 'Uso Interno' };
+    // Tenant vazio e o default do produto. Sem este prefixo condicional o
+    // cabecalho sairia com um separador orfao antes do rotulo do relatorio.
+    const _brandPfx = BRAND.tenant ? escH(BRAND.tenant) + ' · ' : '';
     const _mode = (D.getDataMode && D.getDataMode()) || 'demo';
     const _dataLabel = _mode === 'demo' ? 'Dados sintéticos'
       : _mode === 'imported' ? 'Dados importados pelo usuário'
       : 'Dados de carteira reais';
+
+    /* O relatorio sai desta tela e vira PDF que circula sozinho, sem a faixa
+       do AppShell junto. Sem um aviso no proprio documento, um demo vira
+       numero com aparencia de laudo na caixa de entrada de terceiro. Borda em
+       vez de fundo colorido porque navegador imprime sem grafico de fundo por
+       padrao, e ai o fundo vermelho sai branco. */
+    const _demoBannerHtml = _mode === 'real' ? '' :
+      '<div class="rpt-demo">' +
+        '<strong>Ambiente de demonstração</strong> · ' +
+        (_mode === 'demo'
+          ? 'Dados de carteiras, gestores, valores e resultados são sintéticos. Este documento não é um relatório de carteira real.'
+          : 'Gerado a partir do arquivo importado pelo usuário nesta sessão, sem conferência do custodiante.') +
+      '</div>';
     const _hasPrior = row.plPrevTrue > 0; // sem mes anterior no dataset: nao inventa PL anterior
 
     const chartSVG = linePath([
@@ -415,14 +431,17 @@ td { padding: 5px 7px; border-bottom: 1px solid #E3DDD5; color: #3C3830; vertica
 .num { text-align: right; font-family: 'Courier New', monospace; }
 .footnotes { font-size: 9px; color: #9A9188; line-height: 1.7; border-top: 1px solid #DDD8D0; padding-top: 8px; margin-top: 12px; }
 .rpt-footer { display: flex; justify-content: space-between; border-top: 1.5px solid #05305F; margin-top: 20px; padding-top: 8px; font-size: 9px; color: #9A9188; text-transform: uppercase; letter-spacing: .06em; }
+.rpt-demo { border: 1.5px solid #8B1A1A; color: #8B1A1A; border-radius: 3px; padding: 6px 10px; margin-bottom: 14px; font-size: 10px; line-height: 1.5; }
+.rpt-demo strong { text-transform: uppercase; letter-spacing: .06em; }
+@media print { .rpt-demo { page-break-after: avoid; break-after: avoid; } }
 </style>
 </head>
 <body>
 <button class="print-btn" onclick="window.print()">Imprimir / Salvar PDF</button>
-
+${_demoBannerHtml}
 <div class="rpt-hdr">
   <div>
-    <div class="rpt-brand">${escH(BRAND.tenant)} · ${escH(BRAND.reportLabel)}</div>
+    <div class="rpt-brand">${_brandPfx}${escH(BRAND.reportLabel)}</div>
     <div class="rpt-code">${escH(code)}</div>
     <div class="rpt-sub">${escH(cat.name || '')}${managerName ? ' · Gestor: ' + escH(managerName) : ''}</div>
     <div class="rpt-sub" style="margin-top:2px;">Referência: ${monthLabel} · Gerado em ${today}</div>
@@ -484,11 +503,11 @@ ${_trailHTML}
 <div class="footnotes">
   (*) Retorno Acumulado: variação patrimonial relativa ao PL no início do período, inclui efeito de aportes e resgates.<br>
   (**) TWR: método CFA/GIPS — &#8719;(1 + r&#8345;) &#8722; 1, elimina distorções por aportes e resgates.<br>
-  ${_dataLabel} — ${escH(BRAND.product)} · ${escH(BRAND.tenant)} (uso interno).
+  ${_dataLabel} — ${escH(BRAND.product)}${BRAND.tenant ? ' · ' + escH(BRAND.tenant) : ''} (uso interno).
 </div>
 
 <footer class="rpt-footer">
-  <span>${escH(BRAND.tenant)} · ${escH(BRAND.reportLabel)} · ${escH(BRAND.confidentiality)}</span>
+  <span>${_brandPfx}${escH(BRAND.reportLabel)} · ${escH(BRAND.confidentiality)}</span>
   <span>${escH(code)} · ${monthLabel}</span>
 </footer>
 </body>

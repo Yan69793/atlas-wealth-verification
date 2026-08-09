@@ -587,6 +587,145 @@ if (fs.existsSync(readmePath)) {
     /PDF/.test(readme2) && /beta|experimental/i.test(readme2));
 }
 
+// ─── 13. Importação local — trava da afirmação comercial ────────────────────
+//
+// A página de importação diz ao prospect, na tela, que o arquivo dele não sai
+// do navegador. Afirmação em texto apodrece: alguém acrescenta telemetria seis
+// meses depois e o aviso vira mentira sem ninguém perceber. Estes checks são o
+// que sustenta a frase.
+//
+// São duas metades porque uma sozinha dá falsa segurança. A primeira barra as
+// primitivas óbvias de envio. A segunda existe porque o arquivo JÁ injeta
+// script de propósito, para carregar SheetJS e pdf.js, então `script.src` com
+// o dado embutido na URL é uma saída que a primeira metade não pega.
+
+const FONTES_LOCAIS = ['platform-import.jsx', 'platform-parsers.js'];
+
+// Descarta comentário: os arquivos citam essas palavras justamente para
+// explicar por que não as usam, e o check leria a explicação como violação.
+function semComentarios(src) {
+  return src
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .split('\n')
+    .filter(l => !/^\s*\/\//.test(l))
+    .join('\n');
+}
+
+const comRede = [];
+for (const f of FONTES_LOCAIS) {
+  const codigo = semComentarios(fs.readFileSync(path.join(ROOT, f), 'utf8'));
+  if (/\b(fetch|XMLHttpRequest|sendBeacon|WebSocket|EventSource)\b/.test(codigo)) comRede.push(f);
+}
+ok('importação não usa primitiva de envio (fetch/XHR/sendBeacon/WebSocket/EventSource)',
+  comRede.length === 0,
+  comRede.length ? `encontrada em: ${comRede.join(', ')}` : 'ok');
+
+// Toda atribuição de src tem de resolver para uma das constantes declaradas.
+// URL literal nova, ou montada por concatenação, derruba o check.
+const SRC_PERMITIDO = new Set(['SHEETJS_URL', 'PDFJS_URL', 'PDFJS_WORKER_URL', 'src']);
+const codigoImport = semComentarios(importContent);
+const atribuicoesSrc = [...codigoImport.matchAll(/\.src\s*=\s*([^;\n]+)/g)]
+  .map(m => m[1].trim());
+const srcForaDaLista = atribuicoesSrc.filter(v => !SRC_PERMITIDO.has(v));
+ok('importação só injeta script a partir das constantes de URL declaradas',
+  atribuicoesSrc.length > 0 && srcForaDaLista.length === 0,
+  srcForaDaLista.length ? `fora da lista: ${srcForaDaLista.join(' | ')}`
+    : `${atribuicoesSrc.length} atribuições, todas na lista`);
+
+// `src` acima é o parâmetro de loadScriptSRI, que só é chamado com as duas
+// URLs do pdf.js. Sem checar as chamadas, a lista aceitaria qualquer coisa.
+const chamadasLoadSRI = [...codigoImport.matchAll(/loadScriptSRI\(\s*([A-Za-z0-9_]+)\s*,/g)]
+  .map(m => m[1]);
+const chamadasForaDaLista = chamadasLoadSRI.filter(v => !SRC_PERMITIDO.has(v));
+ok('loadScriptSRI só é chamado com URL constante',
+  chamadasLoadSRI.length > 0 && chamadasForaDaLista.length === 0,
+  chamadasForaDaLista.length ? `fora da lista: ${chamadasForaDaLista.join(', ')}` : 'ok');
+
+ok('página de importação afirma na tela que o arquivo não sai do navegador',
+  /não sai do seu navegador/i.test(importContent));
+
+ok('página de importação avisa que a leitura de PDF é calibrada para um fornecedor',
+  /calibrada para o formato de um fornecedor/i.test(importContent));
+
+// ─── 14. Faixa de demonstração — trava do aviso no layout raiz ──────────────
+//
+// O aviso vive no AppShell justamente para que rota nova o herde. Se ele
+// voltar a ser posto página a página, ou sumir numa refatoração, o demo
+// público passa a exibir número sintético sem dizer que é sintético.
+
+// appContent já foi lido na seção 3.
+
+ok('platform-app.jsx define DemoBanner',
+  /function DemoBanner\s*\(/.test(appContent));
+
+ok('DemoBanner é renderizado dentro do AppShell',
+  /function AppShell[\s\S]*?<DemoBanner\s*\/>/.test(appContent));
+
+ok('DemoBanner é condicionado ao modo de dados',
+  /function DemoBanner[\s\S]{0,600}getDataMode/.test(appContent));
+
+ok('faixa de demonstração diz que os dados são sintéticos',
+  /Ambiente de demonstração/.test(appContent) && /são sintéticos/.test(appContent));
+
+const cssContent = fs.readFileSync(path.join(ROOT, 'platform-styles.css'), 'utf8');
+
+ok('CSS reserva altura da faixa via --demo-banner-h',
+  /--demo-banner-h/.test(cssContent) && /\.demo-banner\s*\{/.test(cssContent));
+
+// A lista de elementos escondidos na impressão é onde a faixa some por
+// descuido: ela é chrome, e todo o resto do chrome está lá.
+const blocoPrint = (cssContent.match(/@media print \{[\s\S]*$/) || [''])[0];
+const regraOcultaChrome = (blocoPrint.match(/^[^{}]*\{\s*display:\s*none\s*!important/m) || [''])[0];
+ok('faixa de demonstração não está na lista de itens ocultos na impressão',
+  !/demo-banner/.test(regraOcultaChrome));
+
+ok('relatório exportado carrega o aviso de demonstração',
+  /rpt-demo/.test(fs.readFileSync(path.join(ROOT, 'platform-report.jsx'), 'utf8')));
+
+// ─── 15. Mês de abertura do demo tem achado ─────────────────────────────────
+//
+// O demo abre em CURRENT_MONTH. Se esse mês não estiver no roteiro de status
+// escrito à mão, ele cai no gerador pseudoaleatório, e já aconteceu de sair
+// 40/40 LIBERAR. O prospect chega pela primeira tela e vê o produto declarando
+// que não encontrou nada, o que é o oposto do que se quer mostrar.
+
+// dataContent já foi lido antes; reaproveitado aqui.
+const mesAbertura = (dataContent.match(/var CURRENT_MONTH\s*=\s*'([\d-]+)'/) || [])[1];
+
+ok('platform-data.js declara CURRENT_MONTH', Boolean(mesAbertura), mesAbertura || 'não encontrado');
+
+if (mesAbertura) {
+  const noRoteiro = [...dataContent.matchAll(/setS\(\s*'[^']+'\s*,\s*'([\d-]+)'\s*,\s*'([^']+)'/g)]
+    .filter(m => m[1] === mesAbertura);
+  const corrigir = noRoteiro.filter(m => m[2] === 'CORRIGIR').length;
+  const alerta = noRoteiro.filter(m => m[2] === 'COM ALERTA').length;
+
+  ok(`mês de abertura (${mesAbertura}) tem achado no roteiro de status`,
+    corrigir > 0 && alerta > 0,
+    `CORRIGIR=${corrigir} COM ALERTA=${alerta}`);
+
+  const janelaRecidiva = (dataContent.match(/var RECIDIVA_MONTHS\s*=\s*\[([^\]]+)\]/) || [])[1] || '';
+  ok('janela de recidiva alcança o mês de abertura',
+    janelaRecidiva.includes(mesAbertura),
+    janelaRecidiva.includes(mesAbertura) ? 'ok' : `janela termina antes de ${mesAbertura}`);
+}
+
+// ─── 16. Marca neutra — o produto não assina com nome de casa ───────────────
+
+ok('platform-tokens.js nasce com tenant vazio',
+  /tenant:\s*''/.test(fs.readFileSync(path.join(ROOT, 'platform-tokens.js'), 'utf8')));
+
+const comMarcaFixa = [];
+for (const f of FONTES_APP) {
+  const codigo = semComentarios(fs.readFileSync(path.join(ROOT, f), 'utf8'));
+  if (/Meridian Advisory/.test(codigo)) comMarcaFixa.push(f);
+}
+ok('nenhum nome de casa hardcoded nos fontes do app', comMarcaFixa.length === 0,
+  comMarcaFixa.length ? `encontrado em: ${comMarcaFixa.join(', ')}` : 'ok');
+
+ok('index.html não fixa nome de casa no <title>',
+  !/Meridian Advisory/.test(indexHtml));
+
 // ─── Resultado ──────────────────────────────────────────────────────────────
 
 const total = pass + fail;

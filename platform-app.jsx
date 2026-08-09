@@ -140,12 +140,19 @@
      MONOGRAMA / LOGO
   ============================================================ */
 
+  /* Selo de verificacao: escudo com check. Generico de proposito, nao
+     carrega inicial nem nome de casa, entao serve a qualquer instancia
+     sem virar a marca de alguem. O `rect` translucido sobrevive aos tres
+     temas porque --sidebar-bg e o mesmo escuro nos tres. */
   function AtlasLogo() {
     return (
       <svg width="32" height="32" viewBox="0 0 32 32" fill="none" className="sidebar-logo-mark" aria-hidden="true">
-        <rect width="32" height="32" rx="6" fill="rgba(255,255,255,0.06)"/>
-        <text x="16" y="23" textAnchor="middle" fontFamily="Cormorant Garamond, Georgia, serif"
-          fontSize="18" fontWeight="600" fill="#C4A228">A</text>
+        <rect x="0.6" y="0.6" width="30.8" height="30.8" rx="7.4"
+          fill="rgba(255,255,255,0.05)" stroke="#C4A228" strokeOpacity="0.45" strokeWidth="1.2"/>
+        <path d="M16 6.6 L24.4 10.1 V16 C24.4 20.6 21 23.9 16 25.6 C11 23.9 7.6 20.6 7.6 16 V10.1 Z"
+          fill="none" stroke="#C4A228" strokeWidth="1.35" strokeLinejoin="round"/>
+        <path d="M12.1 16 L14.9 18.9 L20.2 12.9"
+          stroke="#C4A228" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round"/>
       </svg>
     );
   }
@@ -215,7 +222,11 @@
           <div className="sidebar-footer">
             <div className="sidebar-user">
               <div className="sidebar-user-name">Administrador</div>
-              <div>{(window.AtlasBrand && window.AtlasBrand.tenant) || 'Meridian Advisory'}</div>
+              {/* Sem fallback de nome de casa: instancia sem platform-brand.js
+                  simplesmente nao assina o rodape. */}
+              {window.AtlasBrand && window.AtlasBrand.tenant
+                ? <div>{window.AtlasBrand.tenant}</div>
+                : null}
             </div>
           </div>
         </nav>
@@ -359,6 +370,48 @@
     usuarios:   'Usuários',
   };
 
+  /* ============================================================
+     FAIXA DE DEMONSTRAÇÃO
+  ============================================================ */
+
+  /* Vive no shell, não nas páginas. Rota nova herda o aviso sem ninguém
+   * precisar lembrar de nada, que é o modo de falha de aviso posto página a
+   * página.
+   *
+   * Condicionada ao modo de dados por um motivo concreto: a LoginScreen antiga
+   * exibia "dados sintéticos" fixo e, numa instância com dado real de cliente,
+   * a frase era falsa. Ver o comentário em LOGIN, acima. Aqui, instância com
+   * dado real não mostra faixa nenhuma.
+   *
+   * A classe no <html> é o que dá altura à faixa via CSS. Sem ela o layout
+   * inteiro segue com --demo-banner-h em zero e nada se desloca.
+   */
+  const DEMO_BANNER_TEXT = {
+    demo: 'Dados de carteiras, gestores, valores e resultados são sintéticos.',
+    imported: 'Exibindo o arquivo que você importou, processado no seu próprio navegador.',
+  };
+
+  function DemoBanner() {
+    const D = window.AtlasData;
+    const mode = (D && D.getDataMode && D.getDataMode()) || 'demo';
+    const texto = DEMO_BANNER_TEXT[mode];
+
+    useEffect(() => {
+      const root = document.documentElement;
+      root.classList.toggle('atlas-demo', Boolean(texto));
+      return () => root.classList.remove('atlas-demo');
+    }, [texto]);
+
+    if (!texto) return null;
+
+    return (
+      <div className="demo-banner" role="status">
+        <strong>Ambiente de demonstração</strong>
+        <span className="demo-banner-text">{texto}</span>
+      </div>
+    );
+  }
+
   function AppShell({ children, page, onNavigate }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const title = PAGE_TITLES[page] || 'ATLAS';
@@ -367,6 +420,7 @@
 
     return (
       <div className="app-shell">
+        <DemoBanner />
         <Sidebar
           currentPage={page}
           onNavigate={onNavigate}

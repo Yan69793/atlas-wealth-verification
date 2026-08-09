@@ -1,7 +1,7 @@
 {
   "name": "atlas-wealth-verification",
   "version": "0.1.0",
-  "description": "Plataforma de verificação mensal de carteiras — Meridian Advisory",
+  "description": "Plataforma de verificação mensal de carteiras de investimento",
   "private": true,
   "scripts": {
     "test": "node tests/validate.js && npm --prefix audit-engine test",

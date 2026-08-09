@@ -178,33 +178,51 @@
     'agressivo':          { beta:1.25, sigma:0.0120 },
   };
 
-  // Catálogo de ativos fictícios
+  /* Catálogo de ativos.
+   *
+   * Instrumentos e distribuidores REAIS de propósito. Um prospect do setor
+   * reconhece na hora que 'Horizonte DI FIC FIM' e 'DTVM Pampulha' não
+   * existem, e isso tira a força do que o demo tenta mostrar.
+   *
+   * Os saldos, retornos e achados continuam sintéticos, e a faixa fixa do
+   * AppShell diz isso em toda tela. O nome real aqui identifica o
+   * instrumento, não afirma desempenho dele.
+   *
+   * A camada de GESTOR (MANAGERS, acima) segue fictícia e deve seguir. É lá
+   * que o demo pendura receita, ROA contra meta e achados de auditoria, e
+   * pendurar isso no nome de uma casa que existe seria atribuir desempenho
+   * inventado a empresa real, num endereço público.
+   *
+   * A contagem por classe é a mesma de antes (3/4/2/4/5/3/1/2/1). A geração
+   * de alocação depende dessa distribuição, e Liquidez tem de ser o último
+   * item por causa de CAIXA_IDX logo abaixo.
+   */
   var ASSETS = [
-    { name:'Horizonte DI FIC FIM',               cls:'RF Pós-Fixado',  inst:'XQ Investimentos' },
-    { name:'Austral FIRF Crédito Privado',        cls:'RF Pós-Fixado',  inst:'Corretora Austral' },
-    { name:'Pampulha CDI Plus FIC FIM',           cls:'RF Pós-Fixado',  inst:'DTVM Pampulha' },
-    { name:'NTN-B Vencto:15/05/2029',             cls:'RF Inflação',    inst:'Banco Mercantil Plus' },
-    { name:'NTN-B Vencto:15/08/2026',             cls:'RF Inflação',    inst:'Banco Mercantil Plus' },
-    { name:'NTN-B Vencto:15/05/2035',             cls:'RF Inflação',    inst:'Banco Mercantil Plus' },
-    { name:'Meridian Inflação FIC FIRF',          cls:'RF Inflação',    inst:'XQ Investimentos' },
-    { name:'CDB Banco Mercantil Plus 120% CDI',   cls:'CDB',            inst:'Banco Mercantil Plus' },
-    { name:'CDB Austral 115% CDI 2Y',             cls:'CDB',            inst:'Corretora Austral' },
-    { name:'Horizonte Total Return FIC FIM',      cls:'Multimercado',   inst:'XQ Investimentos' },
-    { name:'Austral Global Macro FIC FIM',        cls:'Multimercado',   inst:'Corretora Austral' },
-    { name:'Pampulha Long Biased FIC FIM',        cls:'Multimercado',   inst:'DTVM Pampulha' },
-    { name:'Atlas Macro FIC FIM',                 cls:'Multimercado',   inst:'Banco Mercantil Plus' },
-    { name:'PETR4',                               cls:'Ações',          inst:'XQ Investimentos' },
-    { name:'VALE3',                               cls:'Ações',          inst:'XQ Investimentos' },
-    { name:'ITUB4',                               cls:'Ações',          inst:'XQ Investimentos' },
-    { name:'Meridian IBX50 ETF FIC FIA',          cls:'Ações',          inst:'Corretora Austral' },
-    { name:'Austral Small Caps FIC FIA',          cls:'Ações',          inst:'Corretora Austral' },
-    { name:'BRCR11',                              cls:'FII',            inst:'XQ Investimentos' },
-    { name:'XPML11',                              cls:'FII',            inst:'XQ Investimentos' },
-    { name:'Horizonte Logística FII',             cls:'FII',            inst:'DTVM Pampulha' },
-    { name:'PGBL Horizonte Total Return',         cls:'Previdência',    inst:'XQ Investimentos' },
-    { name:'BDR MSCI World ETF',                  cls:'Internacional',  inst:'XQ Investimentos' },
-    { name:'Austral Global Equity FIC FIM IE',    cls:'Internacional',  inst:'Corretora Austral' },
-    { name:'Caixa / Tesouraria',                  cls:'Liquidez',       inst:'Banco Mercantil Plus' },
+    { name:'XP Trend Pós-Fixado FIC FI RF',       cls:'RF Pós-Fixado',  inst:'XP Investimentos' },
+    { name:'BTG Pactual Crédito Corporativo FIC FIRF CP', cls:'RF Pós-Fixado', inst:'BTG Pactual' },
+    { name:'Itaú Referenciado DI FI RF',          cls:'RF Pós-Fixado',  inst:'Itaú Corretora' },
+    { name:'NTN-B Vencto:15/05/2029',             cls:'RF Inflação',    inst:'Banco Bradesco' },
+    { name:'NTN-B Vencto:15/08/2026',             cls:'RF Inflação',    inst:'Banco Bradesco' },
+    { name:'NTN-B Vencto:15/05/2035',             cls:'RF Inflação',    inst:'Banco Bradesco' },
+    { name:'Western Asset IMA-B Ativo FI RF',     cls:'RF Inflação',    inst:'XP Investimentos' },
+    { name:'CDB Bradesco 102% CDI',               cls:'CDB',            inst:'Banco Bradesco' },
+    { name:'CDB BTG Pactual 110% CDI 2A',         cls:'CDB',            inst:'BTG Pactual' },
+    { name:'SPX Nimitz Structura FIC FIM',        cls:'Multimercado',   inst:'XP Investimentos' },
+    { name:'Legacy Capital FIC FIM',              cls:'Multimercado',   inst:'BTG Pactual' },
+    { name:'Ibiuna Hedge STH FIC FIM',            cls:'Multimercado',   inst:'Itaú Corretora' },
+    { name:'Verde AM Scena FIC FIM',              cls:'Multimercado',   inst:'Banco Bradesco' },
+    { name:'PETR4',                               cls:'Ações',          inst:'XP Investimentos' },
+    { name:'VALE3',                               cls:'Ações',          inst:'XP Investimentos' },
+    { name:'ITUB4',                               cls:'Ações',          inst:'XP Investimentos' },
+    { name:'BOVA11',                              cls:'Ações',          inst:'BTG Pactual' },
+    { name:'SMAL11',                              cls:'Ações',          inst:'BTG Pactual' },
+    { name:'BRCR11',                              cls:'FII',            inst:'XP Investimentos' },
+    { name:'XPML11',                              cls:'FII',            inst:'XP Investimentos' },
+    { name:'HGLG11',                              cls:'FII',            inst:'Itaú Corretora' },
+    { name:'Icatu SPX Lancer Prev FIC FIM',       cls:'Previdência',    inst:'XP Investimentos' },
+    { name:'IVVB11',                              cls:'Internacional',  inst:'XP Investimentos' },
+    { name:'BTG Pactual Global Equity FIC FIA IE', cls:'Internacional', inst:'BTG Pactual' },
+    { name:'Caixa / Tesouraria',                  cls:'Liquidez',       inst:'Banco Bradesco' },
   ];
 
   var CAIXA_IDX = ASSETS.length - 1; // sempre último
@@ -216,6 +234,25 @@
   var STATUS_SCRIPT = {};
 
   function setS(code, month, s) { STATUS_SCRIPT[code + '|' + month] = s; }
+
+  /* Jun/2026 — mês de abertura do demo (CURRENT_MONTH).
+   *
+   * Precisa existir. Sem roteiro, o mês cai no gerador pseudoaleatório e Jun/26
+   * saiu 40/40 LIBERAR, zero achado, o único mês assim em trinta. Quem abrisse
+   * o demo caía justo na tela que faz o produto parecer que não encontra nada,
+   * quando encontrar é o produto inteiro. Foi efeito colateral de alguém
+   * avançar CURRENT_MONTH sem estender este roteiro, e tests/validate.js agora
+   * falha se isso voltar a acontecer.
+   *
+   * A mistura é a da pitch: maioria limpa, um punhado para olhar, dois que não
+   * saem antes de alguém resolver.
+   */
+  setS('DUNAS_CAP',   '2026-06', 'CORRIGIR');
+  setS('ORION_02',    '2026-06', 'CORRIGIR');
+  setS('CEDRO_HLD',   '2026-06', 'COM ALERTA');
+  setS('GAMMA_MID',   '2026-06', 'COM ALERTA');
+  setS('QUASAR_CAP',  '2026-06', 'COM ALERTA');
+  setS('TIGRE_FAM',   '2026-06', 'COM ALERTA');
 
   // Abr/2026 — 2 CORRIGIR + 5 COM ALERTA
   setS('DUNAS_CAP',   '2026-04', 'CORRIGIR');
@@ -233,9 +270,12 @@
   setS('JOIA_FAM',    '2025-08', 'CORRIGIR');
   setS('KAPPA_PV',    '2025-08', 'CORRIGIR');
 
-  // 4 carteiras com recidiva >= 4 meses terminando em Abr/2026
+  /* 4 carteiras com recidiva contínua terminando no mês de abertura.
+     A janela ia até Mar/2026 e a página de recorrência abria vazia, porque o
+     demo abre em Jun/2026. Recidiva que não alcança o mês visível não é
+     recidiva para quem está olhando. */
   var RECIDIVA_CODES = ['HELIOS_01','JOIA_FAM','NOVA_CAP','KAPPA_PV'];
-  var RECIDIVA_MONTHS = ['2025-11','2025-12','2026-01','2026-02','2026-03'];
+  var RECIDIVA_MONTHS = ['2025-11','2025-12','2026-01','2026-02','2026-03','2026-04','2026-05','2026-06'];
   RECIDIVA_CODES.forEach(function(c) {
     RECIDIVA_MONTHS.forEach(function(m) {
       if (!STATUS_SCRIPT[c + '|' + m]) setS(c, m, 'COM ALERTA');
@@ -686,7 +726,11 @@
         pct2 = (realComp[1].pct * 100).toFixed(1);
       }
     }
-    var insts = ['Banco Mercantil Plus','XQ Investimentos','DTVM Pampulha'];
+    // Lista derivada do catalogo, nao escrita a mao. Antes eram tres nomes
+    // ficticios fixos aqui, que sobreviveram a troca do ASSETS e voltavam a
+    // aparecer no texto dos achados.
+    var insts = ASSETS.map(function(a) { return a.inst; })
+      .filter(function(v, i, arr) { return arr.indexOf(v) === i; });
     var inst = insts[Math.floor(clsRng() * insts.length)];
     var ctx = {
       plPrev: plPrev, plCurr: plCurr, ret: ret,

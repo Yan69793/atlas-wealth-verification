@@ -1,0 +1,29 @@
+# Worker do demo publico.
+#
+# NAO confundir com verificacao-carteiras/worker/wrangler.toml, que e a
+# instancia do cliente. Aquele tem R2 com dado real, Cloudflare Access, Service
+# Token e dominio proprio. Este aqui nao tem nada disso de proposito.
+#
+# Sem `main`: e um Worker so de assets estaticos. Nao existe codigo para
+# autenticar, nem para ler bucket, nem para decidir o que servir. O que nao
+# existe nao vaza e nao quebra.
+#
+# O diretorio public/ e montado por scripts/build-deploy.mjs, que deriva a
+# lista do proprio index.html, recusa os overlays de dado real por nome e
+# aborta se qualquer binario chegar na saida. Nunca apontar para a raiz do
+# repo: o deploy nao respeita .gitignore, e foi assim que dado real de carteira
+# acabou publicado em 15/07/2026.
+
+name = "app-verificacao-carteiras-atlas"
+compatibility_date = "2026-08-01"
+account_id = "7ac79fb1030e4e81115ef33c21a9b070"
+
+# Publico e sem Access, que e o ponto: o prospect abre o link e ve o sistema.
+# O que protege aqui nao e perimetro, e o fato de nao existir dado real dentro.
+workers_dev = true
+
+[assets]
+directory = "./public"
+# Rotas do app sao hash (#/dashboard), mas o fallback de SPA garante que
+# qualquer caminho servido devolva o index em vez de 404.
+not_found_handling = "single-page-application"

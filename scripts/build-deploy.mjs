@@ -52,7 +52,7 @@ const copiar = referenciados.filter((f) => !NUNCA.some((r) => r.test(f)));
 fs.rmSync(OUT, { recursive: true, force: true });
 fs.mkdirSync(OUT, { recursive: true });
 
-fs.copyFileSync(path.join(ROOT, 'index.html'), path.join(OUT, 'index.html'));
+/* O index.html é reescrito no fim, depois que se sabe o que existe na saída. */
 let n = 1;
 const faltando = [];
 
@@ -78,12 +78,39 @@ for (const extra of EXTRAS) {
   }
 }
 
-/* O app tolera a ausência dos overlays via onerror="void(0)" e cai no demo
-   sintético. É exatamente o que se quer num deploy do produto. */
+/* index.html reescrito: tira as tags de script opcionais cujo arquivo não
+   chegou na saída, seja porque é overlay de dado real (bloqueado acima), seja
+   porque simplesmente não existe nesta árvore.
+
+   O app já tolera a ausência via onerror="void(0)" e cai no demo sintético,
+   então funcionalmente dá na mesma. O que muda é o que o prospect vê: sem
+   isso, a primeira coisa no inspetor de rede de uma demonstração comercial são
+   quatro 404 em vermelho, um deles chamado platform-data-real.js. Explicar
+   isso ao vivo é pior do que não ter o problema.
+
+   O critério é existência no OUT, não lista de nomes. Overlay novo criado
+   depois daqui é coberto sem ninguém editar este arquivo. */
+const tagsRemovidas = [];
+
+const htmlSaida = html.replace(
+  /(?:[ \t]*<!--[^]*?-->\s*\n)?[ \t]*<script\b[^>]*\bsrc="([^"]+)"[^>]*>\s*<\/script>[ \t]*\n?/g,
+  (bloco, src) => {
+    if (/^(https?:)?\/\//i.test(src)) return bloco;          // CDN, fica
+    if (!/\bonerror\s*=/.test(bloco)) return bloco;          // obrigatório, fica
+    const rel = src.split('?')[0];
+    if (fs.existsSync(path.join(OUT, rel))) return bloco;    // opcional presente, fica
+    tagsRemovidas.push(rel);
+    return '';
+  }
+);
+
+fs.writeFileSync(path.join(OUT, 'index.html'), htmlSaida, 'utf8');
+
 console.log(`Diretorio de deploy: ${OUT}`);
 console.log(`  ${n} arquivos copiados`);
 if (bloqueados.length) console.log(`  ${bloqueados.length} bloqueados (dado real): ${bloqueados.join(', ')}`);
 if (faltando.length) console.log(`  ${faltando.length} referenciados e ausentes (ok se forem overlays): ${faltando.join(', ')}`);
+if (tagsRemovidas.length) console.log(`  ${tagsRemovidas.length} tags opcionais retiradas do index (sem 404 no console): ${tagsRemovidas.join(', ')}`);
 
 /* Trava final: varre a saída atrás de qualquer coisa que não deveria ter ido. */
 const suspeitos = [];

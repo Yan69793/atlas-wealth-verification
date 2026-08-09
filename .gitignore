@@ -103,6 +103,12 @@ Verificação de carteiras/
 /audit-engine/tests/fixtures/*
 !/audit-engine/tests/fixtures/*.anon.json
 
+# Marca da instancia. Nao e LGPD, mas e especifico de quem opera o deploy:
+# o produto nasce neutro e cada instancia assina as telas com o proprio
+# platform-brand.js. Versionar um aqui faria a marca de um cliente viajar
+# junto com o produto, que e exatamente o que se quer evitar.
+platform-brand.js
+
 # Dado real embutido em JS (alimenta o app; migra para R2 no Projeto 3)
 platform-data-real.js
 platform-data-audit.js
@@ -156,7 +162,8 @@ desktop.ini
 *.njsproj
 *.sln
 
-# Diretorio de publicacao gerado por scripts/build-deploy.mjs
+# Diretorios de publicacao gerados por scripts/build-deploy.mjs
 /dist-deploy/
+/demo-worker/public/
 AI_OPERATING_SYSTEM/
 graphify-out/

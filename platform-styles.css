@@ -31,6 +31,12 @@
   --sidebar-w: 220px;
   --topbar-h: 56px;
 
+  /* Altura da faixa de demonstração. Zero por padrão: numa instância com dado
+     real a faixa não existe e o layout não deve reservar espaço. O AppShell
+     escreve o valor real em :root quando o modo é demo, e sidebar, topbar e
+     conteúdo se deslocam juntos a partir daqui. */
+  --demo-banner-h: 0px;
+
   --r-sm: 4px;
   --r-md: 8px;
   --r-lg: 12px;
@@ -146,7 +152,7 @@ input, select, textarea {
   display: flex;
   flex-direction: column;
   position: fixed;
-  top: 0;
+  top: var(--demo-banner-h);
   left: 0;
   bottom: 0;
   z-index: 100;
@@ -255,7 +261,7 @@ input, select, textarea {
 /* Topbar */
 .topbar {
   position: fixed;
-  top: 0;
+  top: var(--demo-banner-h);
   left: var(--sidebar-w);
   right: 0;
   height: var(--topbar-h);
@@ -286,12 +292,53 @@ input, select, textarea {
 
 .topbar-month-select label { font-weight: 500; }
 
+/* Faixa de demonstração — layout raiz.
+   Fica acima de tudo, inclusive da sidebar (z-index 100) e da topbar (90),
+   porque o aviso não pode ficar atrás de nada. Sobrevive à impressão de
+   propósito: material comercial circula como PDF e como print de tela, e é
+   justamente aí que o aviso precisa continuar junto do número.
+
+   A altura vem da classe, não de estilo inline escrito pelo JS. Inline
+   venceria a media query e a faixa ficaria cortada no mobile, onde o texto
+   ocupa duas linhas. O AppShell só liga e desliga `.atlas-demo` no <html>. */
+:root.atlas-demo { --demo-banner-h: 32px; }
+
+.demo-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--demo-banner-h);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 16px;
+  background: #7A1F1F;
+  color: #FFF3F3;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-align: center;
+  border-bottom: 1px solid rgba(0,0,0,0.25);
+}
+
+.demo-banner strong {
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.demo-banner-text { min-width: 0; }
+
 /* Main content area */
 .main-content {
   margin-left: var(--sidebar-w);
-  margin-top: var(--topbar-h);
+  margin-top: calc(var(--topbar-h) + var(--demo-banner-h));
   flex: 1;
-  min-height: calc(100vh - var(--topbar-h));
+  min-height: calc(100vh - var(--topbar-h) - var(--demo-banner-h));
   padding: 24px;
   overflow-x: hidden;
 }
@@ -1341,6 +1388,20 @@ th.sort-asc .th-sort-icon, th.sort-desc .th-sort-icon { opacity: 1; }
 
   .sidebar.open ~ .sidebar-overlay { display: block; }
 
+  /* Texto da faixa quebra em duas linhas na largura de celular. */
+  :root.atlas-demo { --demo-banner-h: 46px; }
+
+  .demo-banner {
+    flex-direction: column;
+    justify-content: center;
+    gap: 1px;
+    padding: 4px 12px;
+    font-size: 0.68rem;
+    line-height: 1.25;
+  }
+
+  .demo-banner strong { font-size: 0.62rem; }
+
   .topbar {
     left: 0;
     padding: 0 16px;
@@ -1383,22 +1444,67 @@ th.sort-asc .th-sort-icon, th.sort-desc .th-sort-icon { opacity: 1; }
   /* Grid de usuários colapsa para 1 coluna */
   .usuarios-grid { grid-template-columns: 1fr !important; gap: 16px; }
 
-  .topbar-hamburger {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    border: none;
-    background: none;
-    cursor: pointer;
-    color: var(--body);
-    padding: 0;
-  }
 }
 
-@media (min-width: 768px) {
-  .topbar-hamburger { display: none; }
+/* =========================================================
+   TABLET EM RETRATO (768px a 1023px)
+
+   Sem este bloco o iPad em pé cai no layout de desktop e fica ruim de um jeito
+   que não aparece em nenhuma métrica: a sidebar fixa come 220px dos 768, sobram
+   485px de conteúdo, e aí a tabela de 10 colunas do dashboard passa a rolar por
+   dentro escondendo metade das colunas, enquanto os KPI se espremem em caixas de
+   70px porque o auto-fit ainda acha que cabem seis.
+
+   Recolher a sidebar devolve os 220px. Em paisagem (1024 ou mais) ela volta a
+   ficar fixa, que é o comportamento certo para quem está com o tablet apoiado.
+========================================================= */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .sidebar {
+    transform: translateX(-100%);
+    transition: transform 250ms ease;
+    z-index: 200;
+  }
+
+  .sidebar.open { transform: translateX(0); }
+
+  .sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.4);
+    z-index: 199;
+  }
+
+  .sidebar.open ~ .sidebar-overlay { display: block; }
+
+  .topbar { left: 0; }
+  .main-content { margin-left: 0; }
+
+  /* Trava em 3 colunas. O auto-fit de 160px caberia 4 e voltaria a apertar. */
+  .kpi-grid { grid-template-columns: repeat(3, 1fr) !important; }
+
+  .table-wrap { -webkit-overflow-scrolling: touch; }
+}
+
+/* Hambúrguer: aparece sempre que a sidebar é recolhível, some quando ela é
+   fixa. O estilo vivia dentro do bloco de celular e a visibilidade era negada
+   a partir de 768px, o que deixava o tablet sem sidebar e sem botão para
+   abri-la assim que o bloco acima entrou. */
+.topbar-hamburger {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--body);
+  padding: 0;
+}
+
+@media (max-width: 1023px) {
+  .topbar-hamburger { display: flex; }
 }
 
 /* =========================================================
@@ -1523,6 +1629,25 @@ th.sort-asc .th-sort-icon, th.sort-desc .th-sort-icon { opacity: 1; }
   .toast-container, .btn, .toolbar, .chip-group,
   .chart-range-btns, .tabs, .search-wrap,
   .topbar-month-select, .topbar-theme-select { display: none !important; }
+
+  /* A faixa de demonstração NÃO entra na lista acima de propósito. Ela é o
+     único elemento do chrome que precisa sair no papel, porque um PDF do
+     dashboard circula sem a tela junto. Vira estática para não sobrepor o
+     conteúdo e ganha borda, já que fundo colorido costuma sair branco quando
+     o navegador imprime sem gráficos de fundo. */
+  .demo-banner {
+    position: static !important;
+    height: auto !important;
+    background: transparent !important;
+    color: #000 !important;
+    border: 1.5px solid #000 !important;
+    border-radius: 3px;
+    padding: 6px 10px !important;
+    margin-bottom: 12px;
+    font-size: 9pt !important;
+    page-break-after: avoid;
+    break-after: avoid;
+  }
 
   /* Layout de página */
   .app-shell { display: block !important; }

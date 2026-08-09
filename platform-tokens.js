@@ -183,17 +183,27 @@
      BRAND (white-label): nome do produto e do tenant num unico
      lugar. Trocar aqui troca a sidebar, o relatorio exportado e o
      <title> de uma vez, sem cacar string hardcoded pelo codigo.
-     Um platform-brand-real.js (LGPD, gitignored) pode sobrescrever
-     window.AtlasBrand antes deste script no futuro, como ja e feito
-     com os dados reais.
+
+     O default e NEUTRO de proposito: `tenant` vazio. O produto nao
+     carrega nome de casa nenhuma, e a interface omite a linha em vez
+     de exibir um placeholder. Antes havia um nome de gestora fixo
+     aqui, que saia identico na demo publica e na instancia de cliente,
+     ou seja, sempre errado em pelo menos uma das duas.
+
+     Instancia que queira assinar as telas carrega um platform-brand.js
+     ANTES deste script e define window.AtlasBrand. Mesmo mecanismo dos
+     overlays de dado: o index.html referencia com onerror="void(0)",
+     o arquivo e gitignored, e sem ele o app roda neutro.
      ============================================================ */
   var BRAND = window.AtlasBrand || {
     product: 'ATLAS Wealth Verification',
-    tenant: 'Meridian Advisory',
+    tenant: '',
     reportLabel: 'Relatório de Carteira',
     confidentiality: 'Uso Interno',
   };
   window.AtlasBrand = BRAND;
-  try { document.title = BRAND.product + ' · ' + BRAND.tenant; } catch (_) {}
+  try {
+    document.title = BRAND.tenant ? BRAND.product + ' · ' + BRAND.tenant : BRAND.product;
+  } catch (_) {}
 
 })();

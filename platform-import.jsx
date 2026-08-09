@@ -459,11 +459,35 @@
             />
           </div>
 
+          {/* Onde o arquivo é processado.
+              Afirmação conferível: a leitura usa FileReader e o parse roda em
+              JS na página. Não existe fetch, XMLHttpRequest, sendBeacon nem
+              WebSocket neste arquivo, e tests/validate.js falha se algum
+              aparecer. O que a página busca na rede são as duas bibliotecas de
+              leitura (SheetJS e pdf.js), por tag de script com integrity, e
+              biblioteca não carrega o conteúdo do arquivo junto. Dizer "nada
+              trafega" seria falso e o prospect confere em trinta segundos. */}
+          <div style={{
+            display: 'flex', alignItems: 'flex-start', gap: 10,
+            padding: '12px 14px', marginBottom: 16,
+            background: 'var(--green-bg)', border: '1px solid var(--green)',
+            borderRadius: 'var(--r-sm)',
+          }}>
+            <Icon name="check" size={16} style={{ color: 'var(--green)', flexShrink: 0, marginTop: 1 }} />
+            <div style={{ fontSize: '0.75rem', lineHeight: 1.55, color: 'var(--body)' }}>
+              <strong style={{ color: 'var(--green)' }}>O arquivo não sai do seu navegador.</strong>{' '}
+              A leitura e a conferência acontecem inteiras nesta página, no seu computador.
+              Nenhum conteúdo do arquivo é enviado para servidor, nem o nosso nem o de
+              terceiro, e nada fica armazenado depois que você fecha a aba. A página busca
+              na rede apenas as bibliotecas de leitura de planilha e de PDF.
+            </div>
+          </div>
+
           {/* Formatos aceitos */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 16 }}>
             {[
-              { fmt: 'PDF', tag: 'beta', desc: 'Books mensais (Relatório Mensal). Aceita vários arquivos de uma vez.' },
-              { fmt: 'CSV', desc: 'Dados tabulares (UTF-8, separador vírgula).' },
+              { fmt: 'PDF', tag: 'beta', desc: 'Books mensais no layout "Relatório Mensal". A leitura é calibrada para o formato de um fornecedor, book de outro custodiante pode não abrir. Aceita vários arquivos de uma vez.' },
+              { fmt: 'CSV', desc: 'Dados tabulares (UTF-8, separador vírgula). É o caminho mais previsível para um teste rápido.' },
               { fmt: 'XLSX', desc: 'Planilha Excel — lê a primeira aba.' },
             ].map(f => (
               <div key={f.fmt} style={{

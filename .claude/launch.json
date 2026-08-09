@@ -8,6 +8,12 @@
       "port": 7821
     },
     {
+      "name": "atlas-demo-pacote",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "7822", "--directory", "E:/Diretorio/Claude/ATLAS/dist-deploy"],
+      "port": 7822
+    },
+    {
       "name": "audit-engine-server",
       "runtimeExecutable": "node",
       "runtimeArgs": ["--env-file=E:/Diretorio/Claude/ATLAS/audit-engine/.env", "E:/Diretorio/Claude/ATLAS/audit-engine/dist/src/server.js"],
