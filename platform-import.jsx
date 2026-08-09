@@ -624,7 +624,7 @@
               <table>
                 <thead>
                   <tr>
-                    <th>Código</th>
+                    <th className="sticky-col">Código</th>
                     <th>Nome</th>
                     <th>Perfil</th>
                     <th>Meses</th>
@@ -634,7 +634,7 @@
                 <tbody>
                   {previewRows.map(r => (
                     <tr key={r.code}>
-                      <td style={{ fontWeight: 600, fontSize: '0.857rem' }}>{r.code}</td>
+                      <td className="sticky-col" style={{ fontWeight: 600, fontSize: '0.857rem' }}>{r.code}</td>
                       <td style={{ fontSize: '0.857rem' }}>{r.name}</td>
                       <td style={{ fontSize: '0.786rem', color: 'var(--muted)' }}>
                         {parsed.source === 'pdf' ? (
@@ -683,14 +683,14 @@
             <table>
               <thead>
                 <tr>
-                  <th>Coluna</th>
+                  <th className="sticky-col">Coluna</th>
                   <th>Descrição</th>
                 </tr>
               </thead>
               <tbody>
                 {COLUMN_DOCS.map(d => (
                   <tr key={d.col}>
-                    <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.786rem', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                    <td className="sticky-col" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.786rem', fontWeight: 600, whiteSpace: 'nowrap' }}>
                       {d.col}
                     </td>
                     <td style={{ fontSize: '0.786rem', color: 'var(--body)' }}>{d.desc}</td>

@@ -43,7 +43,7 @@
           <table>
             <thead>
               <tr>
-                <th style={{ minWidth: 120 }}>Carteira</th>
+                <th className="sticky-col" style={{ minWidth: 120 }}>Carteira</th>
                 <th className="num">{labelA}</th>
                 <th className="num">{labelB}</th>
                 <th className="num">Var. PL</th>
@@ -56,7 +56,7 @@
                   className="clickable"
                   onClick={() => navigate('#/carteira/' + r.code)}
                 >
-                  <td style={{ minWidth: 120 }}>
+                  <td className="sticky-col" style={{ minWidth: 120 }}>
                     <div style={{ fontWeight: 600, fontSize: '0.857rem' }}>{r.code}</div>
                     <div style={{ fontSize: '0.714rem', color: 'var(--muted)' }}>{r.name}</div>
                   </td>
@@ -335,7 +335,7 @@
           <table>
             <thead>
               <tr>
-                <th style={{ minWidth: 150 }}>Carteira</th>
+                <th className="sticky-col" style={{ minWidth: 150 }}>Carteira</th>
                 <th>Gestor</th>
                 <th className="num">PL {labelA}</th>
                 <th className="num">PL {labelB}</th>
@@ -354,7 +354,7 @@
                   className="clickable"
                   onClick={() => navigate('#/carteira/' + r.code)}
                 >
-                  <td style={{ minWidth: 150 }}>
+                  <td className="sticky-col" style={{ minWidth: 150 }}>
                     <div style={{ fontWeight: 600, fontSize: '0.857rem' }}>{r.code}</div>
                     <div style={{ fontSize: '0.714rem', color: 'var(--muted)' }}>{r.name}</div>
                   </td>

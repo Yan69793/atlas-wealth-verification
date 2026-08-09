@@ -289,7 +289,11 @@
                 <td className={`num ${signClass(r.vsCDI)}`}>
                   {r.vsCDI > 0 ? '+' : ''}{fmtPct(r.vsCDI, 2)}
                 </td>
-                <td style={{ fontSize: '0.786rem', color: 'var(--muted)', maxWidth: 140 }}>
+                <td
+                  className="cell-truncate"
+                  style={{ fontSize: '0.786rem', color: 'var(--muted)', maxWidth: 140 }}
+                  title={r.manager ? r.manager.name : undefined}
+                >
                   {r.manager ? r.manager.name : '—'}
                 </td>
                 <td className="num">

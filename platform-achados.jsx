@@ -75,7 +75,7 @@
         <table>
           <thead>
             <tr>
-              <th style={{ minWidth: 150 }}>Carteira</th>
+              <th className="sticky-col" style={{ minWidth: 150 }}>Carteira</th>
               <th>Severidade</th>
               <th>Achado</th>
               <th>Gestor</th>
@@ -90,12 +90,12 @@
                   className="clickable"
                   onClick={() => navigate('#/carteira/' + f.code + '?tab=achados')}
                 >
-                  <td style={{ minWidth: 150 }}>
+                  <td className="sticky-col" style={{ minWidth: 150 }}>
                     <div style={{ fontWeight: 600, fontSize: '0.857rem' }}>{f.code}</div>
                     <div style={{ fontSize: '0.714rem', color: 'var(--muted)' }}>{f.name}</div>
                   </td>
                   <td><SeverityBadge severity={f.finding.severity} /></td>
-                  <td style={{ fontSize: '0.857rem', color: 'var(--body)', maxWidth: 460, wordBreak: 'break-word' }}>
+                  <td className="cell-prose" style={{ fontSize: '0.857rem', color: 'var(--body)', maxWidth: 460 }}>
                     {f.finding.text}
                   </td>
                   <td style={{ fontSize: '0.786rem', color: 'var(--muted)' }}>
@@ -198,7 +198,7 @@
         <table>
           <thead>
             <tr>
-              <th style={{ minWidth: 150 }}>Carteira</th>
+              <th className="sticky-col" style={{ minWidth: 150 }}>Carteira</th>
               <th>Tipo</th>
               <th>Descrição</th>
               <th className="num">Var.</th>
@@ -211,7 +211,7 @@
                 className="clickable"
                 onClick={() => navigate('#/carteira/' + a.code + '?tab=achados')}
               >
-                <td style={{ minWidth: 150 }}>
+                <td className="sticky-col" style={{ minWidth: 150 }}>
                   <div style={{ fontWeight: 600, fontSize: '0.857rem' }}>{a.code}</div>
                   <div style={{ fontSize: '0.714rem', color: 'var(--muted)' }}>{a.name}</div>
                 </td>
@@ -255,7 +255,7 @@
         <table>
           <thead>
             <tr>
-              <th style={{ minWidth: 150 }}>Carteira</th>
+              <th className="sticky-col" style={{ minWidth: 150 }}>Carteira</th>
               <th>Gestor</th>
               <th className="num">PL Atual</th>
               <th className="num">Rent.</th>
@@ -269,7 +269,7 @@
                 className="clickable"
                 onClick={() => navigate('#/carteira/' + r.code)}
               >
-                <td style={{ minWidth: 150 }}>
+                <td className="sticky-col" style={{ minWidth: 150 }}>
                   <div style={{ fontWeight: 600, fontSize: '0.857rem' }}>{r.code}</div>
                   <div style={{ fontSize: '0.714rem', color: 'var(--muted)' }}>{r.name}</div>
                 </td>
@@ -395,7 +395,7 @@
           <table>
             <thead>
               <tr>
-                <th style={{ minWidth: 150 }}>Carteira</th>
+                <th className="sticky-col" style={{ minWidth: 150 }}>Carteira</th>
                 <th>Severidade</th>
                 <th>Achado</th>
                 <th style={{ minWidth: 170 }}>Status</th>
@@ -405,12 +405,12 @@
             <tbody>
               {filtered.map(item => (
                 <tr key={item.key}>
-                  <td style={{ minWidth: 150 }}>
+                  <td className="sticky-col" style={{ minWidth: 150 }}>
                     <div style={{ fontWeight: 600, fontSize: '0.857rem' }}>{item.code}</div>
                     <div style={{ fontSize: '0.714rem', color: 'var(--muted)' }}>{item.name}</div>
                   </td>
                   <td><SeverityBadge severity={item.finding.severity} /></td>
-                  <td style={{ fontSize: '0.857rem', color: 'var(--body)', maxWidth: 360, wordBreak: 'break-word' }}>
+                  <td className="cell-prose" style={{ fontSize: '0.857rem', color: 'var(--body)', maxWidth: 360 }}>
                     {item.finding.text}
                     {item.finding.severity === 'CORRIGIR' && STATUS_BLOCKS[item.exc.status] && (
                       <div style={{ fontSize: '0.714rem', color: 'var(--red)', marginTop: 4 }}>

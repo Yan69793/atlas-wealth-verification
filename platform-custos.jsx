@@ -151,7 +151,7 @@
               <table>
                 <thead>
                   <tr>
-                    <th>Componente</th>
+                    <th className="sticky-col">Componente</th>
                     <th className="num">Total (BRL)</th>
                     <th className="num">% do AUM</th>
                     <th style={{ width: 120 }}>Peso Relativo</th>
@@ -162,7 +162,7 @@
                     var barW = analysis.totalCost > 0 ? (b.total / analysis.totalCost) * 100 : 0;
                     return (
                       <tr key={b.id}>
-                        <td style={{ fontWeight: 500 }}>{b.label}</td>
+                        <td className="sticky-col" style={{ fontWeight: 500 }}>{b.label}</td>
                         <td className="num" style={{ fontFamily: 'var(--font-mono)' }}>{fmtBRL(b.total)}</td>
                         <td className="num" style={{ fontFamily: 'var(--font-mono)' }}>{fmtPctDisplay(b.pct)}</td>
                         <td>
@@ -249,7 +249,7 @@
         <table>
           <thead>
             <tr>
-              <th>Gestor</th>
+              <th className="sticky-col">Gestor</th>
               <th className="num">AUM</th>
               <th className="num">Custo Total</th>
               <th className="num">% do AUM</th>
@@ -260,7 +260,7 @@
             {managers.map(function(m) {
               return (
                 <tr key={m.id} style={{ cursor: 'pointer' }} onClick={() => navigate('#/custos?manager=' + encodeURIComponent(m.id))}>
-                  <td style={{ fontWeight: 600 }}>{m.name}</td>
+                  <td className="sticky-col" style={{ fontWeight: 600 }}>{m.name}</td>
                   <td className="num" style={{ fontFamily: 'var(--font-mono)' }}>{fmtBRL(m.aum)}</td>
                   <td className="num" style={{ fontFamily: 'var(--font-mono)' }}>{fmtBRL(m.totalCost)}</td>
                   <td className="num" style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: m.pct > 0.02 ? 'var(--red)' : 'var(--navy)' }}>
@@ -289,7 +289,7 @@
         <table>
           <thead>
             <tr>
-              <th>Carteira</th>
+              <th className="sticky-col">Carteira</th>
               <th>Gestor</th>
               <th className="num">AUM</th>
               <th className="num">Custo Total</th>
@@ -303,7 +303,7 @@
               var levelLabel = p.pct > 0.03 ? 'Alto' : p.pct > 0.015 ? 'Medio' : 'Baixo';
               return (
                 <tr key={p.code} style={{ cursor: 'pointer' }} onClick={() => navigate('#/carteira/' + encodeURIComponent(p.code))}>
-                  <td style={{ fontWeight: 600 }}>{p.code}</td>
+                  <td className="sticky-col" style={{ fontWeight: 600 }}>{p.code}</td>
                   <td style={{ fontSize: '0.78rem', color: 'var(--muted)' }}>{p.manager}</td>
                   <td className="num" style={{ fontFamily: 'var(--font-mono)' }}>{fmtBRL(p.aum)}</td>
                   <td className="num" style={{ fontFamily: 'var(--font-mono)' }}>{fmtBRL(p.cost)}</td>

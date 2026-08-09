@@ -67,7 +67,7 @@
           <table>
             <thead>
               <tr>
-                <th style={{ minWidth: 100 }}>Período</th>
+                <th className="sticky-col" style={{ minWidth: 100 }}>Período</th>
                 <th className="num">AUM</th>
                 <th className="num">NNM</th>
                 <th className="num">ROA % a.a.</th>
@@ -78,7 +78,7 @@
             <tbody>
               {[...series].reverse().map(s => (
                 <tr key={s.month} style={{ background: s.month === selectedMonth ? 'var(--paper-mid)' : undefined }}>
-                  <td style={{ fontWeight: s.month === selectedMonth ? 600 : 400 }}>{s.label}</td>
+                  <td className="sticky-col" style={{ fontWeight: s.month === selectedMonth ? 600 : 400 }}>{s.label}</td>
                   <td className="num">{fmtCompactBRL(s.aum)}</td>
                   <td className={`num ${signClass(s.nnm)}`}>
                     {s.nnm >= 0 ? '+' : ''}{fmtCompactBRL(s.nnm)}
@@ -229,7 +229,7 @@
           <table>
             <thead>
               <tr>
-                <th style={{ minWidth: 150 }}>Gestor</th>
+                <th className="sticky-col" style={{ minWidth: 150 }}>Gestor</th>
                 <th className="num">Carteiras</th>
                 <th className="num">AUM</th>
                 <th className="num">Receita</th>
@@ -242,7 +242,7 @@
             <tbody>
               {ranking.map(r => (
                 <tr key={r.managerId}>
-                  <td style={{ fontWeight: 600, fontSize: '0.857rem' }}>{r.managerName}</td>
+                  <td className="sticky-col" style={{ fontWeight: 600, fontSize: '0.857rem' }}>{r.managerName}</td>
                   <td className="num">{r.nCarteiras}</td>
                   <td className="num">{fmtCompactBRL(r.aum)}</td>
                   <td className="num">{fmtCompactBRL(r.revenue)}</td>
@@ -408,7 +408,7 @@
             <table>
               <thead>
                 <tr>
-                  <th style={{ minWidth: 150 }}>Carteira</th>
+                  <th className="sticky-col" style={{ minWidth: 150 }}>Carteira</th>
                   <th>Gestor</th>
                   <th>Segmento</th>
                   <th className="num">AUM</th>
@@ -431,7 +431,7 @@
                       className="clickable"
                       onClick={() => navigate('#/carteira/' + r.code)}
                     >
-                      <td style={{ minWidth: 150 }}>
+                      <td className="sticky-col" style={{ minWidth: 150 }}>
                         <div style={{ fontWeight: 600, fontSize: '0.857rem' }}>{r.code}</div>
                         <div style={{ fontSize: '0.714rem', color: 'var(--muted)' }}>{r.name}</div>
                       </td>

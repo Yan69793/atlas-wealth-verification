@@ -133,7 +133,7 @@
           <table>
             <thead>
               <tr>
-                <th style={{ minWidth: 200 }}>Ativo</th>
+                <th className="sticky-col" style={{ minWidth: 200 }}>Ativo</th>
                 <th>Classe</th>
                 <th className="num">Part. %</th>
                 <th className="num">Saldo Final</th>
@@ -155,7 +155,7 @@
                     aria-label={`Detalhar ativo ${a.name}`}
                     style={{ cursor: 'pointer', background: expandedIdx === i ? 'var(--paper-mid)' : undefined }}
                   >
-                    <td>
+                    <td className="sticky-col">
                       <div style={{ fontWeight: 500, fontSize: '0.857rem' }}>{a.name}</div>
                     </td>
                     <td style={{ fontSize: '0.786rem', color: 'var(--muted)' }}>{a.cls}</td>

@@ -136,7 +136,7 @@
             <table>
               <thead>
                 <tr>
-                  <th style={{ minWidth: 150 }}>Carteira</th>
+                  <th className="sticky-col" style={{ minWidth: 150 }}>Carteira</th>
                   <th>Segmento</th>
                   <th>Tipo de Pendência</th>
                   <th>Status</th>
@@ -147,7 +147,7 @@
               <tbody>
                 {filtered.map((r, i) => (
                   <tr key={r.code + '|' + i}>
-                    <td style={{ minWidth: 150 }}>
+                    <td className="sticky-col" style={{ minWidth: 150 }}>
                       <div style={{ fontWeight: 600, fontSize: '0.857rem' }}>{r.code}</div>
                       <div style={{ fontSize: '0.714rem', color: 'var(--muted)' }}>{r.name}</div>
                     </td>

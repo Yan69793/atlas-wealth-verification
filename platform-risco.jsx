@@ -385,7 +385,7 @@
         <table>
           <thead>
             <tr>
-              <th className="sortable" style={thStyle} onClick={() => toggleSort('name')}>
+              <th className="sortable sticky-col" style={thStyle} onClick={() => toggleSort('name')}>
                 Carteira{arrow('name')}
               </th>
               <th className="sortable" style={{...thStyle, minWidth:130}} onClick={() => toggleSort('score')}>
@@ -423,7 +423,7 @@
                   borderLeft: s.code === selectedCode ? '2px solid var(--gold)' : '2px solid transparent',
                   transition:'background 0.1s',
                 }}>
-                <td style={{ padding:'8px 12px' }}>
+                <td className="sticky-col" style={{ padding:'8px 12px' }}>
                   <div style={{ fontWeight:600, fontSize:'0.857rem' }}>{s.code}</div>
                   <div style={{ fontSize:'0.714rem', color:'var(--muted)' }}>{s.name}</div>
                 </td>
@@ -472,7 +472,7 @@
         <table>
           <thead>
             <tr>
-              <th style={thS}>Carteira</th>
+              <th className="sticky-col" style={thS}>Carteira</th>
               <th style={{...thS, textAlign:'center'}}>Score</th>
               <th style={{...thS, textAlign:'center'}}>Nivel</th>
               <th style={thS}>Motivo principal</th>
@@ -482,7 +482,7 @@
           <tbody>
             {filaAcao.map(item => (
               <tr key={item.code}>
-                <td style={tdS}>
+                <td className="sticky-col" style={tdS}>
                   <div style={{ fontWeight:600 }}>{item.code}</div>
                   <div style={{ fontSize:'0.714rem', color:'var(--muted)' }}>{item.name}</div>
                 </td>
@@ -493,8 +493,8 @@
                 <td style={{...tdS, textAlign:'center'}}>
                   <NivelBadge nivel={item.nivel} />
                 </td>
-                <td style={{...tdS, maxWidth:240, fontSize:'0.786rem'}}>{item.motivo}</td>
-                <td style={{...tdS, fontSize:'0.786rem', color:'var(--muted)'}}>{item.recomendacao}</td>
+                <td className="cell-prose" style={{...tdS, maxWidth:240, fontSize:'0.786rem'}}>{item.motivo}</td>
+                <td className="cell-prose" style={{...tdS, maxWidth:280, fontSize:'0.786rem', color:'var(--muted)'}}>{item.recomendacao}</td>
               </tr>
             ))}
           </tbody>
@@ -596,7 +596,7 @@
             <table>
               <thead>
                 <tr>
-                  <th>Carteira</th>
+                  <th className="sticky-col">Carteira</th>
                   <th className="num">PL Atual</th>
                   <th className="num">Perda Estimada</th>
                   <th className="num">% Perda</th>
@@ -605,7 +605,7 @@
               <tbody>
                 {activeStress.top5Stressed.map(r => (
                   <tr key={r.code}>
-                    <td>
+                    <td className="sticky-col">
                       <div style={{ fontWeight:600, fontSize:'0.857rem' }}>{r.code}</div>
                       <div style={{ fontSize:'0.714rem', color:'var(--muted)' }}>{r.name}</div>
                     </td>

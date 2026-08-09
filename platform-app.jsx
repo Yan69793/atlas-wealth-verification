@@ -366,8 +366,10 @@
     busca:      'Busca por Ativo',
     risco:      'Radar de Risco',
     tendencia:  'Tendência do Ciclo',
+    custos:     'Transparência de Custos',
     importar:   'Importar Extratos',
     usuarios:   'Usuários',
+    'dev-relatorio': 'Relatório de Carteira',
   };
 
   /* ============================================================

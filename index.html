@@ -4,7 +4,20 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>ATLAS Wealth Verification</title>
-  <link rel="stylesheet" href="platform-styles.css?v=20260808" />
+
+  <!-- Cartão de prévia. O link do demo circula por WhatsApp, e sem estas linhas
+       o aplicativo mostra só o endereço cru, sem dizer o que é. Descrição
+       escrita como texto comercial de propósito: é a primeira coisa que o
+       prospect lê, antes de decidir se abre. -->
+  <meta name="description" content="Confere as carteiras do mês antes de o relatório chegar ao cliente. Concilia patrimônio, aponta o que não fecha e mostra o custo total sobre o patrimônio." />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="ATLAS — Verificação mensal de carteiras" />
+  <meta property="og:description" content="Demonstração aberta, sem cadastro. 40 carteiras, conciliação de patrimônio e transparência de custo. Dados sintéticos." />
+  <meta property="og:site_name" content="ATLAS" />
+  <meta property="og:locale" content="pt_BR" />
+  <meta name="twitter:card" content="summary" />
+
+  <link rel="stylesheet" href="platform-styles.css?v=20260808d" />
 
   <!-- Marca da instância (opcional, gitignored). Define window.AtlasBrand antes
        dos tokens. Sem ele o app roda neutro, sem nome de casa nenhuma. -->
@@ -74,7 +87,7 @@
   <script src="platform-data-real.js?v=20260612" onerror="void(0)"></script>
 
   <!-- 1b. Dados (script normal — sem Babel, sem JSX) -->
-  <script src="platform-data.js?v=20260718b"></script>
+  <script src="platform-data.js?v=20260808"></script>
 
   <!-- 1c. Risk scoring (carregado depois de platform-data.js — usa window.AtlasData._internal) -->
   <script src="platform-data-risk.js?v=20260613a"></script>
@@ -91,22 +104,22 @@
   <script type="text/babel" src="platform-utils.jsx?v=20260718b"></script>
 
   <!-- 3. Páginas (carregadas na etapa correspondente) -->
-  <script type="text/babel" src="platform-dashboard.jsx?v=20260718b"></script>
-  <script type="text/babel" src="platform-carteira.jsx?v=20260718b"></script>
-  <script type="text/babel" src="platform-report.jsx?v=20260718c"></script>
-  <script type="text/babel" src="platform-achados.jsx?v=20260718b"></script>
-  <script type="text/babel" src="platform-comparativo.jsx?v=20260718a"></script>
-  <script type="text/babel" src="platform-custos.jsx?v=20260807"></script>
-  <script type="text/babel" src="platform-receitas.jsx?v=20260611d"></script>
-  <script type="text/babel" src="platform-cadastro.jsx?v=20260611"></script>
+  <script type="text/babel" src="platform-dashboard.jsx?v=20260808c"></script>
+  <script type="text/babel" src="platform-carteira.jsx?v=20260808"></script>
+  <script type="text/babel" src="platform-report.jsx?v=20260808"></script>
+  <script type="text/babel" src="platform-achados.jsx?v=20260808b"></script>
+  <script type="text/babel" src="platform-comparativo.jsx?v=20260808"></script>
+  <script type="text/babel" src="platform-custos.jsx?v=20260808"></script>
+  <script type="text/babel" src="platform-receitas.jsx?v=20260808"></script>
+  <script type="text/babel" src="platform-cadastro.jsx?v=20260808"></script>
   <script type="text/babel" src="platform-busca.jsx?v=20260718a"></script>
-  <script type="text/babel" src="platform-import.jsx?v=20260613a"></script>
+  <script type="text/babel" src="platform-import.jsx?v=20260808"></script>
   <script type="text/babel" src="platform-usuarios.jsx?v=20260611d"></script>
 
-  <script type="text/babel" src="platform-risco.jsx?v=20260717a"></script>
+  <script type="text/babel" src="platform-risco.jsx?v=20260808c"></script>
   <script type="text/babel" src="platform-tendencia.jsx?v=20260714"></script>
 
   <!-- 4. App shell — deve ser carregado por ÚLTIMO (monta o ReactDOM) -->
-  <script type="text/babel" src="platform-app.jsx?v=20260717c"></script>
+  <script type="text/babel" src="platform-app.jsx?v=20260808d"></script>
 </body>
 </html>

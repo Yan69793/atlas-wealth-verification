@@ -726,6 +726,35 @@ tbody td {
   white-space: nowrap;
 }
 
+/* Coluna de texto corrido dentro de tabela.
+   O nowrap acima é certo para número, código e data, e errado para frase. Sem
+   esta classe, a descrição de um achado longo não quebra, transborda a célula e
+   se sobrepõe à coluna vizinha, com as duas letras impressas por cima uma da
+   outra. Estava assim em produção: em Jun/26, 7 das 14 linhas de Achados
+   apareciam emboladas com a coluna Gestor.
+   Havia maxWidth e wordBreak nas células desde antes, o que mostra que a
+   intenção de quebrar já existia. Faltava desligar o nowrap, que anula os dois. */
+tbody td.cell-prose {
+  white-space: normal;
+  /* break-word e NÃO anywhere. Os dois quebram palavra comprida, mas `anywhere`
+     também diz ao navegador que a largura mínima da coluna é um caractere, e
+     numa tabela que rola isso faz a coluna encolher até virar uma palavra por
+     linha. Aconteceu: no celular a descrição do achado saiu empilhada letra a
+     letra. `break-word` quebra igual e não mexe no cálculo de largura. */
+  overflow-wrap: break-word;
+  min-width: 16rem;
+  line-height: 1.45;
+}
+
+/* Nome próprio em tabela densa: corta com reticência em vez de quebrar em duas
+   linhas, porque quebrar desalinha a altura de todas as linhas vizinhas. Exige
+   maxWidth na célula, senão não há o que cortar. O título completo fica no
+   atributo title, para quem passar o mouse. */
+tbody td.cell-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 tbody td.sticky-col {
   position: sticky;
   left: 0;
