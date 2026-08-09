@@ -1,12 +1,7 @@
 {
-  "_description": "Mapa de equivalencia de nomes de carteira. Nome extraido do PDF (chave) → nome canonico (valor). Versionado, revisado caso a caso. Nunca resolvido por adivinhacao.",
-  "_updated": "2026-07-14",
-  "mappings": {
-    "MMR_ACRB 1 (Marta)": "MMR 1 (Marta)",
-    "MMR_ACRB 2 (Mega)": "MMR 2 (Mega)",
-    "MMR_ACRB 3 (Mae)": "MMR 3 (Mae)",
-    "Fênix": "Fenix",
-    "CFIS": "CFIS_KBV",
-    "FCS": "FCS_CLCS"
-  }
+  "_description": "Mapa de equivalencia de nomes de carteira. Nome extraido do relatorio (chave) para nome canonico (valor). Revisado caso a caso, nunca resolvido por adivinhacao.",
+  "_aviso": "VAZIO DE PROPOSITO. Este e o repositorio do produto, e nome de carteira e nome de cliente. Ate 08/08/2026 este arquivo vinha preenchido com os nomes reais de uma instancia, incluindo apelido de familia em texto plano, ou seja, dado pessoal versionado num repositorio de produto.",
+  "_como_usar": "Cada instancia mantem o proprio mapa fora deste repositorio, em name-map.local.json na raiz da instancia, que o .gitignore de la bloqueia. O pipeline usa o local quando ele existe e cai neste quando nao existe.",
+  "_updated": "2026-08-08",
+  "mappings": {}
 }

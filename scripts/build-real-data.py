@@ -1,14 +1,21 @@
 #!/usr/bin/env python3
 """
-Converte atual.json (Mirabaud/carteiras-app) para platform-data-real.js (ATLAS SPA).
-Uso: python scripts/build-real-data.py [caminho/para/atual.json]
+Converte o atual.json de uma instancia para platform-data-real.js (ATLAS SPA).
+
+Uso: python scripts/build-real-data.py <caminho/para/atual.json>
+
+O caminho e obrigatorio de proposito. Antes havia um default apontando para a
+pasta de um cliente especifico, o que colocava o nome dele dentro do produto e
+fazia o script parecer que so servia aquela instancia. Instancia nova passa o
+proprio caminho, ou define ATLAS_INSTANCIA apontando para a raiz dela.
 """
 import json, sys, os
 from pathlib import Path
 from datetime import datetime
 
 ROOT = Path(__file__).parent.parent
-DEFAULT_INPUT = ROOT / "Verificação Mensal de Carteiras Mirabaud" / "carteiras-app" / "public" / "data" / "atual.json"
+_INSTANCIA = os.environ.get('ATLAS_INSTANCIA')
+DEFAULT_INPUT = (Path(_INSTANCIA) / "carteiras-app" / "public" / "data" / "atual.json") if _INSTANCIA else None
 OUTPUT = ROOT / "platform-data-real.js"
 
 MES_PT = {
@@ -26,6 +33,10 @@ def nome_para_codigo(nome):
 
 def main():
     src = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_INPUT
+    if src is None:
+        print("ERRO: informe o caminho do atual.json, ou defina ATLAS_INSTANCIA")
+        print("Uso: python scripts/build-real-data.py <caminho/para/atual.json>")
+        sys.exit(1)
     if not src.exists():
         print(f"ERRO: {src} nao encontrado")
         sys.exit(1)
@@ -57,7 +68,9 @@ def main():
         pl_marco = c.get('plMarco', 0)
         pl_abril = c.get('plAbril', 0)
         rent = c.get('rentAbril')
-        gestor = 'Mirabaud'
+        # Gestor unico por instancia. Vem do proprio dado ou da variavel de
+        # ambiente, nunca fixo no produto: nome de casa nao mora aqui.
+        gestor = c.get('gestor') or os.environ.get('ATLAS_GESTOR') or 'Gestor'
 
         if gestor not in managers_map:
             managers_map[gestor] = []
@@ -90,7 +103,7 @@ def main():
     js = (
         "// platform-data-real.js — DADOS REAIS (LGPD, NAO VERSIONAR)\n"
         f"// Gerado: {datetime.now().strftime('%Y-%m-%d %H:%M')}\n"
-        "// Fonte: Verificacao Mensal de Carteiras Mirabaud\n"
+        f"// Fonte: {src}\n"
         "// Este arquivo esta no .gitignore. NAO COMMITAR.\n\n"
         "window._AtlasRealData = " +
         json.dumps(real_data, ensure_ascii=False, indent=2) +
