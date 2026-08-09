@@ -144,6 +144,23 @@
     }
   }
 
+  /* Barra de status do atalho de tela de inicio segue o tema.
+     Instalado na tela de inicio do iPad, o app abre sem Safari em volta, e a
+     faixa do relogio pinta com esta cor. Fixa no HTML ela sempre serviria a um
+     tema so: quem usa o Midnight abriria com uma tarja clara em cima do fundo
+     escuro. Fora do atalho a linha nao faz nada. */
+  function applyStatusBarColor(hex) {
+    try {
+      var meta = document.querySelector('meta[name="theme-color"]');
+      if (!meta) {
+        meta = document.createElement('meta');
+        meta.setAttribute('name', 'theme-color');
+        document.head.appendChild(meta);
+      }
+      meta.setAttribute('content', hex);
+    } catch (_) {}
+  }
+
   function applyTheme(name) {
     if (!TOKENS.palettes[name]) return;
     var vars = TOKENS.palettes[name];
@@ -153,6 +170,7 @@
       root.style.setProperty(keys[i], vars[keys[i]]);
     }
     root.dataset.theme = name;
+    applyStatusBarColor(vars['--paper']);
   }
 
   function setTheme(name) {
