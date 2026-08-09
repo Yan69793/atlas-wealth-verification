@@ -50,7 +50,7 @@ def is_excluded(filename):
 
 def collect_book_files(pasta):
     """Book_*.pdf da pasta curada (Editados) E do mes-pai (books soltos na raiz do
-    mes, fora de Editados - ex: AVP_LBP, EVP em junho/2026). SO LEITURA, nunca
+    mes, fora de Editados - ex: books soltos na raiz do mes). SO LEITURA, nunca
     escreve na fonte (regra do projeto: arvore de Extratos e read-only). Um nivel
     acima apenas, nao recursivo. Retorna [(full_path, filename, origem)]."""
     pasta_abs = os.path.abspath(pasta)

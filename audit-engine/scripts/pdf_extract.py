@@ -8,7 +8,7 @@ e a tabela de ativos completa (linha TOTAL incluida). Nao faz nenhuma decisao de
 regra de auditoria - so extrai o que esta escrito no PDF, por coordenada.
 
 Duas variantes de layout de tabela de ativos existem no mesmo gerador:
-- "normal": tem coluna Instituicao (ex: Book_ACSC_EDC)
+- "normal": tem coluna Instituicao (ex: Book_ABCD_EFG)
 - "consolidado": nao tem coluna Instituicao, rotulos "Rendimentos/Proventos"
   em vez de "Eventos Financeiros" (ex: Book_CABM_TMBM_Consolidado)
 A deteccao e automatica pelo cabecalho da tabela na propria pagina.
@@ -140,7 +140,7 @@ def extract_cover_name(pdf):
             return False
         if re.match(r'\d{2}/\d{2}/\d{4}', t):
             return False
-        # Codigo: 3+ chars, uppercase + underscore (ex: ACSC_EDC, MMR_ACRB)
+        # Codigo: 3+ chars, uppercase + underscore (ex: ABCD_EFG, FUND_01)
         if re.match(r'^[A-Z][A-Z0-9_]{2,}$', t) and '_' in t:
             return True
         # Nome de exibicao: 3+ chars, comeca com uppercase, sem underscore

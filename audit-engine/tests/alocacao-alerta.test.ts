@@ -6,7 +6,7 @@ import type { CarteiraRaw } from '../src/schema.js';
 describe('alocacao alerta', () => {
   it('mudanca liquidez > 5pp gera alerta', () => {
     const carteira: CarteiraRaw = {
-      nome: 'AVP_LBP',
+      nome: 'TESTE_ALOC',
       periodo: { baseline: '2026-03', referencia: '2026-04', baselineLabel: 'Março', referenciaLabel: 'Abril' },
       plBase: 5009446,
       plRef: 5058557,

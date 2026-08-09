@@ -9,7 +9,7 @@ Três artefatos concorrentes cobrem o mesmo objetivo, e nenhum é completo.
 
 | Artefato | Estado real |
 |---|---|
-| `SmartBrain/mirabaud_dashboard.html` | Maquete de 27/mar. HTML estático, sem camada de dados. Zero `fetch`, números digitados no markup. |
+| `SmartBrain/dashboard-maquete.html` | Maquete de 27/mar. HTML estático, sem camada de dados. Zero `fetch`, números digitados no markup. |
 | Dashboard React da raiz | Onde o trabalho vive. `data.json` de junho/2026, 94 carteiras, reprocessado em 14/jul. |
 | `Projetos/atlas-wealth-verification` | A plataforma. 9 abas, camada de dados própria, repo e CI próprios. Congelada em 07/jul. |
 
@@ -68,7 +68,7 @@ Alvos confirmados em 14/jul:
 | Arquivo | Referência |
 |---|---|
 | `CLAUDE.md` do workspace | caminho do projeto ATLAS |
-| `~/.claude/skills/mirabaud-audit-engine/SKILL.md` | aponta direto para `.../Verificação de carteiras/audit-engine` |
+| `~/.claude/skills/atlas-audit-engine/SKILL.md` | aponta direto para `.../Verificação de carteiras/audit-engine` |
 | `~/.claude/skills/verificacao-carteiras-v2/SKILL.md` | caminho do projeto |
 | `~/.claude/skills/vix-radar-audit/SKILL.md` | caminho do projeto |
 | `~/.claude/skills/awwwards-estudo/references/projetos.md` | caminho do projeto |
@@ -110,7 +110,7 @@ Fatos apurados em 14/jul:
 - O `.gitignore` da raiz não protege nada disso. **436 PDFs de books de clientes estão
   commitados no índice do repo da raiz**, junto com `data.json` e `data.js`.
 - O `.gitignore` do ATLAS é rígido: ignora `*.pdf`, `*.xlsx`, `platform-data-real.js` e
-  `Verificação Mensal de Carteiras Mirabaud/`.
+  a pasta de dados reais de carteira.
 
 Ações:
 
@@ -193,7 +193,7 @@ a extração da geração de demo por seed como pré-requisito, não como refact
 
 ## Restrições permanentes
 
-- A árvore `Extratos Mensais\<AAAA>_<MM>\` no OneDrive Mirabaud é **read-only em todos os
+- A árvore `Extratos Mensais\<AAAA>_<MM>\` no OneDrive da instância é **read-only em todos os
   níveis**. Só ler e copiar de lá para fora. Nunca escrever, mover, renomear ou deletar.
 - Dado real de cliente nunca entra no git.
 - `npm test` verde e `git status` limpo antes de fechar qualquer mudança.

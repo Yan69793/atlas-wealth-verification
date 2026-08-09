@@ -140,7 +140,7 @@ As três frentes de maior impacto são: (a) elevar a qualidade dos relatórios e
 
 **Observado no PandaConnect**: A plataforma faz "consolidation across custodians, legal entities, ownership layers, and asset classes". Family offices tipicamente têm estruturas com múltiplas entidades legais (trusts, holdings, offshore companies) e precisam de visão consolidada por família, por entidade e por custodiante.
 
-**Estado atual do ATLAS**: O catálogo de carteiras é uma lista plana de 40 entradas (códigos como `CFIS_KBV`, `BB_FCC`). Não há conceito de agrupamento hierárquico (família > entidade > carteira) nem de consolidação automática.
+**Estado atual do ATLAS**: O catálogo de carteiras é uma lista plana de 40 entradas (códigos como `ORION_01`, `TIGRE_FAM`). Não há conceito de agrupamento hierárquico (família > entidade > carteira) nem de consolidação automática.
 
 **Recomendação**:
 
