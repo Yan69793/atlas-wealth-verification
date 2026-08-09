@@ -524,6 +524,9 @@
     // Limpar TODAS as entradas demo antes de injetar dados reais.
     // O inject anterior so removia entradas cujo code batia com os reais,
     // deixando vazar dados ficticios quando os codigos nao coincidiam.
+    // Isto e um superconjunto da limpeza seletiva por lista de codigos demo que
+    // o fork fazia. Zerar tudo entrega o mesmo objetivo, catalogo so real quando
+    // ha overlay, sem depender de essa lista estar completa.
     CATALOG.length = 0;
     MANAGERS.length = 0;
     Object.keys(_portfolioData).forEach(function(c) { delete _portfolioData[c]; });
@@ -591,7 +594,12 @@
             var rent = (rentByMonth && rentByMonth[rm] != null) ? rentByMonth[rm] : null;
             // Fallback para CDI quando rentRef e null (offshore)
             retArr[idx] = (rent != null) ? rent : (CDI_RATES[rm] || 0);
+            // p.fee vem anual da planilha; feeArr e receita do mes.
             feeArr[idx] = plByMonth[rm] * (p.fee != null ? p.fee / 12 : MFEE);
+            // rpp NAO e gravado aqui de proposito. Uma versao anterior escrevia
+            //   if (idx > 0) rpp[idx] = plByMonth[rm];
+            // que grava o PL do PROPRIO mes e zera a variacao. Ver o loop
+            // logo abaixo, que usa plArr[k-1] (fix 8a581e5).
           }
         });
       } else {
@@ -610,8 +618,14 @@
       // o PL do proprio mes, o que zerava a variacao e disparava falsa quebra de
       // conciliacao em TODA carteira real (o dado do cliente que paga).
       for (var k = 1; k < n; k++) rpp[k] = plArr[k - 1];
-       return { fee:(p.fee != null ? p.fee / 12 : MFEE), plArr:plArr, nnmArr:z(), retArr:retArr, feeArr:feeArr, reportedPlPrevArr:rpp,
-                perfFeeArr:z(), brokerageArr:z(), custodyArr:z(), fundFeeArr:z(), fxSpreadArr:z(), taxArr:z(), otherArr:z() };
+      // Os 7 arrays de componente de custo (perfFeeArr...otherArr) sao exigidos
+      // por COST_COMPONENTS (linha ~327): a pagina de transparencia de custo
+      // le pd[component.array] genericamente para toda carteira, real ou demo.
+      // Sem eles aqui, a pagina quebra ao abrir uma carteira real. Zerados de
+      // proposito: nao ha decomposicao de custo real por componente ainda,
+      // so o total (fee). Ver clientCostAnalysis().
+      return { fee:(p.fee != null ? p.fee / 12 : MFEE), plArr:plArr, nnmArr:z(), retArr:retArr, feeArr:feeArr, reportedPlPrevArr:rpp,
+               perfFeeArr:z(), brokerageArr:z(), custodyArr:z(), fundFeeArr:z(), fxSpreadArr:z(), taxArr:z(), otherArr:z() };
     }
 
     D.portfolios.forEach(function(p) { _portfolioData[p.code] = realPd(p); });
@@ -1455,36 +1469,43 @@
       'I0: MONTHS e MONTH_LABELS fora de sync: ' + MONTHS.length + ' vs ' + MONTH_LABELS.length);
     if (MONTHS.length !== MONTH_LABELS.length) errs++;
 
-    // I1: 40 fictícias + N reais (depende de window._AtlasRealData)
+    // I1: com window._AtlasRealData presente, injectRealData() substitui as 40
+    // ficticias pelas N reais (nao soma); sem overlay, ficam as 40 ficticias.
     var _realN = (typeof window !== 'undefined' && window._AtlasRealData && window._AtlasRealData.portfolios)
       ? window._AtlasRealData.portfolios.length : 0;
-    var _expectedCat = 40 + _realN;
+    var _expectedCat = _realN > 0 ? _realN : 40;
     console.assert(CATALOG.length === _expectedCat, 'I1: esperado ' + _expectedCat + ' carteiras, obtido ' + CATALOG.length);
     if (CATALOG.length !== _expectedCat) errs++;
 
-    // I2: PL total Abr/2026 — range adapta ao número de carteiras reais
-    var stats = dashboardStats('2026-04');
-    var _plMin = _realN > 0 ? 1.4e9 : 1.0e9;
-    var _plMax = _realN > 0 ? 2.0e9 : 1.6e9;
-    console.assert(stats.plTotal >= _plMin && stats.plTotal <= _plMax,
-      'I2: PL Abr/2026 fora do intervalo: ' + (stats.plTotal/1e9).toFixed(3) + ' bi');
-    if (stats.plTotal < _plMin || stats.plTotal > _plMax) errs++;
+    // I2-I5: invariantes calibrados sobre o STATUS_SCRIPT e o gerador
+    // deterministico das 40 ficticias de demo. Com dado real presente, as
+    // ficticias saem do catalogo (I1) e esses numeros fixos deixam de existir
+    // -- checar seria validar contra dado que nao esta mais la, nao contra o
+    // real (que nao tem valor esperado hardcoded aqui).
+    if (_realN === 0) {
+      // I2: PL total Abr/2026
+      var stats = dashboardStats('2026-04');
+      var _plMin = 1.0e9, _plMax = 1.6e9;
+      console.assert(stats.plTotal >= _plMin && stats.plTotal <= _plMax,
+        'I2: PL Abr/2026 fora do intervalo: ' + (stats.plTotal/1e9).toFixed(3) + ' bi');
+      if (stats.plTotal < _plMin || stats.plTotal > _plMax) errs++;
 
-    // I3: Abr/2026 → exatamente 2 CORRIGIR, 5 COM ALERTA
-    console.assert(stats.corrigir === 2, 'I3: esperado 2 CORRIGIR em Abr/2026, obtido ' + stats.corrigir);
-    if (stats.corrigir !== 2) errs++;
-    console.assert(stats.alerta === 5, 'I3: esperado 5 COM ALERTA em Abr/2026, obtido ' + stats.alerta);
-    if (stats.alerta !== 5) errs++;
+      // I3: Abr/2026 → exatamente 2 CORRIGIR, 5 COM ALERTA
+      console.assert(stats.corrigir === 2, 'I3: esperado 2 CORRIGIR em Abr/2026, obtido ' + stats.corrigir);
+      if (stats.corrigir !== 2) errs++;
+      console.assert(stats.alerta === 5, 'I3: esperado 5 COM ALERTA em Abr/2026, obtido ' + stats.alerta);
+      if (stats.alerta !== 5) errs++;
 
-    // I4: Ago/2025 → pelo menos 5 CORRIGIR
-    var statsAgo = dashboardStats('2025-08');
-    console.assert(statsAgo.corrigir >= 5, 'I4: esperado >=5 CORRIGIR em Ago/2025, obtido ' + statsAgo.corrigir);
-    if (statsAgo.corrigir < 5) errs++;
+      // I4: Ago/2025 → pelo menos 5 CORRIGIR
+      var statsAgo = dashboardStats('2025-08');
+      console.assert(statsAgo.corrigir >= 5, 'I4: esperado >=5 CORRIGIR em Ago/2025, obtido ' + statsAgo.corrigir);
+      if (statsAgo.corrigir < 5) errs++;
 
-    // I5: >=4 recidivas
-    var rec = recidivas();
-    console.assert(rec.length >= 4, 'I5: esperado >=4 recidivas, obtido ' + rec.length);
-    if (rec.length < 4) errs++;
+      // I5: >=4 recidivas
+      var rec = recidivas();
+      console.assert(rec.length >= 4, 'I5: esperado >=4 recidivas, obtido ' + rec.length);
+      if (rec.length < 4) errs++;
+    }
 
     // I6: PL positivo em todos os meses para carteiras após inception
     var plFail = 0;
