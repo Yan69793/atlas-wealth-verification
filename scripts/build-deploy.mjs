@@ -35,8 +35,19 @@ const NUNCA = [
   /^historico\.js(on)?$/,
 ];
 
-/* Extras que o app usa em runtime mas não aparecem como <script>/<link>. */
+/* Extras que o app usa em runtime mas não aparecem como <script>/<link>.
+   Diretórios: todo arquivo direto dentro deles é copiado. */
 const EXTRAS = ['docs/templates'];
+
+/* Arquivos avulsos, com destino explícito na saída.
+   Existe separado dos diretórios acima de propósito: a apresentação comercial
+   mora em docs/go-to-market/, e essa pasta tem vídeo, JPG e PNG do material de
+   marketing. Liberar o diretório inteiro levaria tudo isso para a saída e a
+   varredura final abortaria, que é o comportamento certo dela.
+   Aqui se libera o arquivo, um por vez, e nada mais entra junto. */
+const EXTRAS_ARQUIVO = [
+  { de: 'docs/go-to-market/apresentacao-atlas.html', para: 'apresentacao.html' },
+];
 
 const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 
@@ -78,6 +89,16 @@ for (const extra of EXTRAS) {
   }
 }
 
+const extrasAusentes = [];
+for (const { de, para } of EXTRAS_ARQUIVO) {
+  const s = path.join(ROOT, de);
+  if (!fs.existsSync(s)) { extrasAusentes.push(de); continue; }
+  const d = path.join(OUT, para);
+  fs.mkdirSync(path.dirname(d), { recursive: true });
+  fs.copyFileSync(s, d);
+  n++;
+}
+
 /* index.html reescrito: tira as tags de script opcionais cujo arquivo não
    chegou na saída, seja porque é overlay de dado real (bloqueado acima), seja
    porque simplesmente não existe nesta árvore.
@@ -92,8 +113,20 @@ for (const extra of EXTRAS) {
    depois daqui é coberto sem ninguém editar este arquivo. */
 const tagsRemovidas = [];
 
+/* Só a tag, sem tentar levar o comentário junto.
+ *
+ * A versão anterior tinha um grupo opcional `(?:<!--[^]*?-->\s*\n)?` na frente,
+ * para remover também o comentário que explicava o script. Foi um erro caro: o
+ * `[^]*?` atravessa quebra de linha, então o motor casava do PRIMEIRO comentário
+ * do <head> até o `-->` do comentário do script, e apagava tudo que estava no
+ * meio. Em 08/08/2026 isso engoliu o bloco de meta tags e a linha do
+ * platform-styles.css, e o demo foi publicado sem formatação nenhuma.
+ *
+ * O comentário órfão que sobra é feio e é inofensivo. Apagar linha de HTML por
+ * expressão regular que cruza linhas não vale o risco.
+ */
 const htmlSaida = html.replace(
-  /(?:[ \t]*<!--[^]*?-->\s*\n)?[ \t]*<script\b[^>]*\bsrc="([^"]+)"[^>]*>\s*<\/script>[ \t]*\n?/g,
+  /[ \t]*<script\b[^>]*\bsrc="([^"]+)"[^>]*>\s*<\/script>[ \t]*\n?/g,
   (bloco, src) => {
     if (/^(https?:)?\/\//i.test(src)) return bloco;          // CDN, fica
     if (!/\bonerror\s*=/.test(bloco)) return bloco;          // obrigatório, fica
@@ -103,6 +136,25 @@ const htmlSaida = html.replace(
     return '';
   }
 );
+
+/* O index reescrito tem de continuar carregando o essencial.
+ * Reescrever HTML por expressão regular já apagou a folha de estilo uma vez, e
+ * a falha foi muda: a página abre, responde 200, e só parece errada para quem
+ * olha. Estas linhas transformam isso em publicação abortada. */
+const ESSENCIAIS = [
+  { nome: 'folha de estilo', re: /<link[^>]+platform-styles\.css/ },
+  { nome: 'tokens de design', re: /<script[^>]+platform-tokens\.js/ },
+  { nome: 'camada de dados', re: /<script[^>]+platform-data\.js/ },
+  { nome: 'shell do app', re: /<script[^>]+platform-app\.jsx/ },
+  { nome: 'raiz do React', re: /id="root"/ },
+];
+const perdidos = ESSENCIAIS.filter(e => !e.re.test(htmlSaida)).map(e => e.nome);
+if (perdidos.length) {
+  console.error('\nABORTADO: o index reescrito perdeu parte essencial:');
+  for (const p of perdidos) console.error('  ' + p);
+  console.error('\n  A reescrita das tags opcionais comeu conteudo que devia ficar.');
+  process.exit(1);
+}
 
 fs.writeFileSync(path.join(OUT, 'index.html'), htmlSaida, 'utf8');
 
@@ -127,6 +179,20 @@ anda(OUT);
 if (suspeitos.length) {
   console.error('\nABORTADO: arquivos que nao podem ser publicados chegaram na saida:');
   for (const s of suspeitos) console.error('  ' + s);
+  process.exit(1);
+}
+
+/* Extra declarado e ausente aborta, nao avisa.
+   O Worker responde QUALQUER caminho com o index do demo e status 200, por
+   causa do fallback de app de pagina unica. Entao um arquivo que nao subiu nao
+   vira erro 404: vira o demo servido no lugar da apresentacao, com o titulo do
+   demo no cartao de previa do WhatsApp. Nao existe sintoma. Quem mandar o link
+   so descobre pelo prospect. Por isso a falta trava a publicacao aqui. */
+if (extrasAusentes.length) {
+  console.error('\nABORTADO: arquivo declarado em EXTRAS_ARQUIVO nao existe:');
+  for (const s of extrasAusentes) console.error('  ' + s);
+  console.error('\n  Sem ele, o endereco publicado responde 200 servindo o demo,');
+  console.error('  e a falha e invisivel. Gere o arquivo ou tire da lista.');
   process.exit(1);
 }
 console.log('  varredura final: nenhum binario nem overlay de dado na saida');

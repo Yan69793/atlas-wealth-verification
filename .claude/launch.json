@@ -14,6 +14,12 @@
       "port": 7822
     },
     {
+      "name": "atlas-go-to-market",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "7823", "--directory", "E:/Diretorio/Claude/ATLAS/docs/go-to-market"],
+      "port": 7823
+    },
+    {
       "name": "audit-engine-server",
       "runtimeExecutable": "node",
       "runtimeArgs": ["--env-file=E:/Diretorio/Claude/ATLAS/audit-engine/.env", "E:/Diretorio/Claude/ATLAS/audit-engine/dist/src/server.js"],
