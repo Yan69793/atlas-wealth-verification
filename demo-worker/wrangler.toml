@@ -27,3 +27,17 @@ directory = "./public"
 # Rotas do app sao hash (#/dashboard), mas o fallback de SPA garante que
 # qualquer caminho servido devolva o index em vez de 404.
 not_found_handling = "single-page-application"
+
+# Endereco do demo. Zona neutra de proposito: multi-assets.com nao carrega o
+# nome da consultoria, o que acompanha a decisao de marca neutra do produto.
+#
+# NAO usar szuchmacher.com.br aqui. A instancia do cliente vive em
+# atlas.szuchmacher.com.br, e um demo vizinho entregaria o endereco dela a
+# quem recebesse o link. Esta protegida por Access, mas nao ha motivo para
+# anunciar onde ela fica.
+#
+# O apice multi-assets.com e o www ja pertencem ao worker sz-sites. Este
+# registro cria so o subdominio e nao encosta nos dois.
+[[routes]]
+pattern = "demo.multi-assets.com"
+custom_domain = true
