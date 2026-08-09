@@ -6,55 +6,61 @@ import { parseExcelV2 } from '../src/parsers/excel-v2.js';
 import { parsePdfBookFolder } from '../src/parsers/pdf-v1.js';
 import type { CarteiraRaw } from '../src/schema.js';
 
-// ATLAS_FIXTURES aponta para a raiz da instancia do cliente (onde o XLSX real
-// vive). Nao derivar por path.resolve a partir de __dirname: respondia caminhos
-// diferentes conforme rodasse do dist, da fonte ou do submodule, e foi assim que
-// esta suite passou meses pulando em silencio.
+// ATLAS_FIXTURES = raiz da instancia (XLSX e, opcionalmente, mapa de nomes).
+// ATLAS_BOOKS = pasta Editados do mes (books PDF). Nenhum caminho de cliente
+// fica fixo no produto: instancia nova define as vars no proprio ambiente.
 const FIXTURES = process.env.ATLAS_FIXTURES;
 const XLSX = FIXTURES ? path.join(FIXTURES, 'Verificacao_Carteiras_Abril_2026_v2.xlsx') : null;
-const BOOKS_ABRIL = path.join(
-  'C:/Users/User/OneDrive - MIRABAUD (BRASIL) REPRESENTAÇÕES LTDA/Extratos Mensais/2026_04/Editados',
-);
+const BOOKS_ABRIL = process.env.ATLAS_BOOKS
+  ?? (FIXTURES ? path.join(FIXTURES, 'books', '2026-04', 'Editados') : null)
+  ?? null;
 
-// Com ATLAS_FIXTURES setada e o XLSX ausente, e ERRO, nao skip. Os books ficam
-// no OneDrive (fora da instancia), entao ausencia deles ainda pula com aviso.
 if (FIXTURES && !fs.existsSync(XLSX!)) {
   throw new Error(`ATLAS_FIXTURES setada mas XLSX ausente: ${XLSX}`);
 }
 
-// Carteiras cujo nome canonico mudou de proposito ao adotar o nome interno do
-// PDF como fonte de verdade (decisao de produto, nao divergencia de bug).
-const RENOMEADAS_DE_PROPOSITO: Record<string, string> = {
-  'MMR_ACRB 1 (Marta)': 'MMR 1 (Marta)',
-  'MMR_ACRB 2 (Mega)': 'MMR 2 (Mega)',
-  'MMR_ACRB 3 (Mae)': 'MMR 3 (Mae)',
-};
+// Renomes de proposito (nome Excel -> nome PDF) vivem na instancia, no mesmo
+// mapa local que o pipeline usa. Produto nao carrega apelido nem codigo real.
+function loadRenomes(): Record<string, string> {
+  if (!FIXTURES) return {};
+  for (const rel of ['name-map.local.json', 'name-map.json', 'audit-engine/name-map.local.json']) {
+    const p = path.join(FIXTURES, rel);
+    if (!fs.existsSync(p)) continue;
+    try {
+      const raw = JSON.parse(fs.readFileSync(p, 'utf-8')) as {
+        mappings?: Record<string, string>;
+      };
+      return raw.mappings ?? {};
+    } catch {
+      // mapa ilegivel: segue sem renome, o teste acusa divergencia se precisar
+    }
+  }
+  return {};
+}
 
-// BUG CONHECIDO no parser Excel (parsePct em src/parsers/utils.ts): quando a
-// rentabilidade do mes esta entre -1% e 1%, a celula guarda o numero em
-// pontos percentuais (ex: 0,96) mas parsePct so divide por 100 quando
-// abs(n) > 1 - entao trata 0,96 como se ja fosse fracao (96%). O valor do
-// PDF (extraido de forma independente da grade "Rentabilidades Mensais") esta
-// correto; o valor do Excel/dashboard atual esta errado para estas carteiras.
-// Nao corrigido aqui de proposito - e uma decisao de produto (afeta numeros
-// ja entregues ao cliente em abril), reportado separadamente.
-const CARTEIRAS_COM_BUG_RENT_EXCEL_CONHECIDO = new Set([
-  'BLH', 'BVM_LOVM', 'CMF', 'GLF', 'GLMW_MHGS', 'JBQ', 'JPRS', 'LBS',
-  'LCBAVP_MAA', 'LCV', 'LOVM_JLM', 'MAA_KW', 'MH', 'OPCF_MMR', 'RAL_CFLL', 'SVR',
-]);
+// BUG CONHECIDO no parser Excel (parsePct): rent entre -1% e 1% guardada em
+// pontos percentuais (0,96) mas so dividia por 100 quando abs(n) > 1, entao
+// 0,96 virava 96%. Detecta por fator ~100x em vez de listar codigo de cliente.
+function isBugRentExcelConhecido(excelRent: number, pdfRent: number): boolean {
+  if (pdfRent === 0) return false;
+  const ratio = excelRent / pdfRent;
+  return Math.abs(ratio - 100) < 2 || Math.abs(ratio - 0.01) < 0.002;
+}
 
-const TOLERANCIA_PL = 0.003; // 0.3% - mesma tolerancia de conciliacao usada no motor
-const TOLERANCIA_RENT = 0.0005; // 5 pontos-base
+const TOLERANCIA_PL = 0.003;
+const TOLERANCIA_RENT = 0.0005;
 
-// Teste de integração com dado real de abril (XLSX na raiz de staging + books no
-// OneDrive). Pula graciosamente quando o dado não está presente (ex.: rodando
-// dentro do ATLAS, que por decisão não hospeda dado real de cliente).
-const DADO_ABRIL_PRESENTE = !!FIXTURES && fs.existsSync(XLSX!) && fs.existsSync(BOOKS_ABRIL);
+const DADO_ABRIL_PRESENTE =
+  !!FIXTURES && !!BOOKS_ABRIL && fs.existsSync(XLSX!) && fs.existsSync(BOOKS_ABRIL);
 
-describe('parity PDF vs Excel (abril 2026, gabarito)', { timeout: 180_000, skip: !DADO_ABRIL_PRESENTE && 'dado real de abril ausente (ATLAS_FIXTURES/books)' }, () => {
+describe('parity PDF vs Excel (abril 2026, gabarito)', {
+  timeout: 180_000,
+  skip: !DADO_ABRIL_PRESENTE && 'dado de abril ausente (ATLAS_FIXTURES + ATLAS_BOOKS)',
+}, () => {
   it('carteiras extraidas via PDF batem com a planilha Excel ja auditada', async () => {
+    const renomes = loadRenomes();
     const excelCarteiras = await parseExcelV2({ arquivo: XLSX!, mes: '2026-04', baseline: '2026-03' });
-    const pdfCarteiras = await parsePdfBookFolder({ pasta: BOOKS_ABRIL, mes: '2026-04', baseline: '2026-03' });
+    const pdfCarteiras = await parsePdfBookFolder({ pasta: BOOKS_ABRIL!, mes: '2026-04', baseline: '2026-03' });
 
     const pdfByNome = new Map(pdfCarteiras.map((c) => [c.nome, c]));
 
@@ -64,7 +70,7 @@ describe('parity PDF vs Excel (abril 2026, gabarito)', { timeout: 180_000, skip:
     let comparadas = 0;
 
     for (const excelC of excelCarteiras) {
-      const nomePdf = RENOMEADAS_DE_PROPOSITO[excelC.nome] ?? excelC.nome;
+      const nomePdf = renomes[excelC.nome] ?? excelC.nome;
       const pdfC = pdfByNome.get(nomePdf);
       if (!pdfC) {
         semCorrespondente.push(excelC.nome);
@@ -75,7 +81,7 @@ describe('parity PDF vs Excel (abril 2026, gabarito)', { timeout: 180_000, skip:
       compararCampo(excelC, pdfC, 'plRef', TOLERANCIA_PL, divergencias);
       if (excelC.rentRef !== null && pdfC.rentRef !== null) {
         const divergeRent = Math.abs(excelC.rentRef - pdfC.rentRef) > TOLERANCIA_RENT;
-        if (divergeRent && CARTEIRAS_COM_BUG_RENT_EXCEL_CONHECIDO.has(excelC.nome)) {
+        if (divergeRent && isBugRentExcelConhecido(excelC.rentRef, pdfC.rentRef)) {
           bugsConhecidos.push(`${excelC.nome}: rentRef excel=${excelC.rentRef} pdf=${pdfC.rentRef} (bug conhecido do parser Excel)`);
         } else if (divergeRent) {
           divergencias.push(`${excelC.nome}: rentRef excel=${excelC.rentRef} pdf=${pdfC.rentRef}`);

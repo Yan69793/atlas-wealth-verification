@@ -24,7 +24,7 @@ if (FIXTURES && !fs.existsSync(XLSX!)) {
 }
 
 describe('parity abril 2026', { skip: !FIXTURES && 'ATLAS_FIXTURES ausente (rode com a raiz da instancia)' }, () => {
-  it('processa 79 carteiras com 1 CORRIGIR (SC)', async () => {
+  it('processa 79 carteiras com 1 CORRIGIR', async () => {
     const carteiras = await parseExcelV2({ arquivo: XLSX!, mes: '2026-04', baseline: '2026-03' });
     assert.equal(carteiras.length, 79);
 
@@ -35,8 +35,9 @@ describe('parity abril 2026', { skip: !FIXTURES && 'ATLAS_FIXTURES ausente (rode
     assert.equal(output.dashboard.summary.totals.total, 79);
     assert.equal(output.dashboard.summary.totals.corrigir, 1);
 
-    const sc = output.results.find((r) => r.nome === 'SC');
-    assert.equal(sc?.status, 'CORRIGIR');
+    // Nao ancora em codigo de carteira real: o produto so garante a contagem.
+    const corrigir = output.results.filter((r) => r.status === 'CORRIGIR');
+    assert.equal(corrigir.length, 1);
 
     const raw = JSON.parse(fs.readFileSync(LEGACY, 'utf-8'));
     const leg = raw.dashboard ?? raw;

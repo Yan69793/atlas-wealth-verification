@@ -30,7 +30,7 @@ MES_NOME = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
 INST_ALIAS = frozenset({'BTG', 'ICATU', 'BTGCORRETORA', 'MIRABAUD', 'ITAU',
                         'BRADESCO', 'SANTANDER', 'CREDITSUISSE', 'XP', 'EASYNV'})
 
-# Regex: strip hyphenated surname suffixes like "-YANSZUCHMACHER", "-MIRABAUD"
+# Regex: strip hyphenated surname/house suffixes colados no nome do arquivo
 NAME_SUFFIX_HYPHEN = re.compile(
     r'[-–—][A-ZÀ-Ü]{2,}(?:\s+[A-ZÀ-Ü]{2,})*$'
 )
@@ -136,7 +136,7 @@ def detect_col_shift(raw_name: str, raw_inst: str) -> bool:
 def clean_portfolio_name(raw_name: str) -> str:
     """Clean portfolio name: strip known suffixes, normalize spaces to underscores."""
     name = raw_name.strip()
-    # Strip hyphenated surname suffixes like "-YANSZUCHMACHER", "-MIRABAUD BRASIL"
+    # Strip hyphenated surname/house suffixes colados no nome do arquivo
     name = NAME_SUFFIX_HYPHEN.sub('', name).strip()
     # Strip trailing "NOVO" / "OLD" markers
     name = NAME_NOVO_OLD.sub('', name).strip()

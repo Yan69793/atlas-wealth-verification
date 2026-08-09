@@ -126,7 +126,7 @@ def extract_cover_name(pdf):
 
     Estrategia: procura em bandas progressivas, prefere palavra com underscore
     (codigo) sobre nome de exibicao; combina palavras da mesma linha para nomes
-    compostos com espaco (ex: 'MMR 1 (Marta)')."""
+    compostos com espaco (ex: 'FAM 1 (Alias)')."""
     import re
     page = pdf.pages[0]
     words = page.extract_words()
@@ -146,7 +146,7 @@ def extract_cover_name(pdf):
         # Nome de exibicao: 3+ chars, comeca com uppercase, sem underscore
         if re.match(r'^[A-Z][a-zA-Z0-9 ]{2,}$', t):
             return True
-        # Nome com parenteses (ex: "MMR 1 (Marta)")
+        # Nome com parenteses (ex: "FAM 1 (Alias)")
         if re.match(r'^[A-Z][a-zA-Z0-9 ()\-]{2,}$', t):
             return True
         return False

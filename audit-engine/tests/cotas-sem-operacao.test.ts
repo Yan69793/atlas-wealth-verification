@@ -4,15 +4,16 @@ import { cotasSemOperacaoRule } from '../src/rules/cotas-sem-operacao.js';
 import type { CarteiraRaw } from '../src/schema.js';
 
 describe('cotas sem operacao', () => {
-  it('FGLC AMZO34 variacao sem operacao gera alerta', () => {
+  it('variacao de ativo sem operacao gera alerta', () => {
+    // Fixture sintetica. Codigo de carteira e ticker reais nao moram no produto.
     const carteira: CarteiraRaw = {
-      nome: 'FGLC',
+      nome: 'CART_DEMO',
       periodo: { baseline: '2026-03', referencia: '2026-04', baselineLabel: 'Março', referenciaLabel: 'Abril' },
-      plBase: 4542731,
-      plRef: 4405540,
-      varRS: -137191,
-      varPct: -0.03,
-      rentRef: 0.0166,
+      plBase: 1_000_000,
+      plRef: 980_000,
+      varRS: -20_000,
+      varPct: -0.02,
+      rentRef: 0.01,
       continuidade: 0,
       somaVsTotal: 0,
       perfImplicita: 0.01,
@@ -21,10 +22,10 @@ describe('cotas sem operacao', () => {
       ativos: [
         {
           type: 'ativo',
-          nome: 'AMZO34',
-          plBase: 100000,
-          plRef: 121400,
-          diff: 21400,
+          nome: 'TICKER_X',
+          plBase: 100_000,
+          plRef: 121_400,
+          diff: 21_400,
           varPct: 0.214,
         },
       ],
@@ -34,6 +35,6 @@ describe('cotas sem operacao', () => {
     };
 
     const findings = cotasSemOperacaoRule.run(carteira, { mes: '2026-04', baseline: '2026-03', toleranciaPL: 0.003 });
-    assert.ok(findings.some((f) => f.mensagem.includes('AMZO34')));
+    assert.ok(findings.some((f) => f.mensagem.includes('TICKER_X')));
   });
 });

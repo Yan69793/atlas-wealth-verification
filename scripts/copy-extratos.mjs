@@ -18,7 +18,14 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
-const ONEDRIVE_BASE = 'C:\\Users\\User\\OneDrive - MIRABAUD (BRASIL) REPRESENTAÇÕES LTDA\\Extratos Mensais';
+// Caminho da arvore de extratos e da instancia, nunca fixo no produto.
+// ATLAS_EXTRATOS aponta para a pasta "Extratos Mensais" (ou equivalente).
+const ONEDRIVE_BASE = process.env.ATLAS_EXTRATOS;
+if (!ONEDRIVE_BASE) {
+  console.error('ERRO: defina ATLAS_EXTRATOS apontando para a pasta de extratos mensais.');
+  console.error('Ex.: $env:ATLAS_EXTRATOS = "D:\\dados\\Extratos Mensais"');
+  process.exit(1);
+}
 
 // Meses a copiar (25 meses: 2024-01 a 2026-01)
 const MONTHS = [];

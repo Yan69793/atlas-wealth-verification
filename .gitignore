@@ -61,28 +61,12 @@ __pycache__/
 /audits/
 /reports/
 /SmartBrain/
-# Carteiras reais: permitir código-fonte do app, bloquear dados LGPD
-Verificação Mensal de Carteiras Mirabaud/**/*
-!Verificação Mensal de Carteiras Mirabaud/carteiras-app/
-Verificação Mensal de Carteiras Mirabaud/carteiras-app/**/*
-!Verificação Mensal de Carteiras Mirabaud/carteiras-app/index.html
-!Verificação Mensal de Carteiras Mirabaud/carteiras-app/deploy.py
-!Verificação Mensal de Carteiras Mirabaud/carteiras-app/src/
-Verificação Mensal de Carteiras Mirabaud/carteiras-app/src/**/*
-!Verificação Mensal de Carteiras Mirabaud/carteiras-app/src/*.jsx
-!Verificação Mensal de Carteiras Mirabaud/carteiras-app/src/*.css
-!Verificação Mensal de Carteiras Mirabaud/carteiras-app/src/*.js
-!Verificação Mensal de Carteiras Mirabaud/carteiras-app/public/
-Verificação Mensal de Carteiras Mirabaud/carteiras-app/public/**/*
-!Verificação Mensal de Carteiras Mirabaud/carteiras-app/public/data/
-Verificação Mensal de Carteiras Mirabaud/carteiras-app/public/data/**/*
-!Verificação Mensal de Carteiras Mirabaud/carteiras-app/public/data/.gitkeep
-!Verificação Mensal de Carteiras Mirabaud/CLAUDE.md
-!Verificação Mensal de Carteiras Mirabaud/verificacao-carteiras-v2/
-!Verificação Mensal de Carteiras Mirabaud/verificacao-carteiras-v2/**/*
-!Verificação Mensal de Carteiras Mirabaud/verificacao-carteiras-v2.skill
-Verificação Mensal de Carteiras/
+# Pastas de instancia / dado operacional. Nome de cliente nao mora no produto:
+# qualquer arvore com esse padrao (ou legada com nome de casa) fica fora do git.
+# O codigo do app vive na raiz deste repositorio e no submodule de instancia.
+Verificação Mensal de Carteiras*/
 Verificação de carteiras/
+Verificação Mensal de Carteiras Mirabaud/
 
 # Capturas e dumps de página: renderizam o dashboard com dado real.
 # Os .png não são pesquisáveis por grep — varredura textual não os pega.

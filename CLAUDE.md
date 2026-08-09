@@ -21,8 +21,10 @@ teste nunca são alterados nem humanizados.
 
 ## Segurança de dados (LGPD)
 
-- Nunca adicionar ao Git: `Verificação Mensal de Carteiras*`, PDFs, DOCX, XLSX, ZIPs com dados reais
+- Este repositório é o produto. Instância e dado de cliente ficam fora do git.
+- Nunca versionar: pastas de instância (`Verificação Mensal de Carteiras*`), PDFs, DOCX, XLSX, ZIPs com dados reais
 - `platform-data-real.js`, `platform-data-audit.js`, `platform-historico.js` são LGPD e estão no .gitignore
+- Nome de carteira, apelido, código real e caminho de pasta de cliente não entram em teste nem doc versionada
 - Se aparecerem em `git status`, investigar e corrigir o `.gitignore` antes de prosseguir
 
 ## Ordem de carregamento (index.html)

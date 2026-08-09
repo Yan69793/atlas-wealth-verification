@@ -28,7 +28,7 @@ const ctx = { mes: '2026-06', baseline: '2026-05', toleranciaPL: 0.003 };
 
 describe('excecao offshore (_OFF sem rentabilidade)', () => {
   it('_OFF com rentRef null vira ALERTA, nao bloqueia', () => {
-    const r = auditCarteira(make('ATNPG_OFF', null), ctx);
+    const r = auditCarteira(make('DEMO_OFF', null), ctx);
     assert.notEqual(r.status, 'CORRIGIR');
     assert.ok(r.alertas.some((a) => a.includes('offshore')), 'deve ter alerta de book offshore');
     assert.ok(!r.erros.some((e) => e.includes('0,00%')), 'nao deve ter erro de rentabilidade zero');

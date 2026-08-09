@@ -30,11 +30,15 @@ except ImportError:
     print(json.dumps({"erro": "pdfplumber nao encontrado. Rode com 'python' (3.11), nao 'python3'/'py'."}), file=sys.stderr)
     sys.exit(2)
 
+# Padroes genericos. Exclusao de copia pessoal (sobrenome colado no arquivo)
+# vem da instancia via ATLAS_EXCLUDE_RE, nunca fixa no produto.
 EXCLUDE_PATTERNS = [
     re.compile(r'^Consolida[cç][aã]o CC', re.I),
-    re.compile(r'YANSZUCHMACHER', re.I),
-    re.compile(r'\bOLD\b', re.I),  # copias antigas marcadas (ex: "Book_SAA_2026_05 OLD.pdf")
+    re.compile(r'\bOLD\b', re.I),  # copias antigas marcadas (ex: "Book_CART_2026_05 OLD.pdf")
 ]
+_extra = os.environ.get('ATLAS_EXCLUDE_RE')
+if _extra:
+    EXCLUDE_PATTERNS.append(re.compile(_extra, re.I))
 
 MESES = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
          'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']

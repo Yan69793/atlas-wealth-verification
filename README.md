@@ -47,7 +47,7 @@ Rodando local com dados sintéticos, não há o que proteger.
 ## Dados
 
 - **Dados demo/sintéticos**: os arquivos do repositório contêm estruturas de exemplo sem dados pessoais reais.
-- **Dados reais ficam fora do Git**: a pasta `Verificação Mensal de Carteiras/` contém dados operacionais reais (PDFs, relatórios, dados de clientes / LGPD) e está explicitamente ignorada pelo `.gitignore`. Nunca deve ser commitada.
+- **Dados reais ficam fora do Git**: pastas de instância e qualquer PDF/XLSX/relatório com dado de cliente são LGPD e estão no `.gitignore`. Este repositório é o produto; a operação de cada cliente vive em árvore separada.
 
 ## Importação de arquivos
 

@@ -4,12 +4,11 @@ Estas regras valem para qualquer agente que trabalhe neste repositório.
 
 ## Segurança de dados (LGPD)
 
-- Nunca adicionar ao Git a pasta `Verificação Mensal de Carteiras Mirabaud/`
-- Nunca adicionar ao Git a pasta `Verificação Mensal de Carteiras/`
-- Nunca adicionar ao Git a pasta `Verificação de carteiras/`
-- Nunca versionar PDFs, DOCX, XLSX, ZIPs ou quaisquer dados reais/LGPD
-- `platform-data-real.js`, `platform-data-audit.js`, `platform-historico.js` são LGPD e estão no .gitignore
-- Se esses arquivos aparecerem em `git status`, investigar e corrigir o `.gitignore` antes de prosseguir
+- Este repositório é o **produto**. Dado de cliente e pasta de instância ficam fora do git.
+- Nunca versionar pastas de instância (`Verificação Mensal de Carteiras*`, `Verificação de carteiras/`) nem PDFs, DOCX, XLSX, ZIPs ou qualquer dado real/LGPD
+- `platform-data-real.js`, `platform-data-audit.js`, `platform-historico.js` são LGPD e estão no `.gitignore`
+- Nome de carteira, apelido de família, código real e caminho de pasta de cliente não entram em teste, doc de produto nem config versionada
+- Se esses arquivos ou pastas aparecerem em `git status`, investigar e corrigir o `.gitignore` antes de prosseguir
 
 ## Arquitetura pós-fusão (2026-07-14)
 
