@@ -62,6 +62,28 @@ npm run serve
 
 > Os dados exibidos são completamente sintéticos. Nenhuma informação real é carregada ou transmitida.
 
+### Atalho na tela de início do iPad
+
+O ATLAS roda no navegador, mas pode ficar na tela de início do iPad com ícone
+próprio e abrir sem a barra do Safari em volta, como um aplicativo.
+
+1. Abrir o endereço do ATLAS no **Safari** do iPad. Precisa ser o Safari — o
+   Chrome do iPad salva um atalho comum, que abre dentro do navegador.
+2. Tocar no botão de compartilhar, o quadrado com a seta para cima.
+3. Escolher **Adicionar à Tela de Início**.
+4. O nome já vem preenchido como **ATLAS**. Confirmar em Adicionar.
+
+O ícone é o mesmo selo dourado da barra lateral. Aberto pelo atalho, o sistema
+ocupa a tela inteira e a faixa do relógio acompanha o tema escolhido.
+
+Duas coisas a saber antes de instalar em iPad de outra pessoa:
+
+- **A senha é pedida de novo.** O atalho tem sessão separada da do Safari. Na
+  primeira abertura o acesso é solicitado uma vez e fica valendo.
+- **Trocar o ícone depois exige reinstalar.** O iPad guarda a imagem no momento
+  em que o atalho é criado e não a atualiza sozinha. Se a marca mudar, apagar o
+  atalho e adicionar de novo.
+
 ---
 
 ## 3. Fluxo Recomendado de Uso

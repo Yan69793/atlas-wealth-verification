@@ -42,6 +42,15 @@
 !/docs/templates/*.csv
 !/betting_ev_engine/data/*.csv
 
+# Atalho de tela de início (iPad/iPhone): manifesto e ícones da marca.
+#
+# Único PNG versionado no produto. O desenho sai de scripts/gerar-icones.mjs,
+# não de arquivo de cliente. A liberação é por caminho e nome exatos de
+# propósito: um `!*.png` na seção 3 traria junto qualquer captura de tela do
+# dashboard com dado real, que é a via pela qual isso já vazou antes.
+!/manifest.webmanifest
+!/icons/atlas-icon-*.png
+
 # =====================================================================
 # 4) RE-NEGAÇÃO — vem DEPOIS de propósito: sobrepõe a seção 3.
 #    Diretório negado não é percorrido, então nada dentro dele volta.

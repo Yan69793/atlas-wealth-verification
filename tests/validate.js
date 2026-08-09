@@ -726,6 +726,98 @@ ok('nenhum nome de casa hardcoded nos fontes do app', comMarcaFixa.length === 0,
 ok('index.html não fixa nome de casa no <title>',
   !/Meridian Advisory/.test(indexHtml));
 
+// ─── 17. Atalho de tela de início (iPad / iPhone) ───────────────────────────
+//
+// Falha silenciosa por natureza: sem estas peças o atalho continua sendo salvo
+// e continua abrindo o sistema — só que como miniatura da página, com barra do
+// Safari por cima e o endereço embaixo do ícone. Ninguém abre um chamado por
+// isso, e o iPad não troca ícone de atalho já instalado. Por isso a suíte
+// segura as quatro peças: o ícone, o manifesto, o nome curto e a barra de
+// status que acompanha o tema.
+
+const APPLE_ICON = /<link[^>]+rel="apple-touch-icon"[^>]+href="([^"?]+)/.exec(indexHtml);
+ok('index.html declara ícone de tela de início', !!APPLE_ICON);
+
+const MANIFEST_TAG = /<link[^>]+rel="manifest"[^>]+href="([^"?]+)/.exec(indexHtml);
+ok('index.html declara o manifesto do app', !!MANIFEST_TAG);
+
+ok('index.html declara nome curto do atalho',
+  /<meta[^>]+name="apple-mobile-web-app-title"[^>]+content="[^"]+"/.test(indexHtml));
+
+ok('index.html abre em tela cheia no iOS',
+  /<meta[^>]+name="apple-mobile-web-app-capable"[^>]+content="yes"/.test(indexHtml));
+
+ok('index.html declara cor da barra de status',
+  /<meta[^>]+name="theme-color"[^>]+content="#[0-9A-Fa-f]{6}"/.test(indexHtml));
+
+// A cor fixa no HTML serve a um tema só. Quem usa o Midnight abriria o atalho
+// com uma tarja clara em cima do fundo escuro se os tokens não reescrevessem.
+ok('troca de tema reescreve a cor da barra de status',
+  /theme-color/.test(fs.readFileSync(path.join(ROOT, 'platform-tokens.js'), 'utf8')));
+
+/* Lê largura e altura direto do cabeçalho do PNG. Ícone gerado no tamanho
+   errado é aceito pelo iOS e sai borrado — não dá erro em lugar nenhum. */
+function dimensoesPng(fp) {
+  const b = fs.readFileSync(fp);
+  if (b.length < 24) return null;
+  if (b.subarray(0, 8).toString('hex') !== '89504e470d0a1a0a') return null;
+  return { w: b.readUInt32BE(16), h: b.readUInt32BE(20) };
+}
+
+if (APPLE_ICON) {
+  const fp = path.join(ROOT, APPLE_ICON[1]);
+  const existe = fs.existsSync(fp);
+  ok(`ícone de tela de início existe: ${APPLE_ICON[1]}`, existe);
+  if (existe) {
+    const dim = dimensoesPng(fp);
+    ok('ícone de tela de início é PNG 180x180', !!dim && dim.w === 180 && dim.h === 180,
+      dim ? `${dim.w}x${dim.h}` : 'não é PNG');
+  }
+}
+
+if (MANIFEST_TAG) {
+  const manifestPath = path.join(ROOT, MANIFEST_TAG[1]);
+  const existe = fs.existsSync(manifestPath);
+  ok(`manifesto existe: ${MANIFEST_TAG[1]}`, existe);
+
+  if (existe) {
+    let manifest = null;
+    try { manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8')); } catch (_) {}
+    ok('manifesto é JSON válido', !!manifest);
+
+    if (manifest) {
+      ok('manifesto abre sem barra do navegador', manifest.display === 'standalone',
+        `display: ${manifest.display}`);
+      ok('manifesto tem nome curto para a tela de início',
+        typeof manifest.short_name === 'string' && manifest.short_name.length > 0);
+      ok('manifesto não assina com nome de casa',
+        !/Meridian Advisory/.test(JSON.stringify(manifest)));
+
+      const icones = Array.isArray(manifest.icons) ? manifest.icons : [];
+      ok('manifesto lista ícones', icones.length > 0);
+      for (const ic of icones) {
+        const fp = path.join(ROOT, ic.src);
+        if (!fs.existsSync(fp)) { ok(`ícone do manifesto existe: ${ic.src}`, false); continue; }
+        const dim = dimensoesPng(fp);
+        const [w, h] = String(ic.sizes || '').split('x').map(Number);
+        ok(`ícone do manifesto confere: ${ic.src}`,
+          !!dim && dim.w === w && dim.h === h,
+          dim ? `arquivo ${dim.w}x${dim.h}, declarado ${ic.sizes}` : 'não é PNG');
+      }
+      ok('manifesto tem ícone recortável (Android)',
+        icones.some(ic => /maskable/.test(ic.purpose || '')));
+    }
+  }
+}
+
+// A publicação monta a saída por allowlist e aborta ao ver binário. Ícone é a
+// única imagem liberada; se alguém apertar a trava de novo, o deploy sai sem
+// ícone e o sintoma só aparece no iPad de quem instalar.
+const deployScript = fs.readFileSync(path.join(ROOT, 'scripts', 'build-deploy.mjs'), 'utf8');
+ok('publicação leva a pasta de ícones', /EXTRAS\s*=\s*\[[^\]]*'icons'/.test(deployScript));
+ok('publicação libera o PNG do ícone na varredura final',
+  /ICONE_LIBERADO/.test(deployScript));
+
 // ─── Resultado ──────────────────────────────────────────────────────────────
 
 const total = pass + fail;

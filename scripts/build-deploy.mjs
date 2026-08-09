@@ -36,8 +36,12 @@ const NUNCA = [
 ];
 
 /* Extras que o app usa em runtime mas não aparecem como <script>/<link>.
-   Diretórios: todo arquivo direto dentro deles é copiado. */
-const EXTRAS = ['docs/templates'];
+   Diretórios: todo arquivo direto dentro deles é copiado.
+
+   icons/ entra inteiro porque o index.html só cita dois dos quatro tamanhos;
+   os outros dois são pedidos pelo manifest, que a varredura de referências não
+   lê. Sem eles o atalho instalado no iPad fica com o quadrado cinza padrão. */
+const EXTRAS = ['docs/templates', 'icons'];
 
 /* Arquivos avulsos, com destino explícito na saída.
    Existe separado dos diretórios acima de propósito: a apresentação comercial
@@ -147,6 +151,7 @@ const ESSENCIAIS = [
   { nome: 'camada de dados', re: /<script[^>]+platform-data\.js/ },
   { nome: 'shell do app', re: /<script[^>]+platform-app\.jsx/ },
   { nome: 'raiz do React', re: /id="root"/ },
+  { nome: 'ícone do atalho de tela de início', re: /rel="apple-touch-icon"/ },
 ];
 const perdidos = ESSENCIAIS.filter(e => !e.re.test(htmlSaida)).map(e => e.nome);
 if (perdidos.length) {
@@ -164,14 +169,23 @@ if (bloqueados.length) console.log(`  ${bloqueados.length} bloqueados (dado real
 if (faltando.length) console.log(`  ${faltando.length} referenciados e ausentes (ok se forem overlays): ${faltando.join(', ')}`);
 if (tagsRemovidas.length) console.log(`  ${tagsRemovidas.length} tags opcionais retiradas do index (sem 404 no console): ${tagsRemovidas.join(', ')}`);
 
+/* Única imagem que pode ser publicada: o ícone do atalho de tela de início,
+   que é desenho de marca gerado por scripts/gerar-icones.mjs e não sai de
+   arquivo de cliente. A liberação é por caminho e nome exatos, não por
+   extensão: PNG solto em qualquer outro lugar da saída continua abortando,
+   que é o que impede captura de tela com dado real de escapar. */
+const ICONE_LIBERADO = /^icons[\\/]atlas-icon-[a-z0-9-]+\.png$/i;
+
 /* Trava final: varre a saída atrás de qualquer coisa que não deveria ter ido. */
 const suspeitos = [];
 const anda = (dir) => {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, e.name);
     if (e.isDirectory()) { anda(full); continue; }
-    if (/\.(pdf|xlsx?|docx|zip|png|jpe?g)$/i.test(e.name)) suspeitos.push(path.relative(OUT, full));
-    if (NUNCA.some((r) => r.test(e.name))) suspeitos.push(path.relative(OUT, full));
+    const rel = path.relative(OUT, full);
+    if (ICONE_LIBERADO.test(rel)) continue;
+    if (/\.(pdf|xlsx?|docx|zip|png|jpe?g)$/i.test(e.name)) suspeitos.push(rel);
+    if (NUNCA.some((r) => r.test(e.name))) suspeitos.push(rel);
   }
 };
 anda(OUT);

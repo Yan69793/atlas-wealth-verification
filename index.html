@@ -17,6 +17,29 @@
   <meta property="og:locale" content="pt_BR" />
   <meta name="twitter:card" content="summary" />
 
+  <!-- Atalho na tela de início do iPad e do iPhone. Sem estas linhas, "Adicionar
+       à Tela de Início" salva uma miniatura da página com o endereço embaixo, e
+       abrir o atalho devolve uma aba do Safari com barra de endereço. Com elas,
+       o atalho ganha o selo da marca, o nome curto e abre em tela cheia.
+       O ícone é gerado por scripts/gerar-icones.mjs, não desenhado à mão.
+
+       apple-touch-icon precisa ser PNG: o Safari ignora SVG aqui. -->
+  <link rel="apple-touch-icon" href="icons/atlas-icon-180.png?v=20260809" />
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/atlas-icon-192.png?v=20260809" />
+  <link rel="manifest" href="manifest.webmanifest?v=20260809" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="ATLAS" />
+  <!-- Barra de status opaca, com o conteúdo começando abaixo dela. A alternativa
+       (black-translucent) põe a página por baixo do relógio e exigiria refazer o
+       posicionamento da faixa de demo, da sidebar e da topbar, que são fixas.
+       Não vale o risco por um centímetro de tela. -->
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <!-- Cor da barra de status. Fica igual ao papel do tema claro; platform-tokens.js
+       reescreve isto ao trocar de tema, senão o tema escuro abriria com uma faixa
+       branca em cima. -->
+  <meta name="theme-color" content="#F9F7F4" />
+
   <link rel="stylesheet" href="platform-styles.css?v=20260808d" />
 
   <!-- Marca da instância (opcional, gitignored). Define window.AtlasBrand antes
