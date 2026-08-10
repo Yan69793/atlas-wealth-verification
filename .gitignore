@@ -42,6 +42,12 @@
 !/docs/templates/*.csv
 !/betting_ev_engine/data/*.csv
 
+# Cartão de prévia dos links comerciais. É arte gerada por script
+# (scripts/gera-card-social.py), sem captura de tela e sem dado de cliente.
+# Precisa ser versionado porque o build da publicação aborta se ele faltar,
+# e um clone sem o arquivo não conseguiria publicar.
+!/docs/go-to-market/atlas-card.png
+
 # =====================================================================
 # 4) RE-NEGAÇÃO — vem DEPOIS de propósito: sobrepõe a seção 3.
 #    Diretório negado não é percorrido, então nada dentro dele volta.
@@ -151,3 +157,15 @@ desktop.ini
 /demo-worker/public/
 AI_OPERATING_SYSTEM/
 graphify-out/
+
+# --- 4e) Obsidian vault — config versionada, estado de UI nao ----------------
+# Os .json do .obsidian sao liberados pela regra !*.json na secao 3, mas
+# workspace.json e workspace-mobile.json tem churn constante de UI e nao
+# carregam config que faca sentido compartilhar entre maquinas.
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+
+# Conteudo pessoal do vault — notas e anexos nao versionados.
+/daily/
+/templates/
+/assets/

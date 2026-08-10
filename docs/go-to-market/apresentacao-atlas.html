@@ -12,7 +12,20 @@
 <meta property="og:description" content="Confere as carteiras do mês antes de o relatório chegar ao cliente. Concilia patrimônio, aponta o que não fecha e mostra o custo total sobre o patrimônio." />
 <meta property="og:site_name" content="ATLAS" />
 <meta property="og:locale" content="pt_BR" />
+<meta property="og:url" content="https://demo.multi-assets.com/apresentacao" />
+
+<!-- Cartão de prévia. O og:image tem de ser URL absoluta e imagem de verdade:
+     WhatsApp e LinkedIn ignoram data URI e não renderizam SVG, e sem ele o
+     twitter:card summary_large_image abaixo cai num cartão só de texto.
+     O arquivo é desenhado por scripts/gera-card-social.py e é o único binário
+     que o build da publicação deixa passar. -->
+<meta property="og:image" content="https://demo.multi-assets.com/atlas-card.png" />
+<meta property="og:image:type" content="image/png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content="ATLAS, verificação mensal de carteiras. Cada carteira fecha o mês como LIBERAR, COM ALERTA ou CORRIGIR." />
 <meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:image" content="https://demo.multi-assets.com/atlas-card.png" />
 
 <style>
 :root {

@@ -726,6 +726,48 @@ ok('nenhum nome de casa hardcoded nos fontes do app', comMarcaFixa.length === 0,
 ok('index.html não fixa nome de casa no <title>',
   !/Meridian Advisory/.test(indexHtml));
 
+// ─── 17. Cartão de prévia do link comercial ────────────────────────────────
+//
+// O link do demo e o da apresentação circulam por WhatsApp e e-mail, e quem
+// manda não vê o cartão que o outro lado recebe. Se o og:image apontar para um
+// arquivo que não subiu, o Worker responde 200 servindo o HTML do demo no lugar
+// da imagem: nenhum erro, nenhum 404, só um cartão sem figura do outro lado.
+// A falha é invisível de dentro, então ela precisa travar aqui.
+
+const CARD = 'docs/go-to-market/atlas-card.png';
+const CARD_URL = 'https://demo.multi-assets.com/atlas-card.png';
+const apresentacaoPath = path.join(ROOT, 'docs/go-to-market/apresentacao-atlas.html');
+const apresentacaoHtml = fs.readFileSync(apresentacaoPath, 'utf8');
+
+ok('cartão de prévia existe como arquivo', fs.existsSync(path.join(ROOT, CARD)), CARD);
+
+ok('cartão tem tamanho de imagem, não de placeholder',
+  fs.existsSync(path.join(ROOT, CARD)) && fs.statSync(path.join(ROOT, CARD)).size > 20_000);
+
+for (const [nome, html] of [['index.html', indexHtml], ['apresentação', apresentacaoHtml]]) {
+  const declarado = (html.match(/<meta\s+property="og:image"\s+content="([^"]+)"/) || [])[1];
+
+  ok(`${nome} declara og:image`, Boolean(declarado), declarado || 'ausente');
+
+  ok(`og:image de ${nome} é URL absoluta`, /^https:\/\//.test(declarado || ''),
+    'leitor de link não resolve caminho relativo');
+
+  ok(`og:image de ${nome} aponta para o cartão publicado`, declarado === CARD_URL,
+    `declarado: ${declarado}`);
+
+  // summary_large_image sem imagem rende um cartão só de texto, que é pior do
+  // que não declarar nada: promete figura grande e entrega vazio.
+  const grande = /twitter:card"\s+content="summary_large_image"/.test(html);
+  ok(`${nome} não promete cartão grande sem imagem`, !grande || Boolean(declarado));
+}
+
+// O build copia o cartão por declaração nominal, não porque o index o
+// referencia: og:image usa content=, e a allowlist do build lê src/href.
+// Se alguém tirar a declaração, o cartão some da publicação sem sintoma.
+const buildDeploy = fs.readFileSync(path.join(ROOT, 'scripts/build-deploy.mjs'), 'utf8');
+ok('build da publicação declara o cartão como binário liberado',
+  new RegExp(`EXTRAS_BINARIO[\\s\\S]{0,400}${CARD.replace(/[./]/g, '\\$&')}`).test(buildDeploy));
+
 // ─── Resultado ──────────────────────────────────────────────────────────────
 
 const total = pass + fail;

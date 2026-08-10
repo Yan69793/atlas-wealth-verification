@@ -49,6 +49,25 @@ const EXTRAS_ARQUIVO = [
   { de: 'docs/go-to-market/apresentacao-atlas.html', para: 'apresentacao.html' },
 ];
 
+/* Binários liberados, um por vez, com destino explícito.
+   A varredura final aborta em qualquer PNG/JPG porque foi exatamente assim que
+   captura de tela com dado real de cliente já foi parar em URL pública, e essa
+   trava não muda.
+
+   A exceção existe por um motivo só: o cartão de prévia do link precisa ser
+   imagem de verdade num endereço absoluto. WhatsApp e LinkedIn ignoram data URI
+   no og:image e não renderizam SVG, então não há como resolver isso dentro do
+   HTML. Sem o cartão, o link comercial chega ao prospect como um retângulo de
+   texto cinza.
+
+   O que mantém isso seguro é a arte não vir de tela nenhuma: o arquivo é
+   desenhado por scripts/gera-card-social.py, que não lê dado de carteira. Cada
+   arquivo aqui é nominal. Binário que não esteja nesta lista continua abortando
+   a publicação. */
+const EXTRAS_BINARIO = [
+  { de: 'docs/go-to-market/atlas-card.png', para: 'atlas-card.png' },
+];
+
 const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 
 /* A allowlist vem do próprio index.html: o que ele carrega é o que existe. */
@@ -90,7 +109,7 @@ for (const extra of EXTRAS) {
 }
 
 const extrasAusentes = [];
-for (const { de, para } of EXTRAS_ARQUIVO) {
+for (const { de, para } of [...EXTRAS_ARQUIVO, ...EXTRAS_BINARIO]) {
   const s = path.join(ROOT, de);
   if (!fs.existsSync(s)) { extrasAusentes.push(de); continue; }
   const d = path.join(OUT, para);
@@ -164,14 +183,19 @@ if (bloqueados.length) console.log(`  ${bloqueados.length} bloqueados (dado real
 if (faltando.length) console.log(`  ${faltando.length} referenciados e ausentes (ok se forem overlays): ${faltando.join(', ')}`);
 if (tagsRemovidas.length) console.log(`  ${tagsRemovidas.length} tags opcionais retiradas do index (sem 404 no console): ${tagsRemovidas.join(', ')}`);
 
-/* Trava final: varre a saída atrás de qualquer coisa que não deveria ter ido. */
+/* Trava final: varre a saída atrás de qualquer coisa que não deveria ter ido.
+   A comparação é pelo caminho relativo à saída, não pelo nome do arquivo: um
+   atlas-card.png que apareça numa subpasta não é o cartão declarado e continua
+   abortando. */
+const binariosLiberados = new Set(EXTRAS_BINARIO.map((e) => path.normalize(e.para)));
 const suspeitos = [];
 const anda = (dir) => {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, e.name);
     if (e.isDirectory()) { anda(full); continue; }
-    if (/\.(pdf|xlsx?|docx|zip|png|jpe?g)$/i.test(e.name)) suspeitos.push(path.relative(OUT, full));
-    if (NUNCA.some((r) => r.test(e.name))) suspeitos.push(path.relative(OUT, full));
+    const rel = path.relative(OUT, full);
+    if (/\.(pdf|xlsx?|docx|zip|png|jpe?g)$/i.test(e.name) && !binariosLiberados.has(rel)) suspeitos.push(rel);
+    if (NUNCA.some((r) => r.test(e.name))) suspeitos.push(rel);
   }
 };
 anda(OUT);
@@ -195,4 +219,5 @@ if (extrasAusentes.length) {
   console.error('  e a falha e invisivel. Gere o arquivo ou tire da lista.');
   process.exit(1);
 }
-console.log('  varredura final: nenhum binario nem overlay de dado na saida');
+const liberados = EXTRAS_BINARIO.map((e) => e.para).join(', ');
+console.log(`  varredura final: nenhum overlay de dado na saida; unico binario liberado: ${liberados}`);

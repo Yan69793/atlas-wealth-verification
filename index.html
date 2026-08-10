@@ -15,7 +15,21 @@
   <meta property="og:description" content="Demonstração aberta, sem cadastro. 40 carteiras, conciliação de patrimônio e transparência de custo. Dados sintéticos." />
   <meta property="og:site_name" content="ATLAS" />
   <meta property="og:locale" content="pt_BR" />
-  <meta name="twitter:card" content="summary" />
+  <meta property="og:url" content="https://demo.multi-assets.com" />
+
+  <!-- Cartão de prévia. Endereço absoluto do demo de propósito: og:image
+       relativo não é resolvido por todo leitor de link, e o demo é a única
+       superfície pública que algum robô chega a ler. Numa instância de
+       cliente, que fica atrás do Access, estas linhas nunca são buscadas.
+       O arquivo é desenhado por scripts/gera-card-social.py, não é captura
+       de tela, e por isso não carrega dado de carteira nenhuma. -->
+  <meta property="og:image" content="https://demo.multi-assets.com/atlas-card.png" />
+  <meta property="og:image:type" content="image/png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="ATLAS, verificação mensal de carteiras. Cada carteira fecha o mês como LIBERAR, COM ALERTA ou CORRIGIR." />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:image" content="https://demo.multi-assets.com/atlas-card.png" />
 
   <link rel="stylesheet" href="platform-styles.css?v=20260808d" />
 
