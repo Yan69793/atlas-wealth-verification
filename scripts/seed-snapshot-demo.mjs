@@ -52,7 +52,8 @@ function main() {
   const formatoHtml = path.join(base, 'formatos', 'html');
   const formatoJson = path.join(base, 'formatos', 'json');
   const formatoPdf = path.join(base, 'formatos', 'pdf');
-  for (const d of [diarioRoot, mensalRoot, formatoCsv, formatoHtml, formatoJson, formatoPdf]) {
+  const formatoB3 = path.join(base, 'formatos', 'b3');
+  for (const d of [diarioRoot, mensalRoot, formatoCsv, formatoHtml, formatoJson, formatoPdf, formatoB3]) {
     fs.rmSync(d, { recursive: true, force: true });
     fs.mkdirSync(d, { recursive: true });
   }
@@ -76,6 +77,20 @@ function main() {
   snapshot('ingest', 'custodiante-sintetico', path.join(FIXTURES, 'formatos', 'diario-2026-08-13.html'), '--data', '2026-08-13', '--root', formatoHtml);
   snapshot('ingest', 'custodiante-sintetico', path.join(FIXTURES, 'formatos', 'diario-2026-08-13.json'), '--data', '2026-08-13', '--root', formatoJson);
   snapshot('ingest', 'custodiante-sintetico', path.join(FIXTURES, 'books'), '--data', '2026-06', '--formato', 'pdf', '--root', formatoPdf);
+
+  // Posicional estilo B3: carteiras chegam como conta de cliente, o name-map
+  // da instância traduz para o nome canônico e o class-map classifica o ativo
+  // (o arquivo posicional não carrega classe). Mesmo fluxo do mundo real.
+  fs.writeFileSync(
+    path.join(formatoB3, 'name-map.local.json'),
+    JSON.stringify({ mappings: { '00000123': 'ALFA', '00000456': 'BETA', '00000789': 'GAMA' } }),
+    'utf8'
+  );
+  fs.copyFileSync(
+    path.join(FIXTURES, 'formatos', 'class-map-b3.json'),
+    path.join(formatoB3, 'class-map.local.json')
+  );
+  snapshot('ingest', 'custodiante-sintetico', path.join(FIXTURES, 'formatos', 'diario-2026-08-13-b3.txt'), '--data', '2026-08-13', '--formato', 'txt-b3', '--root', formatoB3);
 
   console.log('\nArtefatos em ' + base);
 }

@@ -16,7 +16,7 @@ import { ingestSnapshot } from './ingest.js';
 import { carregarSnapshot } from './state.js';
 import type { FormatoEntrada } from './types.js';
 
-const FORMATOS = new Set<FormatoEntrada>(['xlsx', 'csv', 'pdf', 'html', 'api-json']);
+const FORMATOS = new Set<FormatoEntrada>(['xlsx', 'csv', 'pdf', 'html', 'api-json', 'txt-b3']);
 
 function resolverRoot(args: Record<string, string | boolean>): string {
   const flag = typeof args.root === 'string' ? args.root : null;
@@ -57,7 +57,7 @@ async function main(): Promise<void> {
 
     const formatoArg = typeof args.formato === 'string' ? args.formato : null;
     if (formatoArg && !FORMATOS.has(formatoArg as FormatoEntrada)) {
-      throw new Error(`Formato desconhecido: ${formatoArg}. Use xlsx|csv|pdf|html|api-json.`);
+      throw new Error(`Formato desconhecido: ${formatoArg}. Use xlsx|csv|pdf|html|api-json|txt-b3.`);
     }
 
     await ingestSnapshot({

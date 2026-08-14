@@ -49,12 +49,37 @@ export function loadNameMapping(root: string): Record<string, string> {
   return {};
 }
 
+/** class-map: class-map.local.json (instância) sobre class-map.json (produto, vazio).
+   Arquivos diários de custódia não trazem a classe do ativo (o book mensal
+   traz, o arquivo posicional não). O mapa da instância classifica por ativo,
+   mesmo papel do name-map para nomes. Sem ele, eventos por classe
+   (liquidez, alocação) viram ruído no diário. */
+export function loadClassMapping(root: string): Record<string, string> {
+  for (const rel of ['class-map.local.json', 'class-map.json']) {
+    const p = path.join(root, rel);
+    if (!fs.existsSync(p)) continue;
+    try {
+      const raw = JSON.parse(fs.readFileSync(p, 'utf8')) as {
+        mappings?: Record<string, string>;
+      };
+      if (raw && typeof raw === 'object' && raw.mappings && typeof raw.mappings === 'object') {
+        return raw.mappings;
+      }
+    } catch {
+      // mapa ilegível: segue sem classe; eventos por classe degradam, não param
+    }
+  }
+  return {};
+}
+
 export function normalize(
   raw: RawSnapshot,
   periodo: 'diario' | 'mensal',
-  mapping?: Record<string, string>
+  mapping?: Record<string, string>,
+  classMapping?: Record<string, string>
 ): Snapshot {
   const mapa = mapping ?? {};
+  const mapaClasse = classMapping ?? {};
 
   const carteiras: SnapshotCarteira[] = raw.carteiras.map((rawC) => {
     const nome = normalizarIdentificador(mapa[rawC.nome] ?? rawC.nome);
@@ -86,7 +111,11 @@ export function normalize(
         porAtivo.set(ativo, {
           carteira: nome,
           ativo,
-          classe: rawP.classe ? normalizarIdentificador(rawP.classe) : null,
+          classe: rawP.classe
+            ? normalizarIdentificador(rawP.classe)
+            : mapaClasse[ativo]
+              ? normalizarIdentificador(mapaClasse[ativo])
+              : null,
           valor: rawP.valor,
           vencimento: rawP.vencimento || null,
           quantidade: rawP.quantidade ?? null,

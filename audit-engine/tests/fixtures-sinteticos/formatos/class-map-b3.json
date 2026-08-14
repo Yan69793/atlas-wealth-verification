@@ -1,0 +1,14 @@
+{
+  "mappings": {
+    "FUNDO SYNTH DI": "Liquidez",
+    "CDB BANCO FICTICIO II": "Renda Fixa",
+    "LCI BANCO W": "Renda Fixa",
+    "LTN 2027": "Renda Fixa",
+    "ACOES SYNTH": "Ações",
+    "ETF GLOBAL X": "Internacional",
+    "FII LOG": "FII",
+    "DEB PREFIXADO": "Renda Fixa",
+    "FUNDO SYNTH DI PREV": "Renda Fixa",
+    "NTN-B 2035": "Renda Fixa"
+  }
+}

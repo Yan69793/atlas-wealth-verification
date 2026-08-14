@@ -9,7 +9,7 @@
 /** Rótulo lógico da fonte (ex.: nome da casa no pipeline). Validado sem separador de path. */
 export type SnapshotFonte = string;
 
-export type FormatoEntrada = 'xlsx' | 'csv' | 'pdf' | 'html' | 'api-json';
+export type FormatoEntrada = 'xlsx' | 'csv' | 'pdf' | 'html' | 'api-json' | 'txt-b3';
 
 /** Saída comum de todos os adaptadores, antes da normalização. */
 export interface RawPosition {

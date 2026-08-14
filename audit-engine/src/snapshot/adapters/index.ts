@@ -12,6 +12,7 @@ import { parseApiJson } from './api-json.js';
 import { parseCsv } from './csv.js';
 import { parseHtml } from './html.js';
 import { parsePdf } from './pdf.js';
+import { parseTxtB3 } from './txt-b3.js';
 import { parseXlsx } from './xlsx.js';
 
 export { detectFormato };
@@ -35,9 +36,11 @@ function detectFormato(arquivo: string, explicitado?: FormatoEntrada): FormatoEn
       return 'html';
     case 'json':
       return 'api-json';
+    case 'txt':
+      return 'txt-b3';
     default:
       throw new Error(
-        `Formato desconhecido para "${arquivo}". Use --formato xlsx|csv|pdf|html|api-json.`
+        `Formato desconhecido para "${arquivo}". Use --formato xlsx|csv|pdf|html|api-json|txt-b3.`
       );
   }
 }
@@ -61,9 +64,11 @@ export async function adaptar(opts: {
       return parseHtml(await fs.readFile(arquivo, 'utf8'), fonte, data);
     case 'api-json':
       return parseApiJson(await fs.readFile(arquivo, 'utf8'), fonte, data);
+    case 'txt-b3':
+      return parseTxtB3(await fs.readFile(arquivo, 'utf8'), fonte, data);
     default: {
       const nunca: never = formato;
-      throw new Error(`Formato desconhecido: ${String(nunca)}. Use --formato xlsx|csv|pdf|html|api-json.`);
+      throw new Error(`Formato desconhecido: ${String(nunca)}. Use --formato xlsx|csv|pdf|html|api-json|txt-b3.`);
     }
   }
 }

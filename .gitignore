@@ -192,3 +192,4 @@ graphify-out/
 !/audit-engine/tests/fixtures-sinteticos/**/*.html
 !/audit-engine/tests/fixtures-sinteticos/**/*.json
 !/audit-engine/tests/fixtures-sinteticos/**/*.pdf
+!/audit-engine/tests/fixtures-sinteticos/**/*.txt

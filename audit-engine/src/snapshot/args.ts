@@ -80,7 +80,7 @@ export function helpTexto(): string {
     'snapshot — pipeline de snapshot EOD diario (Fase 1)',
     '',
     'Uso:',
-    '  node dist/src/snapshot/cli-snapshot.js ingest <fonte> [<arquivo>] --data AAAA-MM-DD|AAAA-MM [--formato xlsx|csv|pdf|html|api-json] [--root dir] [--force]',
+    '  node dist/src/snapshot/cli-snapshot.js ingest <fonte> [<arquivo>] --data AAAA-MM-DD|AAAA-MM [--formato xlsx|csv|pdf|html|api-json|txt-b3] [--root dir] [--force]',
     '  node dist/src/snapshot/cli-snapshot.js diff  --data AAAA-MM-DD|AAAA-MM [--root dir]',
     '  node dist/src/snapshot/cli-snapshot.js state --data AAAA-MM-DD|AAAA-MM [--root dir]',
     '  node dist/src/snapshot/cli-snapshot.js vencimentos --data AAAA-MM-DD|AAAA-MM [--root dir]',

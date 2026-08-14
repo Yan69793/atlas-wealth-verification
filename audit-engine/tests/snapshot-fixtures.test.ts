@@ -136,6 +136,39 @@ describe('fixtures sintéticos — formatos do dia 13', () => {
       assert.equal(alfaF.plTotal, alfaRef.plTotal, `formatos ${formato}: mesmo plTotal de ALFA`);
       assert.equal(alfaF.posicoes.length, alfaRef.posicoes.length, `formatos ${formato}: mesmas posições de ALFA`);
     }
+
+    // B3 posicional: as carteiras vêm como conta de cliente (8 dígitos); o
+    // name-map da instância mapeia conta → nome canônico, e o class-map
+    // classifica o ativo (o arquivo posicional não carrega classe). O mesmo
+    // fluxo real, com os dois mapas lado a lado.
+    const rootB3 = tmpRoot();
+    fs.writeFileSync(
+      path.join(rootB3, 'name-map.local.json'),
+      JSON.stringify({ mappings: { '00000123': 'ALFA', '00000456': 'BETA', '00000789': 'GAMA' } }),
+      'utf8'
+    );
+    fs.copyFileSync(
+      path.join(FIXTURES, 'formatos', 'class-map-b3.json'),
+      path.join(rootB3, 'class-map.local.json')
+    );
+    await ingestSnapshot({
+      arquivo: path.join(FIXTURES, 'formatos', 'diario-2026-08-13-b3.txt'),
+      data: '2026-08-13',
+      fonte: 'custodiante-sintetico',
+      formato: 'txt-b3',
+      root: rootB3,
+    });
+    const snapB3 = carregarSnapshotDoDisco(rootB3, '2026-08-13')!;
+    assert.equal(snapB3.carteiras.length, ref.carteiras.length, 'txt-b3: mesmas carteiras');
+    const alfaB3 = snapB3.carteiras.find((c) => c.nome === 'ALFA')!;
+    const alfaRef2 = ref.carteiras.find((c) => c.nome === 'ALFA')!;
+    assert.equal(alfaB3.plTotal, alfaRef2.plTotal, 'txt-b3: mesmo plTotal de ALFA');
+    assert.equal(alfaB3.posicoes.length, alfaRef2.posicoes.length, 'txt-b3: mesmas posições de ALFA');
+    assert.deepEqual(
+      alfaB3.posicoes.map((p) => p.classe).sort(),
+      alfaRef2.posicoes.map((p) => p.classe).sort(),
+      'txt-b3: mesmas classes via class-map'
+    );
   });
 
   it('book PDF (mes 06) produz o mesmo retrato do xlsx mensal (round-trip)', { skip: !PYTHON_OK && 'python+pdfplumber indisponiveis' }, async () => {

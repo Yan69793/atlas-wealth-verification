@@ -456,6 +456,33 @@ function fmtPct(v) {
   return (v * 100).toFixed(2).replace('.', ',');
 }
 
+/* Modelo de arquivo posicional estilo B3 (convencao publica "ENVIAR ARQUIVOS"):
+   header com tipo 0 + linhas de dados com conta de cliente 8 digitos, ativo,
+   quantidade 9(12)v9(08) e PU 9(10)v9(08). O valor e derivado (qtd x PU),
+   como nos arquivos de posicao. Contas fixas por carteira, ficticias. */
+const CONTAS_B3 = { ALFA: '00000123', BETA: '00000456', GAMA: '00000789' };
+
+function escreverTxtB3(arquivo, linhasPorDia, dia) {
+  const compacta = dia.replace(/-/g, '');
+  const linhas = [];
+  linhas.push(('MDA' + '0' + 'POSI' + compacta).padEnd(125, ' ') + '<');
+
+  for (const p of linhasPorDia) {
+    const conta = CONTAS_B3[p.carteira] ?? '00000000';
+    const codigo = (p.ativo.slice(0, 10) || 'ATIVO').padEnd(11, ' ').slice(0, 11);
+    const nome = p.ativo.padEnd(40, ' ').slice(0, 40);
+    const qty = p.quantidade && Number.isFinite(p.quantidade) && p.quantidade > 0 ? p.quantidade : 1000;
+    const pu = (p.valor / qty).toFixed(8);
+    const qtyStr = String(Math.trunc(qty)).padStart(12, ' ') + ',00000000';
+    const [puInt, puDec] = pu.split('.');
+    const puStr = puInt.padStart(10, ' ') + ',' + puDec.padEnd(8, '0');
+    const venc = p.vencimento ? p.vencimento.replace(/-/g, '') : '        ';
+    linhas.push('MDA' + '1' + 'POSI' + compacta + conta + codigo + nome + qtyStr + puStr + venc + '<');
+  }
+
+  fs.writeFileSync(arquivo, linhas.join('\r\n') + '\r\n', 'utf8');
+}
+
 /* ── Main determinístico ──────────────────────────────────────────────── */
 
 async function main() {
@@ -467,6 +494,9 @@ async function main() {
 
   for (const dia of SEMANA) {
     await escreverXLSX(path.join(OUT, 'diarios', `posicao-${dia}.xlsx`), posicoesDoDia(dia), dia);
+    // O banco manda o MESMO formato todo dia: a serie diaria em B3 nasce
+    // completa, para o fluxo diario real ser dia a dia no mesmo layout.
+    escreverTxtB3(path.join(OUT, 'diarios', `posicao-${dia}-b3.txt`), posicoesDoDia(dia), dia);
   }
   await escreverXLSX(path.join(OUT, 'mensais', 'posicao-2026-05.xlsx'), MENSAL_05, '2026-05');
   await escreverXLSX(path.join(OUT, 'mensais', 'posicao-2026-06.xlsx'), MENSAL_06, '2026-06');
@@ -474,6 +504,18 @@ async function main() {
   escreverCSV(path.join(OUT, 'formatos', 'diario-2026-08-13.csv'), posicoesDoDia('2026-08-13'));
   escreverHTML(path.join(OUT, 'formatos', 'diario-2026-08-13.html'), posicoesDoDia('2026-08-13'));
   escreverJSON(path.join(OUT, 'formatos', 'diario-2026-08-13.json'), posicoesDoDia('2026-08-13'), '2026-08-13');
+  escreverTxtB3(path.join(OUT, 'formatos', 'diario-2026-08-13-b3.txt'), posicoesDoDia('2026-08-13'), '2026-08-13');
+
+  // O arquivo posicional nao carrega classe de ativo (o book mensal carrega).
+  // O class-map da instancia classifica por ativo; aqui ele nasce do proprio
+  // dado sintetico do dia, entao o round-trip fecha com as mesmas classes.
+  const classesB3 = {};
+  for (const p of posicoesDoDia('2026-08-13')) if (p.classe) classesB3[p.ativo] = p.classe;
+  fs.writeFileSync(
+    path.join(OUT, 'formatos', 'class-map-b3.json'),
+    JSON.stringify({ mappings: classesB3 }, null, 2) + '\n',
+    'utf8'
+  );
 
   const porCarteira06 = new Map();
   for (const p of MENSAL_06) {

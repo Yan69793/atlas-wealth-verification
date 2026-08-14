@@ -11,6 +11,7 @@ import { parseApiJson } from '../src/snapshot/adapters/api-json.js';
 import { parseCsv } from '../src/snapshot/adapters/csv.js';
 import { parseHtml } from '../src/snapshot/adapters/html.js';
 import { parsePdf } from '../src/snapshot/adapters/pdf.js';
+import { parseTxtB3 } from '../src/snapshot/adapters/txt-b3.js';
 import { parseXlsx } from '../src/snapshot/adapters/xlsx.js';
 
 const DATA = '2026-08-13';
@@ -116,6 +117,36 @@ describe('adaptador api-json', () => {
       /valor/
     );
     assert.throws(() => parseApiJson('{inválido', FONTE, DATA), /JSON invalido/);
+  });
+});
+
+describe('adaptador txt-b3 (posicional estilo B3)', () => {
+  const B3_OK = [
+    'MDA0POSI20260813'.padEnd(124, ' ') + '<',
+    'MDA1POSI20260813' + '00000123'.padStart(8, '0') + 'LCIBW'.padEnd(11, ' ') + 'LCI BANCO W'.padEnd(40, ' ') + String(50).padStart(12, ' ') + ',00000000' + '1000,00000000'.padStart(19, ' ') + '20260819<',
+    'MDA1POSI20260813' + '00000123'.padStart(8, '0') + 'CDB2'.padEnd(11, ' ') + 'CDB BANCO FICTICIO II'.padEnd(40, ' ') + String(3000).padStart(12, ' ') + ',00000000' + '100,00000000'.padStart(19, ' ') + '20270301<',
+  ].join('\n');
+
+  it('parseia header MDA e linhas de dados com valor derivado (qtd x PU)', () => {
+    const snap = parseTxtB3(B3_OK, FONTE, DATA);
+    assert.equal(snap.carteiras.length, 1);
+    assert.equal(snap.carteiras[0].nome, '00000123');
+    const lci = snap.carteiras[0].posicoes.find((p) => p.ativo === 'LCI BANCO W')!;
+    assert.equal(lci.valor, 50_000, '50 x 1000');
+    assert.equal(lci.vencimento, '2026-08-19');
+    const cdb = snap.carteiras[0].posicoes.find((p) => p.ativo === 'CDB BANCO FICTICIO II')!;
+    assert.equal(cdb.valor, 300_000, '3000 x 100');
+  });
+
+  it('rejeita arquivo sem header MDA e linha com tipo errado', () => {
+    assert.throws(() => parseTxtB3('linha solta sem header', FONTE, DATA), /header "MDA"/);
+    const semTipo = 'MDA0POSI20260813\nMDA9POSI2026081300000123\n';
+    assert.throws(() => parseTxtB3(semTipo, FONTE, DATA), /tipo "9"/);
+  });
+
+  it('rejeita quantidade ou preço não numérico', () => {
+    const ruim = 'MDA0POSI20260813\nMDA1POSI2026081300000123' + 'LCIBW'.padEnd(11, ' ') + 'LCI BANCO W'.padEnd(40, ' ') + 'ABC'.padStart(12, ' ') + '00000000,00000000'.padStart(19, ' ') + '        <';
+    assert.throws(() => parseTxtB3(ruim, FONTE, DATA), /quantidade ou preco nao numerico/);
   });
 });
 

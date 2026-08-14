@@ -15,7 +15,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { adaptar, detectFormato } from './adapters/index.js';
 import { protegerRoot, tipoPeriodo, validarData } from './args.js';
-import { loadNameMapping, normalize } from './normalize.js';
+import { loadClassMapping, loadNameMapping, normalize } from './normalize.js';
 import type { FormatoEntrada, Snapshot, SnapshotFonte } from './types.js';
 
 export interface IngestResult {
@@ -77,7 +77,7 @@ export async function ingestSnapshot(opts: {
   const hash = sha256Arquivo(arquivo);
   const formatoDetectado = detectFormato(arquivo, formato);
   const raw = await adaptar({ arquivo, data, fonte, formato: formatoDetectado });
-  const snapshot = normalize(raw, periodo, loadNameMapping(root));
+  const snapshot = normalize(raw, periodo, loadNameMapping(root), loadClassMapping(root));
 
   const dir = path.join(root, 'audits', data);
   const caminhos = {
