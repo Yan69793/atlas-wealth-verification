@@ -10,6 +10,20 @@
 import type { AtivoRow, CarteiraRaw } from '../../schema.js';
 import type { RawSnapshot, SnapshotFonte } from '../types.js';
 
+/**
+ * Vencimento embutido no nome do ativo, padrão do book real:
+ * '... Vencto: 15/06/2026' (aceita também 'Vencto:15/06/2026' colado).
+ */
+function extrairVencimentoDoNome(nome: string): { ativo: string; vencimento?: string } {
+  const m = nome.match(/Vencto:?\s*(\d{1,2})\/(\d{1,2})\/(\d{4})/i);
+  if (!m) return { ativo: nome };
+  const [, dd, mm, aaaa] = m;
+  return {
+    ativo: nome,
+    vencimento: `${aaaa}-${String(mm).padStart(2, '0')}-${String(dd).padStart(2, '0')}`,
+  };
+}
+
 export function carteirasRawParaRawSnapshot(
   raws: CarteiraRaw[],
   data: string,
@@ -17,7 +31,7 @@ export function carteirasRawParaRawSnapshot(
 ): RawSnapshot {
   const carteiras = raws.map((raw) => {
     let classeCorrente: string | null = null;
-    const posicoes: { ativo: string; valor: number; classe?: string }[] = [];
+    const posicoes: { ativo: string; valor: number; classe?: string; vencimento?: string }[] = [];
 
     for (const linha of raw.ativos) {
       if (linha.type === 'classe') {
@@ -29,8 +43,10 @@ export function carteirasRawParaRawSnapshot(
       if (!Number.isFinite(valor) || valor <= 0) continue;
       const ativo = linha.nome;
       if (!ativo) continue;
-      const posicao: { ativo: string; valor: number; classe?: string } = { ativo, valor };
+      const { vencimento } = extrairVencimentoDoNome(ativo);
+      const posicao: { ativo: string; valor: number; classe?: string; vencimento?: string } = { ativo, valor };
       if (classeCorrente) posicao.classe = classeCorrente;
+      if (vencimento) posicao.vencimento = vencimento;
       posicoes.push(posicao);
     }
 

@@ -11,7 +11,8 @@
     "serve": "vite preview",
     "lint": "node tests/validate.js",
     "build-historico": "node build-historico.mjs",
-    "pipeline": "node audit-engine/pipeline-all.mjs"
+    "pipeline": "node audit-engine/pipeline-all.mjs",
+    "seed:demo": "node scripts/seed-snapshot-demo.mjs"
   },
   "engines": {
     "node": ">=20.19.0"

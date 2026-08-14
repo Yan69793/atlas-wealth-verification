@@ -84,6 +84,27 @@ Thresholds em `src/snapshot/thresholds.ts`, defaults conservadores, com teste
 de contrato. Name-map da instancia e aplicado no normalize (primeiro consumidor
 do `name-map.local.json`).
 
+## Fixtures sinteticos (dado ficticio, 100% regeneraveis)
+
+Material de desenvolvimento e seed: `audit-engine/tests/fixtures-sinteticos/`
+(versionado; dado 100% ficticio — "CUSTODIANTE SINTETICO", carteiras
+ALFA/BETA/GAMA). Gerado deterministicamente por
+`audit-engine/scripts/gerar-fixtures-sinteticos.mjs`, que modela a ANATOMIA de
+formatos publicos (posicao diaria de custodia no espirito do layout B3 802;
+extrato mensal; book PDF no layout exato que o parser le, via perfil estrutural
+`layout-book-perfil.json` sem nenhum dado de cliente; tabela HTML; JSON de API).
+
+- Semana diaria: `diarios/posicao-2026-08-{10..14}.xlsx` com os eventos
+  desenhados (liquidez +5pp, vencimento renovado, LCI nova a 7 dias, saque
+  grande, concentracao). Mensal: `mensais/posicao-2026-05/06.xlsx`. Formatos
+  do dia 13: csv/html/json. Books: `books/Book_TESTE_2026_06_{A,B,G}.pdf`
+  (round-trip com o parser real, coberto por `tests/snapshot-fixtures.test.ts`).
+- Seed do demo: `npm run seed:demo` (raiz do produto) ingere tudo em
+  `snapshot-demo-data/` (gitignored) e roda os diffs. Use para ver o pipeline
+  funcionando de ponta a ponta sem tocar na instancia.
+- O vencimento no xlsx/pdf viaja no NOME do ativo ("Vencto: dd/mm/aaaa", como
+  no book real); o transform extrai para o campo de vencimento do snapshot.
+
 Regras operacionais do snapshot diario:
 
 - Nunca ingerir o mesmo dia em paralelo (sem lock; corrida embaralha o

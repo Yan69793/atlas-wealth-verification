@@ -24,9 +24,23 @@ export interface IngestResult {
   caminhos: { ingestion: string; snapshot: string };
 }
 
+/**
+ * sha256 da fonte: arquivo → bytes; diretório (pasta de books) → hash dos
+ * nomes ordenados + hash de cada arquivo (determinístico e estável).
+ */
 function sha256Arquivo(arquivo: string): string {
-  const bytes = fs.readFileSync(arquivo);
-  return crypto.createHash('sha256').update(bytes).digest('hex');
+  const st = fs.statSync(arquivo);
+  if (!st.isDirectory()) {
+    return crypto.createHash('sha256').update(fs.readFileSync(arquivo)).digest('hex');
+  }
+  const h = crypto.createHash('sha256');
+  for (const nome of fs.readdirSync(arquivo).sort()) {
+    const fp = path.join(arquivo, nome);
+    if (!fs.statSync(fp).isFile()) continue;
+    const fh = crypto.createHash('sha256').update(fs.readFileSync(fp)).digest('hex');
+    h.update(`${nome}:${fh}\n`);
+  }
+  return h.digest('hex');
 }
 
 export function carregarSnapshotDoDisco(root: string, data: string): Snapshot | null {

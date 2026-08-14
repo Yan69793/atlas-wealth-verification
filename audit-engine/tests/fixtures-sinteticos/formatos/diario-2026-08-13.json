@@ -1,0 +1,102 @@
+{
+  "data": "2026-08-13",
+  "fonte": "custodiante-sintetico",
+  "carteiras": [
+    {
+      "nome": "ALFA",
+      "posicoes": [
+        {
+          "ativo": "FUNDO SYNTH DI",
+          "valor": 110000,
+          "classe": "Liquidez"
+        },
+        {
+          "ativo": "CDB BANCO FICTICIO II",
+          "valor": 300000,
+          "classe": "Renda Fixa",
+          "vencimento": "2027-03-01",
+          "quantidade": 3000
+        },
+        {
+          "ativo": "LCI BANCO W",
+          "valor": 10000,
+          "classe": "Renda Fixa",
+          "vencimento": "2026-08-19",
+          "quantidade": 10
+        },
+        {
+          "ativo": "LTN 2027",
+          "valor": 150000,
+          "classe": "Renda Fixa",
+          "vencimento": "2027-01-01",
+          "quantidade": 150
+        },
+        {
+          "ativo": "ACOES SYNTH",
+          "valor": 200000,
+          "classe": "Ações"
+        },
+        {
+          "ativo": "ETF GLOBAL X",
+          "valor": 150000,
+          "classe": "Internacional",
+          "quantidade": 1200
+        },
+        {
+          "ativo": "FII LOG",
+          "valor": 100000,
+          "classe": "FII"
+        }
+      ]
+    },
+    {
+      "nome": "BETA",
+      "posicoes": [
+        {
+          "ativo": "FUNDO SYNTH DI",
+          "valor": 20000,
+          "classe": "Liquidez"
+        },
+        {
+          "ativo": "DEB PREFIXADO",
+          "valor": 300000,
+          "classe": "Renda Fixa",
+          "vencimento": "2028-06-01",
+          "quantidade": 300
+        },
+        {
+          "ativo": "ACOES SYNTH",
+          "valor": 300000,
+          "classe": "Ações"
+        }
+      ]
+    },
+    {
+      "nome": "GAMA",
+      "posicoes": [
+        {
+          "ativo": "FUNDO SYNTH DI",
+          "valor": 64000,
+          "classe": "Liquidez"
+        },
+        {
+          "ativo": "FUNDO SYNTH DI PREV",
+          "valor": 160000,
+          "classe": "Renda Fixa"
+        },
+        {
+          "ativo": "NTN-B 2035",
+          "valor": 160000,
+          "classe": "Renda Fixa",
+          "vencimento": "2035-05-15",
+          "quantidade": 40
+        },
+        {
+          "ativo": "ACOES SYNTH",
+          "valor": 256000,
+          "classe": "Ações"
+        }
+      ]
+    }
+  ]
+}

@@ -82,6 +82,9 @@ Verificação Mensal de Carteiras Mirabaud/
 # Gabaritos de teste congelados a partir de audit.json real
 /audit-engine/tests/fixtures/
 
+# (bloco movido para o FIM do arquivo: a re-inclusao so vence as negacoes
+#  globais de binario se vier depois delas)
+
 # Gabarito de parity sem dado identificavel: so totais e plRef, nomes hasheados.
 # Precisa ser versionado, senao o parity nunca roda em clone limpo, que e
 # exatamente a falha que deixou as duas suites pulando em silencio.
@@ -156,6 +159,9 @@ desktop.ini
 # Diretorios de publicacao gerados por scripts/build-deploy.mjs
 /dist-deploy/
 /demo-worker/public/
+
+# Artefatos do seed do demo do snapshot (sinteticos, regeneraveis)
+/snapshot-demo-data/
 AI_OPERATING_SYSTEM/
 graphify-out/
 
@@ -170,3 +176,17 @@ graphify-out/
 /daily/
 /templates/
 /assets/
+
+# Fixtures SINTETICOS do snapshot (Fase 1): dado ficticio, versionavel de
+# proposito — e a fonte do seed do demo. Este bloco fica no FIM de proposito:
+# a re-inclusao precisa vir DEPOIS das negacoes globais de binario (4c) para
+# vencer. Re-inclui a pasta e os subdiretorios (sem o !**/ o git nao desce),
+# re-nega tudo dentro e libera so os formatos gerados.
+!/audit-engine/tests/fixtures-sinteticos/
+/audit-engine/tests/fixtures-sinteticos/*
+!/audit-engine/tests/fixtures-sinteticos/**/
+!/audit-engine/tests/fixtures-sinteticos/**/*.xlsx
+!/audit-engine/tests/fixtures-sinteticos/**/*.csv
+!/audit-engine/tests/fixtures-sinteticos/**/*.html
+!/audit-engine/tests/fixtures-sinteticos/**/*.json
+!/audit-engine/tests/fixtures-sinteticos/**/*.pdf
