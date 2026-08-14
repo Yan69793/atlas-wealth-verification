@@ -38,6 +38,62 @@ node dist/src/cli.js ingest "<arquivo.xlsx ou pasta Editados>" --mes 2026-06 --b
 - Exclusao extra de arquivo (copia pessoal, padrao de sobrenome colado): `ATLAS_EXCLUDE_RE` no ambiente da instancia.
 - Pasta de books para o teste de parity: `ATLAS_BOOKS`. Raiz da instancia para o XLSX: `ATLAS_FIXTURES`.
 
+## Snapshots diarios (Fase 1)
+
+Pipeline de snapshot EOD: cada informacao diaria do custodiante vira um retrato
+oficial do dia, compara com o dia anterior e emite eventos tipados. Multi-fonte:
+xlsx, csv, pdf (pasta de books), html e api-json. Formato vem de `--formato` ou
+da extensao — nunca de adivinhacao por conteudo.
+
+```
+cd audit-engine
+node dist/src/snapshot/cli-snapshot.js ingest <fonte> <arquivo> --data 2026-08-13 [--formato csv] --root ..
+node dist/src/snapshot/cli-snapshot.js diff  --data 2026-08-13 --root ..
+node dist/src/snapshot/cli-snapshot.js state --data 2026-08-13 --root ..
+```
+
+`--root` e obrigatorio na pratica (`--root > ATLAS_DATA_ROOT`): sem ele o
+comando recusa, para nunca escrever na arvore do produto.
+
+Contrato dos artefatos (na instancia, `audits/<AAAA-MM-DD>/`):
+
+- `ingestion.json` — fonte, formato, basename do arquivo (nunca caminho
+  absoluto), sha256, historico de reingestoes.
+- `snapshot.json` — schema `snapshot/v1`: carteiras com posicoes canonicas e
+  plTotal SEMPRE derivado da soma das posicoes.
+- `events.json` — schema `events/v1`: eventos do diff contra o dia anterior
+  existente. Tipos: CASH_INCREASE/DECREASE, NEW_POSITION, POSITION_CLOSED,
+  MATURITY_APPROACHING (janelas 7/15/30/60/90, 1 evento por ativo por troca de
+  janela), LARGE_WITHDRAWAL, ALLOCATION_SHIFT, CONCENTRATION_INCREASE.
+  REVENUE_DROP e reservado para a Fase 5 e nunca e emitido.
+
+Semantica de idempotencia: mesmo dia + mesmo hash pula (`skip`); mesmo dia +
+hash diferente reingere, arquivando o snapshot anterior como
+`snapshot.<8-hex>.json` e registrando o hash anterior no historico. Dias
+anteriores nunca sao sobrescritos — `state` devolve o dia pedido mesmo depois
+de D+1 ingerido.
+
+Thresholds em `src/snapshot/thresholds.ts`, defaults conservadores, com teste
+de contrato. Name-map da instancia e aplicado no normalize (primeiro consumidor
+do `name-map.local.json`).
+
+Regras operacionais do snapshot diario:
+
+- Nunca ingerir o mesmo dia em paralelo (sem lock; corrida embaralha o
+  historico de reingestoes). Operacao e manual e diaria.
+- Ordem importa: reingestoes de D-1 DEVEM acontecer antes do diff de D; o
+  events.json nao guarda o hash da base, entao reingerir a base depois deixa o
+  events.json comparando contra o snapshot antigo sem aviso.
+- PDF como fonte diaria tem limitacao: o parser usa o book mensal, entao todos
+  os dias do mes repetem o mesmo saldo e o diff fica mudo. Validar com o
+  operador antes de estrear PDF no snapshot diario.
+- PDF: o aviso de extracao parcial conta QUALQUER .pdf da pasta, nao so
+  Book_*.pdf (herdado do fluxo mensal).
+- Erros de validacao citam nome de carteira e ativo no stderr (LGPD): nao
+  colar essas saidas em tickets externos.
+- O `--root` e recusado se cair dentro do repo do produto (assinatura
+  `platform-app.jsx` na raiz).
+
 ## Parser de PDF (resumo)
 
 - Nome canonico = nome interno da capa do PDF (nao o nome do arquivo).

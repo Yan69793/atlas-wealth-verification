@@ -61,3 +61,19 @@ Antes de declarar qualquer tarefa concluída, execute:
 npm test
 ```
 Cole a saída real na resposta. Se falhar ou não puder executar, diga explicitamente. Nunca declare "funcionando" sem a saída colada.
+
+## Pendências abertas
+
+1. **Publicar no GitHub** (2026-08-14): o repositório `Yan69793/atlas-wealth-verification`
+   não existe no GitHub (404) e o token do `gh` não tem escopo `createRepository`.
+   Commits estão locais (branch `feat/vite-migration`: fecbe17, 53198f1). Caminhos:
+   dono cria o repo privado na UI do GitHub, OU regenera o token com permissão de
+   escrita, e então `git push origin feat/vite-migration`.
+
+### Resolvidas em 2026-08-14
+
+- **pdfplumber ausente**: instalada via pip no interpretador padrão. Era o que fazia
+  a parity PDF vs Excel falhar; com ela, as suítes de parity rodam com dado real.
+- **Corte da instância para o build Vite**: submodule no commit fecbe17, gen-index e
+  build-worker-assets consumindo core/dist-app, CSP do worker no contrato novo,
+  injeção de overlays no HTML servido + no-cache. Validado no fluxo diário do dono.
