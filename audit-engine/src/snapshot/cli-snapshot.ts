@@ -2,14 +2,16 @@
 /**
  * src/snapshot/cli-snapshot.ts — CLI do snapshot EOD diário (Fase 1).
  *
- * Comandos: ingest <fonte> [<arquivo>] / diff / state — todos com --data.
- * Root: --root > ATLAS_DATA_ROOT; sem nenhum, ERRO (nunca escrever na árvore
- * do produto). Não chama cli.ts (fluxo mensal intocado).
+ * Comandos: ingest <fonte> [<arquivo>] / diff / state / vencimentos — todos
+ * com --data. Root: --root > ATLAS_DATA_ROOT; sem nenhum, ERRO (nunca
+ * escrever na árvore do produto). Não chama cli.ts (fluxo mensal intocado).
  */
 
+import fs from 'node:fs';
 import path from 'node:path';
-import { helpTexto, parseArgs, protegerRoot, validarData } from './args.js';
+import { helpTexto, parseArgs, protegerRoot, tipoPeriodo, validarData } from './args.js';
 import { diffSnapshots, encontrarPeriodoAnterior, salvarEventsFile } from './diff.js';
+import { vencimentosProximos, type VencimentosFile } from '../intel/maturities.js';
 import { ingestSnapshot } from './ingest.js';
 import { carregarSnapshot } from './state.js';
 import type { FormatoEntrada } from './types.js';
@@ -87,6 +89,29 @@ async function main(): Promise<void> {
     const root = resolverRoot(args);
     const snap = carregarSnapshot(root, data);
     console.log(JSON.stringify(snap, null, 2));
+    return;
+  }
+
+  if (comando === 'vencimentos') {
+    const data = exigirData(args);
+    const root = resolverRoot(args);
+    const snap = carregarSnapshot(root, data);
+    const vencimentos = vencimentosProximos(snap);
+    const arquivo = path.join(root, 'audits', data, 'vencimentos.json');
+    fs.mkdirSync(path.dirname(arquivo), { recursive: true });
+    const saida: VencimentosFile = {
+      schema: 'vencimentos/v1',
+      data,
+      periodo: tipoPeriodo(data) ?? 'diario',
+      geradoEm: new Date().toISOString(),
+      engine: {
+        nome: 'atlas-audit-engine',
+        versao: process.env.npm_package_version ?? '0.0.0',
+      },
+      vencimentos,
+    };
+    fs.writeFileSync(arquivo, JSON.stringify(saida, null, 2), 'utf8');
+    console.log(`[vencimentos] ${data}: ${vencimentos.length} vencimento(s) → ${arquivo}`);
     return;
   }
 

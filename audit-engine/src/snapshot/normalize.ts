@@ -90,6 +90,7 @@ export function normalize(
           valor: rawP.valor,
           vencimento: rawP.vencimento || null,
           quantidade: rawP.quantidade ?? null,
+          instituicao: rawP.instituicao ? normalizarIdentificador(rawP.instituicao) : null,
         });
       }
     }

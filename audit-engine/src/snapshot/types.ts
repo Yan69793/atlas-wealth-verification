@@ -18,6 +18,7 @@ export interface RawPosition {
   classe?: string;
   vencimento?: string; // 'YYYY-MM-DD' quando o adaptador conseguir
   quantidade?: number;
+  instituicao?: string | null; // emissor/custodiante, só quando a fonte tem (PDF)
 }
 
 export interface RawCarteira {
@@ -39,6 +40,7 @@ export interface SnapshotPosition {
   valor: number;
   vencimento: string | null;
   quantidade: number | null;
+  instituicao: string | null; // emissor/custodiante quando a fonte fornece
 }
 
 export interface SnapshotCarteira {

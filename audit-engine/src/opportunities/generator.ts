@@ -11,6 +11,15 @@
 import type { SnapshotEvent } from '../snapshot/types.js';
 import type { Oportunidade, RegraOportunidade } from './types.js';
 
+/**
+ * id estável de oportunidade derivada de evento. Fonte única da convenção:
+ * o intel de vencimentos (Fase 3) usa o mesmo construtor para associar
+ * vencimento → oportunidade sem depender de ter gerado a fila antes.
+ */
+export function idOportunidade(periodo: string, carteira: string, tipo: string, ativo?: string): string {
+  return `${periodo}|${carteira}|${tipo}|${ativo ?? ''}`;
+}
+
 export const REGRAS_PADRAO: RegraOportunidade[] = [
   {
     nome: 'vencimento-renovacao',
@@ -68,7 +77,7 @@ export function dataReferenciaPeriodo(periodo: string): string {
   throw new Error(`periodo invalido: ${periodo}`);
 }
 
-function adicionarDias(data: string, dias: number): string {
+export function adicionarDias(data: string, dias: number): string {
   const [ano, mes, dia] = data.split('-').map(Number);
   const d = new Date(Date.UTC(ano, mes - 1, dia + dias));
   return d.toISOString().slice(0, 10);
@@ -102,7 +111,7 @@ export function gerarOportunidades(
   for (const evento of eventos) {
     for (const regra of regras) {
       if (!regra.ligada || !regra.gatilho(evento)) continue;
-      const id = `${contexto.periodo}|${evento.carteira}|${evento.tipo}|${evento.ativo ?? ''}`;
+      const id = idOportunidade(contexto.periodo, evento.carteira, evento.tipo, evento.ativo);
       if (vistos.has(id)) continue;
       vistos.add(id);
 

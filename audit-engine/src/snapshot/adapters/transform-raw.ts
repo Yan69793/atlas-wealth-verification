@@ -31,7 +31,7 @@ export function carteirasRawParaRawSnapshot(
 ): RawSnapshot {
   const carteiras = raws.map((raw) => {
     let classeCorrente: string | null = null;
-    const posicoes: { ativo: string; valor: number; classe?: string; vencimento?: string }[] = [];
+    const posicoes: { ativo: string; valor: number; classe?: string; vencimento?: string; instituicao?: string | null }[] = [];
 
     for (const linha of raw.ativos) {
       if (linha.type === 'classe') {
@@ -44,9 +44,10 @@ export function carteirasRawParaRawSnapshot(
       const ativo = linha.nome;
       if (!ativo) continue;
       const { vencimento } = extrairVencimentoDoNome(ativo);
-      const posicao: { ativo: string; valor: number; classe?: string; vencimento?: string } = { ativo, valor };
+      const posicao: { ativo: string; valor: number; classe?: string; vencimento?: string; instituicao?: string | null } = { ativo, valor };
       if (classeCorrente) posicao.classe = classeCorrente;
       if (vencimento) posicao.vencimento = vencimento;
+      if (linha.instituicao) posicao.instituicao = linha.instituicao;
       posicoes.push(posicao);
     }
 

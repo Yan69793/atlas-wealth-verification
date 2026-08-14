@@ -170,6 +170,7 @@ import ReactDOM from 'react-dom/client';
     { id:'comparativo', label:'Comparativo',         icon:'compare',    path:'#/comparativo' },
     { id:'achados',     label:'Achados & Exceções',  icon:'findings',   path:'#/achados'     },
     { id:'oportunidades', label:'Oportunidades',      icon:'portfolios', path:'#/oportunidades' },
+    { id:'vencimentos',   label:'Vencimentos',        icon:'trending_up', path:'#/vencimentos'  },
     { id:'tendencia',   label:'Tendência do Ciclo',  icon:'trend',      path:'#/tendencia'   },
     { id:'custos',      label:'Transp. de Custos',   icon:'revenue',    path:'#/custos'      },
     { id:'receitas',    label:'Receitas & ROA',      icon:'revenue',    path:'#/receitas'    },
@@ -348,6 +349,7 @@ import ReactDOM from 'react-dom/client';
     if (path.startsWith('/carteira/')) return 'carteira';
     if (path === '/achados') return 'achados';
     if (path === '/oportunidades') return 'oportunidades';
+    if (path === '/vencimentos') return 'vencimentos';
     if (path === '/comparativo') return 'comparativo';
     if (path === '/receitas') return 'receitas';
     if (path === '/custos') return 'custos';
@@ -366,6 +368,7 @@ import ReactDOM from 'react-dom/client';
     carteira:   'Carteira',
     achados:    'Achados & Exceções',
     oportunidades: 'Oportunidades',
+    vencimentos:   'Vencimentos',
     comparativo:'Comparativo',
     receitas:   'Receitas & ROA',
     cadastro:   'Cadastro & Compliance',
@@ -477,6 +480,11 @@ import ReactDOM from 'react-dom/client';
         return pages.Oportunidades
           ? React.createElement(pages.Oportunidades, { location })
           : <PlaceholderPage title="Oportunidades" etapa={5} />;
+
+      case 'vencimentos':
+        return pages.Vencimentos
+          ? React.createElement(pages.Vencimentos)
+          : <PlaceholderPage title="Vencimentos" etapa={5} />;
 
       case 'comparativo':
         return pages.Comparativo

@@ -155,12 +155,14 @@ const CONTRATO = [
   'platform-data-risk.js',
   'platform-historico-demo.js',
   'platform-oportunidades-demo.js',
+  'platform-vencimentos-demo.js',
   'platform-utils.jsx',
   'platform-dashboard.jsx',
   'platform-carteira.jsx',
   'platform-report.jsx',
   'platform-achados.jsx',
   'platform-oportunidades.jsx',
+  'platform-vencimentos.jsx',
   'platform-comparativo.jsx',
   'platform-custos.jsx',
   'platform-receitas.jsx',
@@ -944,6 +946,42 @@ ok('página de oportunidades não usa primitiva de envio (dado fica no navegador
 const gitignore = fs.readFileSync(path.join(ROOT, '.gitignore'), 'utf8');
 ok('.gitignore nega o overlay real platform-oportunidades.js',
   gitignore.split(/\r?\n/).some((l) => l.trim() === 'platform-oportunidades.js'));
+
+// ─── 20. Fase 3 — Vencimentos ───────────────────────────────────────────────
+//
+// Mesmas regras da Fase 2: demo sintético, página registrada, rota e menu no
+// shell, overlay real negado no .gitignore, dado que não sai do navegador.
+
+const vencDemoPath = path.join(ROOT, 'platform-vencimentos-demo.js');
+const vencPagePath = path.join(ROOT, 'platform-vencimentos.jsx');
+const vencDemo = fs.existsSync(vencDemoPath) ? fs.readFileSync(vencDemoPath, 'utf8') : '';
+const vencPage = fs.existsSync(vencPagePath) ? fs.readFileSync(vencPagePath, 'utf8') : '';
+
+ok('platform-vencimentos-demo.js existe', fs.existsSync(vencDemoPath));
+ok('platform-vencimentos.jsx existe', fs.existsSync(vencPagePath));
+ok('sem mojibake: platform-vencimentos-demo.js', !MOJIBAKE.test(vencDemo));
+ok('sem mojibake: platform-vencimentos.jsx', !MOJIBAKE.test(vencPage));
+
+ok('demo de vencimentos publica window.ATLAS_VENCIMENTOS_DATA',
+  vencDemo.includes('window.ATLAS_VENCIMENTOS_DATA'));
+ok('demo de vencimentos é sintético (geradoEm null)',
+  /geradoEm:\s*null/.test(vencDemo));
+
+ok('página registra AtlasPages.Vencimentos',
+  vencPage.includes('AtlasPages.Vencimentos'));
+ok('rota /vencimentos em platform-app.jsx',
+  appContent.includes("path === '/vencimentos'"));
+ok('navegação contém Vencimentos em platform-app.jsx',
+  appContent.includes("label:'Vencimentos'"));
+
+ok('vencimentos oferecem criar oportunidade pré-preenchida (link Fase 2)',
+  vencPage.includes('Criar oportunidade') && vencPage.includes('/oportunidades?nova=1'));
+
+ok('página de vencimentos não usa primitiva de envio (dado fica no navegador)',
+  !/fetch\s*\(|XMLHttpRequest|sendBeacon|WebSocket|EventSource/.test(vencPage));
+
+ok('.gitignore nega o overlay real platform-vencimentos.js',
+  gitignore.split(/\r?\n/).some((l) => l.trim() === 'platform-vencimentos.js'));
 
 // ─── Resultado ──────────────────────────────────────────────────────────────
 

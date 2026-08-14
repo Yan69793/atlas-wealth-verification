@@ -39,7 +39,7 @@ function diaParaMs(data: string): number {
 }
 
 /** Menor janela >= diasRestantes; null quando > 90 ou <= 0. */
-function janelaPara(dias: number): number | null {
+export function janelaPara(dias: number): number | null {
   if (dias <= 0 || dias > 90) return null;
   for (const janela of [...THRESHOLDS.maturidadeJanelas].sort((a, b) => a - b)) {
     if (dias <= janela) return janela;
@@ -47,7 +47,7 @@ function janelaPara(dias: number): number | null {
   return null;
 }
 
-function diasAte(vencimento: string, data: string): number {
+export function diasAte(vencimento: string, data: string): number {
   return Math.round((diaParaMs(vencimento) - diaParaMs(dataReferencia(data))) / 86_400_000);
 }
 
