@@ -1,4 +1,6 @@
 /* platform-risco.jsx — Radar de Risco: scoring multidimensional por carteira */
+import React from 'react';
+
 (() => {
   const { useState, useMemo, useEffect } = React;
   const { fmtCompactBRL, fmtPct, fmtMonthLabel } = window.AtlasUtils;

@@ -1,7 +1,9 @@
 /* platform-tendencia.jsx -- Tendencia do ciclo: evolucao multi-mes,
    heatmap de status por carteira x mes, achados recorrentes.
-   Depende de: window.HISTORICO_DATA (platform-historico.js), Chart.js (CDN).
+   Depende de: window.HISTORICO_DATA (platform-historico.js), Chart.js (bundled).
    Registra-se em window.AtlasPages.Tendencia. */
+import React from 'react';
+import Chart from 'chart.js/auto';
 
 (() => {
   const { useState, useMemo, useRef, useEffect } = React;

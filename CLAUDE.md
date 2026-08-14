@@ -27,9 +27,21 @@ teste nunca são alterados nem humanizados.
 - Nome de carteira, apelido, código real e caminho de pasta de cliente não entram em teste nem doc versionada
 - Se aparecerem em `git status`, investigar e corrigir o `.gitignore` antes de prosseguir
 
-## Ordem de carregamento (index.html)
+## Ordem de carregamento (build Vite)
 
-CSS → tokens → CDNs → parsers → dados → utils → páginas → shell. Fora de ordem quebra.
+O app é buildado com Vite: `npm run build` gera `dist-app/` a partir de
+`src/main.jsx`. A ordem de import em `src/main.jsx` É o contrato de
+inicialização: tokens → parsers → dados → utils → páginas → shell. Fora de
+ordem quebra em tela branca. `tests/validate.js` trava esse contrato.
+
+- Overlays de dado real (`platform-data-real.js`, `platform-data-audit.js`,
+  `platform-historico.js`, `platform-brand.js`) são scripts clássicos em
+  runtime, NUNCA entram no bundle. O build os retira do HTML; a instância
+  injeta os dela via `scripts/gen-index.mjs`.
+- Desenvolvimento: `npm run dev` (Vite com HMR). Publicação do demo: primeiro
+  `npm run build`, depois `scripts/deploy-cf.ps1 -Target worker`.
+- `scripts/verify-build.mjs` e `scripts/build-deploy.mjs` recusam publicação
+  se `dist-app/` contiver overlay, binário ou marca de build dev.
 
 ## Autenticação
 

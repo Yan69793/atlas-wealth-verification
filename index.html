@@ -31,31 +31,25 @@
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:image" content="https://demo.multi-assets.com/atlas-card.png" />
 
-  <link rel="stylesheet" href="platform-styles.css?v=20260808d" />
+  <link rel="stylesheet" href="platform-styles.css" />
 
   <!-- Marca da instância (opcional, gitignored). Define window.AtlasBrand antes
        dos tokens. Sem ele o app roda neutro, sem nome de casa nenhuma. -->
   <script src="platform-brand.js?v=20260808" onerror="void(0)"></script>
 
-  <!-- Design Tokens — JS puro, antes dos scripts JSX -->
-  <script src="platform-tokens.js?v=20260808"></script>
+  <!-- Entrada única do bundle (Vite). A ordem de execução interna é a ordem
+       de import em src/main.jsx: tokens → parsers → dados → utils → páginas
+       → shell. É o contrato de carga que substitui a lista de scripts Babel. -->
+  <script type="module" src="/src/main.jsx"></script>
 
-  <!-- React 18.3.1 + Babel Standalone 7.29.0 (SRI de referência carteiras-app) -->
-  <script
-    src="https://unpkg.com/react@18.3.1/umd/react.development.js"
-    integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L"
-    crossorigin="anonymous"
-  ></script>
-  <script
-    src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js"
-    integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm"
-    crossorigin="anonymous"
-  ></script>
-  <script
-    src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js"
-    integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y"
-    crossorigin="anonymous"
-  ></script>
+  <!-- Overlays de dado real (LGPD, gitignored — opcionais; sem eles só demo
+       ativo). São scripts clássicos e rodam ANTES do bundle (scripts module
+       são diferidos), então window._AtlasRealData e window.HISTORICO_DATA já
+       existem quando o app os lê. O build de produção retira estas tags; a
+       instância as injeta no próprio index (scripts/gen-index.mjs). -->
+  <script src="platform-data-real.js?v=20260612" onerror="void(0)"></script>
+  <script src="platform-data-audit.js?v=20260714" onerror="void(0)"></script>
+  <script src="platform-historico.js?v=20260714" onerror="void(0)"></script>
 </head>
 <body>
   <!-- Loading estático — substituído pelo React ao montar -->
@@ -66,74 +60,5 @@
       </div>
     </div>
   </div>
-
-  <!-- prop-types 15.8.1 — peer dep do Recharts -->
-  <script
-    src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"
-    integrity="sha384-/AfDwVDXNopzPvhxMPQ11y1OCpR6mVkWx47qzSwIiquvxkcMkZddEzDNtIOtfCpk"
-    crossorigin="anonymous"
-  ></script>
-  <!-- Recharts 2.12.7 — gráficos avançados (UMD, bundled deps, peer: React/ReactDOM/PropTypes acima) -->
-  <script
-    src="https://unpkg.com/recharts@2.12.7/umd/Recharts.js"
-    integrity="sha384-d1XH4LhwLW8j0l6VXMP8yJabdGY9ZqtZk7k7PaPk5NoUCcZ/hDkL5aaKioKQbcZg"
-    crossorigin="anonymous"
-  ></script>
-
-  <!-- Chart.js 4.4.0 — gráficos canvas para aba Tendência -->
-  <script
-    src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"
-    integrity="sha384-e6nUZLBkQ86NJ6TVVKAeSaK8jWa3NhkYWZFomE39AvDbQWeie9PlQqM3pmYW5d1g"
-    crossorigin="anonymous"
-  ></script>
-
-  <!-- TanStack Virtual 3.0.0 — virtualização de listas grandes -->
-  <script
-    src="https://unpkg.com/@tanstack/react-virtual@3.0.0/build/umd/index.production.js"
-    integrity="sha384-qTjAXw+7X+de+FLeQSJPVEmM/OAj7AT14TknLs9zPck8soo2LpkWIWf3x8n6bujJ"
-    crossorigin="anonymous"
-  ></script>
-
-  <!-- Parser de importação (CSV/Excel) — JS puro, sem Babel -->
-  <script src="platform-parsers.js?v=20260611e"></script>
-
-  <!-- 1a. Dados reais (LGPD, gitignored — opcional; sem ele só demo ativo) -->
-  <script src="platform-data-real.js?v=20260612" onerror="void(0)"></script>
-
-  <!-- 1b. Dados (script normal — sem Babel, sem JSX) -->
-  <script src="platform-data.js?v=20260808e"></script>
-
-  <!-- 1c. Risk scoring (carregado depois de platform-data.js — usa window.AtlasData._internal) -->
-  <script src="platform-data-risk.js?v=20260613a"></script>
-
-  <!-- 1d. Dados de auditoria (LGPD, gitignored — opcionais; alimentam a aba Tendência) -->
-  <script src="platform-data-audit.js?v=20260714" onerror="void(0)"></script>
-  <script src="platform-historico.js?v=20260714" onerror="void(0)"></script>
-
-  <!-- 1e. Fallback sintetico de HISTORICO_DATA quando o overlay real (1d) nao
-       carregou — produto puro, versionado, nao LGPD. So popula se 1d nao populou. -->
-  <script src="platform-historico-demo.js?v=20260718a"></script>
-
-  <!-- 2. Utilitários, ícones, gráficos (Babel JSX) -->
-  <script type="text/babel" src="platform-utils.jsx?v=20260718b"></script>
-
-  <!-- 3. Páginas (carregadas na etapa correspondente) -->
-  <script type="text/babel" src="platform-dashboard.jsx?v=20260808c"></script>
-  <script type="text/babel" src="platform-carteira.jsx?v=20260808"></script>
-  <script type="text/babel" src="platform-report.jsx?v=20260808"></script>
-  <script type="text/babel" src="platform-achados.jsx?v=20260808b"></script>
-  <script type="text/babel" src="platform-comparativo.jsx?v=20260808"></script>
-  <script type="text/babel" src="platform-custos.jsx?v=20260808"></script>
-  <script type="text/babel" src="platform-receitas.jsx?v=20260808"></script>
-  <script type="text/babel" src="platform-cadastro.jsx?v=20260808"></script>
-  <script type="text/babel" src="platform-busca.jsx?v=20260718a"></script>
-  <script type="text/babel" src="platform-import.jsx?v=20260808"></script>
-  <script type="text/babel" src="platform-usuarios.jsx?v=20260611d"></script>
-
-  <script type="text/babel" src="platform-risco.jsx?v=20260808c"></script>
-  <script type="text/babel" src="platform-tendencia.jsx?v=20260714"></script>
-
-  <!-- 4. App shell — deve ser carregado por ÚLTIMO (monta o ReactDOM) -->
-  <script type="text/babel" src="platform-app.jsx?v=20260808d"></script>
 </body>
 </html>

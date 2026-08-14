@@ -5,21 +5,30 @@
   "private": true,
   "scripts": {
     "test": "node tests/validate.js && npm --prefix audit-engine test",
-    "serve": "python -m http.server 7821",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "serve": "vite preview",
     "lint": "node tests/validate.js",
     "build-historico": "node build-historico.mjs",
-    "pipeline": "node audit-engine/pipeline-all.mjs",
-    "build": "echo 'App estático — sem etapa de build. Use npm run serve para desenvolvimento local.'"
+    "pipeline": "node audit-engine/pipeline-all.mjs"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20.19.0"
   },
   "devDependencies": {
+    "vite": "^8.2.1",
     "wrangler": "^4.113.0"
   },
   "allowScripts": {
     "esbuild@0.28.1": true,
     "sharp@0.34.5": true,
     "workerd@1.20260721.1": true
+  },
+  "dependencies": {
+    "chart.js": "^4.4.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "recharts": "^2.12.7"
   }
 }

@@ -1,4 +1,6 @@
 /* platform-cadastro.jsx — Cadastro & Compliance */
+import React from 'react';
+
 (() => {
   const { useState, useMemo } = React;
   const { fmtMonthLabel } = window.AtlasUtils;

@@ -1,4 +1,6 @@
 /* platform-custos.jsx — Transparencia de Custo Total do Cliente */
+import React from 'react';
+
 (() => {
   const { useState, useMemo, useEffect } = React;
 

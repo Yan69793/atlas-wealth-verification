@@ -57,6 +57,7 @@
 # Obrigatório: a seção 3 liberaria todo .js/.json dentro de node_modules.
 node_modules/
 dist/
+dist-app/
 build/
 .cache/
 __pycache__/

@@ -31,6 +31,25 @@ ok('index.html existe e não está vazio', indexHtml.length > 100);
 ok('charset utf-8 declarado', /charset\s*=\s*["']?utf-8/i.test(indexHtml));
 ok('lang pt-BR declarado', indexHtml.includes('lang="pt-BR"'));
 
+// Novo contrato de carga (build Vite): a lista de scripts Babel do index.html
+// virou ordem de import em src/main.jsx. Estes checks substituem a exigência
+// antiga de "cada página tem sua tag de script no index.html".
+ok('index.html usa entry de módulo único (sem Babel no browser)',
+  /<script\b[^>]*type="module"[^>]*src="\/src\/main\.jsx"/.test(indexHtml));
+
+ok('index.html não referencia mais Babel Standalone',
+  !/text\/babel/.test(indexHtml) && !/babel\.min\.js/.test(indexHtml));
+
+ok('index.html não depende de CDN no caminho de carga',
+  !/(unpkg\.com|jsdelivr\.net|cdnjs\.cloudflare\.com|cdn\.sheetjs\.com)/.test(indexHtml));
+
+ok('index.html não usa React de desenvolvimento',
+  !/react\.development/.test(indexHtml));
+
+ok('index.html mantém overlays opcionais com onerror tolerante',
+  /platform-data-real\.js[^"]*"[^>]*onerror/.test(indexHtml) &&
+  /platform-historico\.js[^"]*"[^>]*onerror/.test(indexHtml));
+
 // Todos os scripts locais (sem CDN) devem existir como arquivo.
 //
 // Exceção: script declarado com onerror é overlay OPCIONAL. O dado real vive
@@ -117,21 +136,61 @@ ok('useEffect sincroniza selectedMonth',
 ok('top5Quedas filtra plA > 0',
   /top5Quedas.*filter.*plA\s*>\s*0/.test(dataContent.replace(/\s+/g, ' ')));
 
-// ─── 7. index.html — SRI integrity nos scripts CDN sem SRI original ─────────
+// ─── 7. src/main.jsx — contrato de carga do bundle ──────────────────────────
+//
+// A ordem de import em src/main.jsx é o contrato de inicialização que
+// substitui a lista de <script> do index.html antigo. Página lê
+// window.AtlasData/AtlasUtils no topo do módulo; import fora de ordem = tela
+// branca. Estes checks travam a regressão do contrato.
 
-ok('prop-types tem integrity no index.html',
-  /prop-types[^<]+integrity\s*=\s*"sha384-/.test(indexHtml.replace(/\s+/g, ' ')));
+const mainJsxPath = path.join(ROOT, 'src', 'main.jsx');
+const mainJsx = fs.existsSync(mainJsxPath) ? fs.readFileSync(mainJsxPath, 'utf8') : '';
 
-ok('Recharts tem integrity no index.html',
-  /recharts[^<]+integrity\s*=\s*"sha384-/i.test(indexHtml.replace(/\s+/g, ' ')));
+ok('src/main.jsx existe', fs.existsSync(mainJsxPath));
 
-// Chart.js e TanStack serviam a página com dado de cliente SEM SRI: um CDN
-// comprometido injetaria JS na origem autenticada. Trava a regressão.
-ok('Chart.js tem integrity no index.html',
-  /chart\.umd\.min\.js"[^>]*integrity\s*=\s*"sha384-/i.test(indexHtml.replace(/\s+/g, ' ')));
+const CONTRATO = [
+  'platform-tokens.js',
+  'platform-parsers.js',
+  'platform-data.js',
+  'platform-data-risk.js',
+  'platform-historico-demo.js',
+  'platform-utils.jsx',
+  'platform-dashboard.jsx',
+  'platform-carteira.jsx',
+  'platform-report.jsx',
+  'platform-achados.jsx',
+  'platform-comparativo.jsx',
+  'platform-custos.jsx',
+  'platform-receitas.jsx',
+  'platform-cadastro.jsx',
+  'platform-busca.jsx',
+  'platform-import.jsx',
+  'platform-usuarios.jsx',
+  'platform-risco.jsx',
+  'platform-tendencia.jsx',
+  'platform-app.jsx',
+];
 
-ok('TanStack react-virtual tem integrity no index.html',
-  /react-virtual@[^"]+"[^>]*integrity\s*=\s*"sha384-/i.test(indexHtml.replace(/\s+/g, ' ')));
+/* Busca pela instrução de import, não pelo nome solto: o cabeçalho do arquivo
+   menciona nomes de módulo em comentário, e a checagem de ordem leria a
+   menção como se fosse o import. */
+const ordem = CONTRATO.map((f) => mainJsx.indexOf("import '../" + f + "'"));
+ok('main.jsx importa todos os módulos do app',
+  ordem.every((i) => i !== -1),
+  CONTRATO.filter((f) => mainJsx.indexOf("import '../" + f + "'") === -1).join(', ') || 'ok');
+
+const ordemOk = ordem.every((v, i) => i === 0 || v > ordem[i - 1]);
+ok('ordem de import em main.jsx respeita o contrato (tokens antes de dados antes do shell)',
+  ordemOk);
+
+ok('shell é o último import (monta o ReactDOM)',
+  mainJsx.trimEnd().endsWith("import '../platform-app.jsx';"));
+
+ok('main.jsx faz shim de Recharts para as páginas de gráfico',
+  /globalThis\.Recharts\s*=/.test(mainJsx));
+
+ok('main.jsx não depende de CDN',
+  !/(unpkg\.com|jsdelivr\.net|cdnjs\.cloudflare\.com)/.test(mainJsx));
 
 // ─── 8. README — conteúdo mínimo ────────────────────────────────────────────
 
@@ -215,10 +274,10 @@ ok('platform-import.jsx chama importPortfolioData',
 ok('platform-app.jsx registra listener atlas:datachange',
   appContent.includes("'atlas:datachange'") || appContent.includes('"atlas:datachange"'));
 
-// ─── 9c. Wiring — index.html carrega parsers + template CSV ─────────────────
+// ─── 9c. Wiring — main.jsx carrega parsers + template CSV ───────────────────
 
-ok('index.html carrega platform-parsers.js',
-  indexHtml.includes('platform-parsers.js'));
+ok('main.jsx importa platform-parsers.js (parser disponível no bundle)',
+  mainJsx.includes('platform-parsers.js'));
 
 ok('docs/templates/atlas_template.csv existe',
   fs.existsSync(path.join(ROOT, 'docs', 'templates', 'atlas_template.csv')));
@@ -574,6 +633,8 @@ ok('platform-import.jsx aceita .pdf no input',
   /accept="[^"]*\.pdf/.test(importContent));
 ok('platform-import.jsx tem loadPdfJs com SRI (integrity)',
   importContent.includes('loadPdfJs') && /PDFJS[^]*?sha512-/.test(importContent));
+ok('platform-import.jsx carrega SheetJS com SRI (integrity)',
+  /SHEETJS_SRI\s*=\s*'sha384-/.test(importContent));
 ok('platform-import.jsx usa parseSmartBrainBook e reconstructPdfLines',
   importContent.includes('parseSmartBrainBook') && importContent.includes('reconstructPdfLines'));
 ok('platform-import.jsx tem bloco de revisão manual',
@@ -767,6 +828,70 @@ for (const [nome, html] of [['index.html', indexHtml], ['apresentação', aprese
 const buildDeploy = fs.readFileSync(path.join(ROOT, 'scripts/build-deploy.mjs'), 'utf8');
 ok('build da publicação declara o cartão como binário liberado',
   new RegExp(`EXTRAS_BINARIO[\\s\\S]{0,400}${CARD.replace(/[./]/g, '\\$&')}`).test(buildDeploy));
+
+// ─── 18. Artefato buildado (dist-app) — se existir, é verificado ────────────
+//
+// O build é opcional no portão (clone limpo não tem dist-app), mas quando
+// existe ele TEM que estar limpo: é dele que scripts/build-deploy.mjs publica
+// o demo. Overlay de dado real, binário ou marca de build dev aqui seria
+// publicado sem que nenhum outro check visse.
+
+const distDir = path.join(ROOT, 'dist-app');
+const distIndexPath = path.join(distDir, 'index.html');
+
+if (fs.existsSync(distIndexPath)) {
+  const distHtml = fs.readFileSync(distIndexPath, 'utf8');
+
+  ok('build: index.html gerado referencia asset com fingerprint',
+    /(?:src|href)="\.\/assets\/[^"]+-[A-Za-z0-9_-]+\.(?:js|css)"/.test(distHtml));
+
+  ok('build: sem tag de overlay no HTML gerado (dado real nunca entra no bundle)',
+    !/platform-data-real\.js|platform-data-audit\.js|platform-historico\.js/.test(distHtml));
+
+  ok('build: CSP presente e sem unsafe-eval',
+    /Content-Security-Policy/.test(distHtml) && !/unsafe-eval/.test(distHtml));
+
+  // A CSP tem de liberar exatamente o que o app usa em runtime: os lazy-loads
+  // de Excel/PDF (com SRI) e as fontes do tema. CSP sem esses hosts passa no
+  // check de cima e quebra a importação e a tipografia em produção.
+  const cspAttr = (distHtml.match(/Content-Security-Policy"\s+content="([^"]+)"/) || [])[1] || '';
+  ok('build: CSP libera os lazy-loads (SheetJS e pdf.js)',
+    /cdn\.sheetjs\.com/.test(cspAttr) && /cdnjs\.cloudflare\.com/.test(cspAttr), cspAttr);
+  ok('build: CSP libera Google Fonts (tema)',
+    /fonts\.googleapis\.com/.test(cspAttr) && /fonts\.gstatic\.com/.test(cspAttr), cspAttr);
+
+  ok('build: og:image absoluto sobrevive ao build',
+    /<meta\s+property="og:image"\s+content="https:\/\/demo\.multi-assets\.com\/atlas-card\.png"/.test(distHtml));
+
+  const NUNCA_ARTEFATO = ['platform-data-real.js', 'platform-data-audit.js',
+    'platform-historico.js', 'platform-brand.js', 'data.js', 'data.json',
+    'historico.js', 'historico.json'];
+  const suspeitosArtefato = [];
+  const varreArtefato = (dir) => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, e.name);
+      if (e.isDirectory()) { varreArtefato(full); continue; }
+      const rel = path.relative(distDir, full);
+      if (NUNCA_ARTEFATO.includes(e.name)) suspeitosArtefato.push(rel);
+      if (/\.(pdf|xlsx?|docx|zip|png|jpe?g)$/i.test(e.name)) suspeitosArtefato.push(rel);
+    }
+  };
+  varreArtefato(distDir);
+  ok('build: varredura do artefato sem overlay nem binário', suspeitosArtefato.length === 0,
+    suspeitosArtefato.join(', ') || 'ok');
+
+  const assetsDir = path.join(distDir, 'assets');
+  if (fs.existsSync(assetsDir)) {
+    const jsAssets = fs.readdirSync(assetsDir).filter((f) => f.endsWith('.js'));
+    const conteudoBundle = jsAssets.map((f) =>
+      fs.readFileSync(path.join(assetsDir, f), 'utf8')).join('\n');
+    ok('build: bundle sem marca de React dev nem Babel runtime',
+      !/react\.development/.test(conteudoBundle) && !/Babel Standalone/.test(conteudoBundle));
+  }
+} else {
+  ok('build: dist-app ausente (ok em clone limpo; rode npm run build antes de publicar)',
+    true, 'ausente');
+}
 
 // ─── Resultado ──────────────────────────────────────────────────────────────
 

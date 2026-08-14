@@ -1,4 +1,6 @@
 /* platform-busca.jsx — Busca por Ativo */
+import React from 'react';
+
 (() => {
   const { useState, useMemo, useEffect } = React;
 

@@ -1,4 +1,6 @@
 /* platform-import.jsx — Importar Extratos (PDF + CSV + Excel) */
+import React from 'react';
+
 (() => {
   const { useState, useRef } = React;
   const { Icon } = window.AtlasIcons;

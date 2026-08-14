@@ -1,4 +1,6 @@
 /* platform-receitas.jsx — Receitas & ROA */
+import React from 'react';
+
 (() => {
   const { useState, useMemo, useEffect } = React;
 

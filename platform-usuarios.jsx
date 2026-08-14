@@ -1,4 +1,6 @@
 /* platform-usuarios.jsx — Gestão de Usuários */
+import React from 'react';
+
 (() => {
   const { useState } = React;
   const { storage, navigate } = window.AtlasUtils;

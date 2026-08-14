@@ -1,4 +1,6 @@
 /* platform-utils.jsx — formatters, router, icons, charts, UI primitives */
+import React from 'react';
+
 (() => {
   const { useState, useEffect, useRef, useCallback, useMemo } = React;
 

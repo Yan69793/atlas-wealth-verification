@@ -1,4 +1,6 @@
 /* platform-comparativo.jsx — Comparativo de Período */
+import React from 'react';
+
 (() => {
   const { useState, useMemo, useEffect } = React;
 

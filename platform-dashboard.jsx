@@ -1,4 +1,6 @@
 /* platform-dashboard.jsx — Dashboard: KPIs, banner, chips, tabela, LineChart */
+import React from 'react';
+
 (() => {
   const { useState, useMemo, useEffect } = React;
 

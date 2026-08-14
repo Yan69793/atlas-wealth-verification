@@ -1,4 +1,6 @@
 /* platform-achados.jsx — Achados & Exceções: página global de findings */
+import React from 'react';
+
 (() => {
   const { useState, useMemo, useEffect } = React;
 

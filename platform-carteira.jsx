@@ -1,4 +1,6 @@
 /* platform-carteira.jsx — Detalhe de carteira: KPIs, tabs, observação, exportar */
+import React from 'react';
+
 (() => {
   const { useState, useMemo, useEffect } = React;
 

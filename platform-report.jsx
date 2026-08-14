@@ -1,4 +1,6 @@
 /* platform-report.jsx — DevRelatorio: relatório exportável por carteira */
+import React from 'react';
+
 (() => {
   const { useMemo } = React;
 

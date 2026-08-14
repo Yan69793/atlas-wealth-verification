@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * build-deploy.mjs — monta o diretório a publicar, com allowlist.
+ * build-deploy.mjs — monta o diretório a publicar a partir do build (dist-app/).
  *
  * `wrangler pages deploy .` envia a árvore inteira e NÃO respeita o
  * .gitignore. Publicar a raiz sobe node_modules, .git, .playwright-mcp (que
@@ -8,9 +8,11 @@
  * árvore de instância, os overlays e audits/. Foi assim que dado real de
  * cliente acabou publicado em URL de preview.
  *
- * Este script inverte a lógica: nada é publicado a menos que apareça no
- * index.html ou esteja liberado abaixo. Mesma ideia do .gitignore de negar por
- * padrão, aplicada ao deploy.
+ * Este script inverte a lógica: nada é publicado a menos que tenha vindo do
+ * build do produto (dist-app/) ou esteja liberado abaixo. O build é montado
+ * pelo Vite a partir de src/main.jsx, que não importa overlay nenhum — os
+ * overlays de dado real são scripts clássicos que a instância injeta no
+ * próprio index, nunca parte do bundle.
  *
  * Uso: node scripts/build-deploy.mjs [--out dist-deploy]
  */
@@ -18,24 +20,28 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { verificarDist } from './verify-build.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
 const args = process.argv.slice(2);
 const OUT = path.resolve(ROOT, args.includes('--out') ? args[args.indexOf('--out') + 1] : 'dist-deploy');
+const DIST = path.join(ROOT, 'dist-app');
 
 /* Nunca publicar, mesmo que algo os referencie: são dado real de cliente.
    A checagem é por nome, não por extensão, porque a extensão .js é a mesma do
-   código do app. */
+   código do app. O `(?:\.min)?` e o flag `i` fecham variantes (minificado,
+   caixa trocada) que não vêm do build mas não custam nada bloquear. */
 const NUNCA = [
-  /^platform-data-real\.js$/,
-  /^platform-data-audit\.js$/,
-  /^platform-historico\.js$/,
-  /^data\.js(on)?$/,
-  /^historico\.js(on)?$/,
+  /^platform-data-real(\.min)?\.js$/i,
+  /^platform-data-audit(\.min)?\.js$/i,
+  /^platform-historico(\.min)?\.js$/i,
+  /^platform-brand(\.min)?\.js$/i,
+  /^data\.js(on)?$/i,
+  /^historico\.js(on)?$/i,
 ];
 
-/* Extras que o app usa em runtime mas não aparecem como <script>/<link>.
+/* Extras que o app usa em runtime mas não vêm do bundle.
    Diretórios: todo arquivo direto dentro deles é copiado. */
 const EXTRAS = ['docs/templates'];
 
@@ -68,32 +74,75 @@ const EXTRAS_BINARIO = [
   { de: 'docs/go-to-market/atlas-card.png', para: 'atlas-card.png' },
 ];
 
-const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+/* ── 1. O build tem de existir e estar limpo antes de qualquer cópia ────── */
 
-/* A allowlist vem do próprio index.html: o que ele carrega é o que existe. */
-const referenciados = [...html.matchAll(/(?:src|href)="([^"]+)"/g)]
-  .map((m) => m[1])
-  .filter((p) => !/^(https?:)?\/\//i.test(p))
-  .map((p) => p.split('?')[0]);
+if (!fs.existsSync(path.join(DIST, 'index.html'))) {
+  console.error('\nABORTADO: dist-app/index.html ausente. Rode `npm run build` antes de publicar.');
+  console.error('  Publicar sem build publicaria uma árvore antiga, e a falha é invisível.');
+  process.exit(1);
+}
 
-const bloqueados = referenciados.filter((f) => NUNCA.some((r) => r.test(f)));
-const copiar = referenciados.filter((f) => !NUNCA.some((r) => r.test(f)));
+const suspeitosDist = verificarDist(DIST);
+if (suspeitosDist.length) {
+  console.error('\nABORTADO: o artefato buildado contem o que nao pode ser publicado:');
+  for (const s of suspeitosDist) console.error('  ' + s);
+  process.exit(1);
+}
+
+/* Frescor: o bundle tem de ser mais novo que TODO fonte do app. Sem isso,
+   quem edita uma página e roda só o deploy publica o bundle anterior, sem
+   erro nenhum — o app abre, responde 200, e só parece errado para quem olha.
+   A comparação é contra o index.html do build (reescrito por último pelo
+   Vite). Tolerância de 2s cobre diferença de relógio de sistema de arquivo. */
+{
+  const ref = fs.statSync(path.join(DIST, 'index.html')).mtimeMs;
+  const fontes = [];
+  const colhe = (dir, base) => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, e.name);
+      if (e.isDirectory()) { colhe(full, base); continue; }
+      if (/\.(jsx?|css|html|mjs)$/i.test(e.name)) fontes.push(path.relative(base, full));
+    }
+  };
+  colhe(path.join(ROOT, 'src'), ROOT);
+  for (const f of fs.readdirSync(ROOT)) {
+    if (/^platform-.*\.(jsx?|css)$/i.test(f)) fontes.push(f);
+  }
+  fontes.push('index.html', 'vite.config.mjs');
+
+  const velhos = fontes.filter((f) => {
+    const fp = path.join(ROOT, f);
+    if (!fs.existsSync(fp)) return false;
+    return fs.statSync(fp).mtimeMs > ref + 2000;
+  });
+  if (velhos.length) {
+    console.error('\nABORTADO: fonte do app mais novo que o build. Rode `npm run build` primeiro:');
+    for (const v of velhos) console.error('  ' + v);
+    console.error('\n  Publicar bundle velho nao falha em lugar nenhum: o app abre com o codigo antigo.');
+    process.exit(1);
+  }
+}
+
+/* ── 2. Cópia do build + extras ─────────────────────────────────────────── */
 
 fs.rmSync(OUT, { recursive: true, force: true });
 fs.mkdirSync(OUT, { recursive: true });
 
-/* O index.html é reescrito no fim, depois que se sabe o que existe na saída. */
-let n = 1;
-const faltando = [];
-
-for (const rel of copiar) {
-  const src = path.join(ROOT, rel);
-  if (!fs.existsSync(src)) { faltando.push(rel); continue; }
-  const dst = path.join(OUT, rel);
-  fs.mkdirSync(path.dirname(dst), { recursive: true });
-  fs.copyFileSync(src, dst);
-  n++;
-}
+let n = 0;
+const andaCopia = (dir) => {
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    const src = path.join(dir, e.name);
+    const dst = path.join(OUT, path.relative(DIST, src));
+    if (e.isDirectory()) {
+      fs.mkdirSync(dst, { recursive: true });
+      andaCopia(src);
+    } else {
+      fs.copyFileSync(src, dst);
+      n++;
+    }
+  }
+};
+andaCopia(DIST);
 
 for (const extra of EXTRAS) {
   const src = path.join(ROOT, extra);
@@ -118,36 +167,19 @@ for (const { de, para } of [...EXTRAS_ARQUIVO, ...EXTRAS_BINARIO]) {
   n++;
 }
 
-/* index.html reescrito: tira as tags de script opcionais cujo arquivo não
-   chegou na saída, seja porque é overlay de dado real (bloqueado acima), seja
-   porque simplesmente não existe nesta árvore.
+/* ── 3. index.html da saída: essenciais presentes, overlay ausente ─────── */
 
-   O app já tolera a ausência via onerror="void(0)" e cai no demo sintético,
-   então funcionalmente dá na mesma. O que muda é o que o prospect vê: sem
-   isso, a primeira coisa no inspetor de rede de uma demonstração comercial são
-   quatro 404 em vermelho, um deles chamado platform-data-real.js. Explicar
-   isso ao vivo é pior do que não ter o problema.
+const html = fs.readFileSync(path.join(DIST, 'index.html'), 'utf8');
 
-   O critério é existência no OUT, não lista de nomes. Overlay novo criado
-   depois daqui é coberto sem ninguém editar este arquivo. */
+/* No contrato antigo, tags de script opcionais eram retiradas aqui quando o
+   arquivo não chegava na saída. O build do Vite já entrega o HTML sem as tags
+   de overlay; este passo continua existindo por defesa: se uma tag opcional
+   reaparecer no HTML buildado e o arquivo não existir na saída, ela sai. */
 const tagsRemovidas = [];
-
-/* Só a tag, sem tentar levar o comentário junto.
- *
- * A versão anterior tinha um grupo opcional `(?:<!--[^]*?-->\s*\n)?` na frente,
- * para remover também o comentário que explicava o script. Foi um erro caro: o
- * `[^]*?` atravessa quebra de linha, então o motor casava do PRIMEIRO comentário
- * do <head> até o `-->` do comentário do script, e apagava tudo que estava no
- * meio. Em 08/08/2026 isso engoliu o bloco de meta tags e a linha do
- * platform-styles.css, e o demo foi publicado sem formatação nenhuma.
- *
- * O comentário órfão que sobra é feio e é inofensivo. Apagar linha de HTML por
- * expressão regular que cruza linhas não vale o risco.
- */
 const htmlSaida = html.replace(
   /[ \t]*<script\b[^>]*\bsrc="([^"]+)"[^>]*>\s*<\/script>[ \t]*\n?/g,
   (bloco, src) => {
-    if (/^(https?:)?\/\//i.test(src)) return bloco;          // CDN, fica
+    if (/^(https?:)?\/\//i.test(src)) return bloco;          // externo, fica
     if (!/\bonerror\s*=/.test(bloco)) return bloco;          // obrigatório, fica
     const rel = src.split('?')[0];
     if (fs.existsSync(path.join(OUT, rel))) return bloco;    // opcional presente, fica
@@ -161,10 +193,8 @@ const htmlSaida = html.replace(
  * a falha foi muda: a página abre, responde 200, e só parece errada para quem
  * olha. Estas linhas transformam isso em publicação abortada. */
 const ESSENCIAIS = [
-  { nome: 'folha de estilo', re: /<link[^>]+platform-styles\.css/ },
-  { nome: 'tokens de design', re: /<script[^>]+platform-tokens\.js/ },
-  { nome: 'camada de dados', re: /<script[^>]+platform-data\.js/ },
-  { nome: 'shell do app', re: /<script[^>]+platform-app\.jsx/ },
+  { nome: 'folha de estilo (asset com fingerprint)', re: /<link[^>]+href="\.\/assets\/[^"]+\.css"/ },
+  { nome: 'bundle do app (module script)', re: /<script\b[^>]*type="module"[^>]*src="\.\/assets\/[^"]+\.js"/ },
   { nome: 'raiz do React', re: /id="root"/ },
 ];
 const perdidos = ESSENCIAIS.filter(e => !e.re.test(htmlSaida)).map(e => e.nome);
@@ -175,15 +205,18 @@ if (perdidos.length) {
   process.exit(1);
 }
 
+if (/platform-data-real\.js|platform-data-audit\.js|platform-historico\.js|platform-brand\.js/.test(htmlSaida)) {
+  console.error('\nABORTADO: tag de overlay de dado real presente no index publicado.');
+  process.exit(1);
+}
+
 fs.writeFileSync(path.join(OUT, 'index.html'), htmlSaida, 'utf8');
 
 console.log(`Diretorio de deploy: ${OUT}`);
-console.log(`  ${n} arquivos copiados`);
-if (bloqueados.length) console.log(`  ${bloqueados.length} bloqueados (dado real): ${bloqueados.join(', ')}`);
-if (faltando.length) console.log(`  ${faltando.length} referenciados e ausentes (ok se forem overlays): ${faltando.join(', ')}`);
+console.log(`  ${n} arquivos copiados (build dist-app + extras)`);
 if (tagsRemovidas.length) console.log(`  ${tagsRemovidas.length} tags opcionais retiradas do index (sem 404 no console): ${tagsRemovidas.join(', ')}`);
 
-/* Trava final: varre a saída atrás de qualquer coisa que não deveria ter ido.
+/* ── 4. Trava final: varre a saída atrás de qualquer coisa indevida ───────
    A comparação é pelo caminho relativo à saída, não pelo nome do arquivo: um
    atlas-card.png que apareça numa subpasta não é o cartão declarado e continua
    abortando. */
