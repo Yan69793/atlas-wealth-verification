@@ -49,7 +49,11 @@ export function loadNameMapping(root: string): Record<string, string> {
   return {};
 }
 
-export function normalize(raw: RawSnapshot, mapping?: Record<string, string>): Snapshot {
+export function normalize(
+  raw: RawSnapshot,
+  periodo: 'diario' | 'mensal',
+  mapping?: Record<string, string>
+): Snapshot {
   const mapa = mapping ?? {};
 
   const carteiras: SnapshotCarteira[] = raw.carteiras.map((rawC) => {
@@ -94,6 +98,7 @@ export function normalize(raw: RawSnapshot, mapping?: Record<string, string>): S
   return {
     schema: 'snapshot/v1',
     data: raw.data,
+    periodo,
     fonte: raw.fonte,
     geradoEm: new Date().toISOString(),
     engine: {

@@ -9,7 +9,7 @@
 
 import path from 'node:path';
 import { helpTexto, parseArgs, protegerRoot, validarData } from './args.js';
-import { diffSnapshots, encontrarDiaAnterior, salvarEventsFile } from './diff.js';
+import { diffSnapshots, encontrarPeriodoAnterior, salvarEventsFile } from './diff.js';
 import { ingestSnapshot } from './ingest.js';
 import { carregarSnapshot } from './state.js';
 import type { FormatoEntrada } from './types.js';
@@ -73,7 +73,7 @@ async function main(): Promise<void> {
     const data = exigirData(args);
     const root = resolverRoot(args);
     const atual = carregarSnapshot(root, data);
-    const anterior = encontrarDiaAnterior(root, data);
+    const anterior = encontrarPeriodoAnterior(root, data);
     const diff = diffSnapshots(atual, anterior?.snapshot ?? null);
     const p = salvarEventsFile(root, data, diff);
     console.log(

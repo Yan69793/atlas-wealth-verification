@@ -14,7 +14,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { adaptar, detectFormato } from './adapters/index.js';
-import { protegerRoot, validarData } from './args.js';
+import { protegerRoot, tipoPeriodo, validarData } from './args.js';
 import { loadNameMapping, normalize } from './normalize.js';
 import type { FormatoEntrada, Snapshot, SnapshotFonte } from './types.js';
 
@@ -51,6 +51,8 @@ export async function ingestSnapshot(opts: {
   const { arquivo, data, fonte, formato, root, force } = opts;
 
   validarData(data); // defesa em profundidade: o CLI valida, a biblioteca também
+  const periodo = tipoPeriodo(data);
+  if (!periodo) throw new Error(`Data invalida: "${data}".`);
   protegerRoot(path.resolve(root)); // nunca gravar dentro do repo do produto
   if (!fonte || !fonte.trim()) throw new Error('Fonte vazia. Informe o rotulo logico da fonte.');
   if (/[\\/]/.test(fonte)) {
@@ -61,7 +63,7 @@ export async function ingestSnapshot(opts: {
   const hash = sha256Arquivo(arquivo);
   const formatoDetectado = detectFormato(arquivo, formato);
   const raw = await adaptar({ arquivo, data, fonte, formato: formatoDetectado });
-  const snapshot = normalize(raw, loadNameMapping(root));
+  const snapshot = normalize(raw, periodo, loadNameMapping(root));
 
   const dir = path.join(root, 'audits', data);
   const caminhos = {

@@ -9,6 +9,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { tipoPeriodo } from './args.js';
 import { carregarSnapshotDoDisco } from './ingest.js';
 import { isLiquidez } from './normalize.js';
 import { THRESHOLDS } from './thresholds.js';
@@ -47,7 +48,22 @@ function janelaPara(dias: number): number | null {
 }
 
 function diasAte(vencimento: string, data: string): number {
-  return Math.round((diaParaMs(vencimento) - diaParaMs(data)) / 86_400_000);
+  return Math.round((diaParaMs(vencimento) - diaParaMs(dataReferencia(data))) / 86_400_000);
+}
+
+/**
+ * Data de referência para janelas de vencimento: no diário, o próprio dia; no
+ * mensal, o último dia do mês (um vencimento em 05/MM+1 dista ~"dias do fim do
+ * mês", a referência estável do período).
+ */
+function dataReferencia(data: string): string {
+  const periodo = tipoPeriodo(data);
+  if (periodo === 'mensal') {
+    const [y, m] = data.split('-').map(Number);
+    const ultimoDia = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    return `${data}-${String(ultimoDia).padStart(2, '0')}`;
+  }
+  return data;
 }
 
 export function calcularMaterialidade(delta: number, plBase: number): number | null {
@@ -61,11 +77,25 @@ export function classificarSeveridade(materialidade: number): Severidade {
   return 'baixa';
 }
 
-/** Anda para trás dia a dia (limite 30) até achar um snapshot.json. */
-export function encontrarDiaAnterior(
+/**
+ * Acha o período anterior com snapshot: no diário, anda para trás dia a dia
+ * (limite 30 — cobre fim de semana e feriado); no mensal, mês a mês (limite 24).
+ */
+export function encontrarPeriodoAnterior(
   root: string,
   data: string
 ): { data: string; snapshot: Snapshot } | null {
+  const periodo = tipoPeriodo(data);
+  if (periodo === 'mensal') {
+    const atual = new Date(data + '-01T00:00:00Z');
+    for (let i = 1; i <= 24; i++) {
+      atual.setUTCMonth(atual.getUTCMonth() - 1);
+      const d = atual.toISOString().slice(0, 7);
+      const snap = carregarSnapshotDoDisco(root, d);
+      if (snap) return { data: d, snapshot: snap };
+    }
+    return null;
+  }
   const dia = new Date(data + 'T00:00:00Z');
   for (let i = 1; i <= 30; i++) {
     dia.setUTCDate(dia.getUTCDate() - 1);
@@ -75,6 +105,9 @@ export function encontrarDiaAnterior(
   }
   return null;
 }
+
+/** Alias de compatibilidade: o nome antigo continua valendo para o diário. */
+export const encontrarDiaAnterior = encontrarPeriodoAnterior;
 
 interface PosicaoMap {
   [key: string]: number; // carteira|ativo -> valor
@@ -293,6 +326,7 @@ export function salvarEventsFile(
   const file: {
     schema: string;
     data: string;
+    periodo: 'diario' | 'mensal';
     baseData: string | null;
     geradoEm: string;
     engine: { nome: 'atlas-audit-engine'; versao: string };
@@ -300,6 +334,7 @@ export function salvarEventsFile(
   } = {
     schema: 'events/v1',
     data,
+    periodo: tipoPeriodo(data) ?? 'diario',
     baseData: diff.baseData,
     geradoEm: new Date().toISOString(),
     engine: { nome: 'atlas-audit-engine', versao: process.env.npm_package_version ?? '0.0.0' },

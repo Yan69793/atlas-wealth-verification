@@ -49,7 +49,8 @@ export interface SnapshotCarteira {
 
 export interface Snapshot {
   schema: 'snapshot/v1';
-  data: string;
+  data: string; // 'YYYY-MM-DD' (diario) ou 'YYYY-MM' (mensal)
+  periodo: 'diario' | 'mensal';
   fonte: SnapshotFonte;
   geradoEm: string; // ISO
   engine: { nome: 'atlas-audit-engine'; versao: string };
@@ -85,6 +86,7 @@ export interface SnapshotEvent {
 
 export interface EventsFile {
   data: string;
+  periodo: 'diario' | 'mensal';
   baseData: string | null; // data do snapshot base usado no diff; null = linha de base
   geradoEm: string;
   engine: { nome: 'atlas-audit-engine'; versao: string };

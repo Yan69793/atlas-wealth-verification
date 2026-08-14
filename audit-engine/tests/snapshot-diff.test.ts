@@ -19,6 +19,7 @@ function mkSnapshot(data: string, carteiras: { nome: string; posicoes: { ativo: 
   return {
     schema: 'snapshot/v1',
     data,
+    periodo: data.length === 7 ? 'mensal' : 'diario',
     fonte: 'teste-sintetico',
     geradoEm: new Date().toISOString(),
     engine: { nome: 'atlas-audit-engine', versao: '0.0.0' },
@@ -216,6 +217,31 @@ describe('diffSnapshots', () => {
     const r2 = diffSnapshots(atual, base);
     assert.deepEqual(r1, r2);
     assert.equal(r1.baseData, DATA_D1);
+  });
+});
+
+describe('modo mensal (data AAAA-MM)', () => {
+  it('diff mês a mês emite os mesmos tipos de evento', () => {
+    const base = mkSnapshot('2026-06', [{ nome: 'A', posicoes: [{ ...LIQ, valor: 100_000 }, { ...FIX, valor: 900_000 }] }]);
+    const atual = mkSnapshot('2026-07', [{ nome: 'A', posicoes: [{ ...LIQ, valor: 150_000 }, { ...FIX, valor: 900_000 }, { ativo: 'LCI Nova', classe: 'Renda Fixa', valor: 10_000 }] }]);
+    const res = diffSnapshots(atual, base);
+    assert.equal(res.baseData, '2026-06');
+    assert.ok(tipos(res.eventos).includes('CASH_INCREASE'));
+    assert.ok(tipos(res.eventos).includes('NEW_POSITION'));
+  });
+
+  it('vencimento no mensal usa o último dia do mês como referência', () => {
+    const base = mkSnapshot('2026-06', [{ nome: 'A', posicoes: [{ ...FIX, valor: 1_000_000 }] }]);
+    // vencimento 2026-08-05: referência 31/07 → 5 dias → janela 7 → evento
+    const atual = mkSnapshot('2026-07', [{ nome: 'A', posicoes: [{ ...FIX, valor: 1_000_000, vencimento: '2026-08-05' }] }]);
+    const ev = diffSnapshots(atual, base).eventos.find((e) => e.tipo === 'MATURITY_APPROACHING')!;
+    assert.ok(ev);
+    assert.equal(ev.evidencias.janelaDias, 7);
+    assert.equal(ev.evidencias.diasRestantes, 5);
+
+    // vencimento 2026-07-15: referência 31/07 → -16 dias → vencido → sem evento
+    const vencido = mkSnapshot('2026-07', [{ nome: 'A', posicoes: [{ ...FIX, valor: 1_000_000, vencimento: '2026-07-15' }] }]);
+    assert.ok(!tipos(diffSnapshots(vencido, base).eventos).includes('MATURITY_APPROACHING'));
   });
 });
 

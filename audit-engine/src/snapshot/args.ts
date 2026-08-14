@@ -35,15 +35,30 @@ export function parseArgs(argv: string[]): {
   return { args, positional };
 }
 
-/** Valida 'YYYY-MM-DD' com ida e volta ao ISO (rejeita 2026-13-99 e 13/08/2026). */
+/**
+ * Valida o período: 'YYYY-MM-DD' (diário) ou 'YYYY-MM' (mensal), com ida e
+ * volta ao ISO (rejeita 2026-13-99, 2026-13 e 13/08/2026).
+ */
 export function validarData(data: string): void {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) {
-    throw new Error(`Data invalida: "${data}". Use o formato AAAA-MM-DD.`);
+  const tipo = tipoPeriodo(data);
+  if (tipo === null) {
+    throw new Error(`Data invalida: "${data}". Use AAAA-MM-DD (diario) ou AAAA-MM (mensal).`);
   }
-  const d = new Date(data + 'T00:00:00Z');
-  if (Number.isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== data) {
-    throw new Error(`Data invalida: "${data}". Use o formato AAAA-MM-DD.`);
+  const d = new Date(data + (tipo === 'diario' ? 'T00:00:00Z' : '-01T00:00:00Z'));
+  if (Number.isNaN(d.getTime())) {
+    throw new Error(`Data invalida: "${data}". Use AAAA-MM-DD (diario) ou AAAA-MM (mensal).`);
   }
+  const iso = tipo === 'diario' ? d.toISOString().slice(0, 10) : d.toISOString().slice(0, 7);
+  if (iso !== data) {
+    throw new Error(`Data invalida: "${data}". Use AAAA-MM-DD (diario) ou AAAA-MM (mensal).`);
+  }
+}
+
+/** 'diario' para AAAA-MM-DD, 'mensal' para AAAA-MM, null se não bater em nenhum. */
+export function tipoPeriodo(data: string): 'diario' | 'mensal' | null {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(data)) return 'diario';
+  if (/^\d{4}-\d{2}$/.test(data)) return 'mensal';
+  return null;
 }
 
 /**
@@ -65,15 +80,18 @@ export function helpTexto(): string {
     'snapshot — pipeline de snapshot EOD diario (Fase 1)',
     '',
     'Uso:',
-    '  node dist/src/snapshot/cli-snapshot.js ingest <fonte> [<arquivo>] --data AAAA-MM-DD [--formato xlsx|csv|pdf|html|api-json] [--root dir] [--force]',
-    '  node dist/src/snapshot/cli-snapshot.js diff  --data AAAA-MM-DD [--root dir]',
-    '  node dist/src/snapshot/cli-snapshot.js state --data AAAA-MM-DD [--root dir]',
+    '  node dist/src/snapshot/cli-snapshot.js ingest <fonte> [<arquivo>] --data AAAA-MM-DD|AAAA-MM [--formato xlsx|csv|pdf|html|api-json] [--root dir] [--force]',
+    '  node dist/src/snapshot/cli-snapshot.js diff  --data AAAA-MM-DD|AAAA-MM [--root dir]',
+    '  node dist/src/snapshot/cli-snapshot.js state --data AAAA-MM-DD|AAAA-MM [--root dir]',
     '',
     '  ingest  le a fonte, normaliza e grava audits/<data>/ingestion.json e snapshot.json.',
-    '          Mesmo dia + mesmo hash pula; mesmo dia + hash diferente reingere',
-    '          (o snapshot anterior e arquivado e o hash anterior fica no historico).',
-    '  diff    compara o snapshot do dia com o dia anterior existente e grava events.json.',
-    '  state   imprime o snapshot daquele dia (nada e sobrescrito por dias posteriores).',
+    '          Mesmo periodo + mesmo hash pula; mesmo periodo + hash diferente',
+    '          reingere (o snapshot anterior e arquivado e o hash anterior fica no',
+    '          historico). AAAA-MM-DD = diario; AAAA-MM = mensal (quando nao ha',
+    '          dado diario, o mensal e o snapshot do periodo).',
+    '  diff    compara o snapshot do periodo com o periodo anterior existente e',
+    '          grava events.json. No mensal, vencimentos usam o ultimo dia do mes.',
+    '  state   imprime o snapshot daquele periodo (nada e sobrescrito por periodos posteriores).',
     '',
     '  <fonte>  rotulo logico da fonte (nao pode ser vazio nem conter separador de path)',
     '  --root   raiz dos artefatos (obrigatorio na pratica: nunca escrever na arvore do produto)',

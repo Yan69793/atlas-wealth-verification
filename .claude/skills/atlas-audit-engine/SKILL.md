@@ -52,6 +52,13 @@ node dist/src/snapshot/cli-snapshot.js diff  --data 2026-08-13 --root ..
 node dist/src/snapshot/cli-snapshot.js state --data 2026-08-13 --root ..
 ```
 
+Dois modos, definidos pelo formato do `--data`:
+- `AAAA-MM-DD` = diario (um snapshot por dia, diff contra o dia anterior existente)
+- `AAAA-MM` = mensal (quando nao ha dado diario: o mensal e o snapshot do
+  periodo, diff contra o mes anterior). No mensal, janelas de vencimento usam
+  o ULTIMO dia do mes como referencia. Os artefatos mensais convivem com o
+  audit.json do fluxo mensal em `audits/<AAAA-MM>/` (nomes de arquivo diferentes).
+
 `--root` e obrigatorio na pratica (`--root > ATLAS_DATA_ROOT`): sem ele o
 comando recusa, para nunca escrever na arvore do produto.
 

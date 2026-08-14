@@ -209,4 +209,21 @@ describe('ingestSnapshot', () => {
       /\.xls \(binario\) nao suportado/
     );
   });
+
+  it('modo mensal: --data AAAA-MM grava snapshot com periodo mensal', async () => {
+    const { root, arquivo } = tmpRoot();
+    const res = await ingestSnapshot({ arquivo, data: '2026-06', fonte: FONTE, formato: 'csv', root });
+    assert.equal(res.status, 'criado');
+    const snap = JSON.parse(fs.readFileSync(path.join(root, 'audits', '2026-06', 'snapshot.json'), 'utf8'));
+    assert.equal(snap.periodo, 'mensal');
+    assert.equal(snap.data, '2026-06');
+  });
+
+  it('modo mensal: mês inválido é rejeitado', async () => {
+    const { root, arquivo } = tmpRoot();
+    await assert.rejects(
+      () => ingestSnapshot({ arquivo, data: '2026-13', fonte: FONTE, formato: 'csv', root }),
+      /Data invalida/
+    );
+  });
 });
