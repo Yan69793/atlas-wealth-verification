@@ -29,6 +29,22 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUT = path.resolve(__dirname, '..', 'tests', 'fixtures-sinteticos');
 
+/**
+ * Reempacota o zip com data fixa em todas as entradas. O exceljs (via jszip)
+ * carimba cada entrada com a hora atual, então o mesmo XLSX nasce com bytes
+ * diferentes a cada execução. Data fixa (época DOS do zip) devolve o
+ * determinismo byte a byte.
+ */
+async function fixarDatasZip(buffer) {
+  const JSZip = (await import('jszip')).default;
+  const zip = await JSZip.loadAsync(buffer);
+  const FIXA = new Date(Date.UTC(1980, 0, 1));
+  for (const nome of Object.keys(zip.files)) {
+    zip.files[nome].date = FIXA;
+  }
+  return zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+}
+
 /* ── Universo sintético (fictício) ─────────────────────────────────────── */
 
 const LIQUIDEZ = 'Liquidez';
@@ -263,7 +279,8 @@ async function escreverXLSX(arquivo, linhasPorDia, dia) {
     sheet.getCell(`D${linha}`).value = total;
   }
 
-  await wb.xlsx.writeFile(arquivo);
+  const buffer = await wb.xlsx.writeBuffer();
+  await fs.promises.writeFile(arquivo, await fixarDatasZip(buffer));
 }
 
 /**
