@@ -21,6 +21,9 @@ describe('contrato dos thresholds do snapshot', () => {
     assert.equal(THRESHOLDS.concentracaoNivelMin, 0.30);
     assert.equal(THRESHOLDS.severidade.baixaMax, 0.10);
     assert.equal(THRESHOLDS.severidade.mediaMax, 0.30);
+    assert.equal(THRESHOLDS.caixaParadoMinPct, 0.10);
+    assert.equal(THRESHOLDS.caixaParadoMinDias, 7);
+    assert.equal(THRESHOLDS.caixaParadoJanelaDias, 90);
     assert.equal(THRESHOLDS.revenueDropPct, 0.05);
   });
 

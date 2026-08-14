@@ -156,6 +156,7 @@ const CONTRATO = [
   'platform-historico-demo.js',
   'platform-oportunidades-demo.js',
   'platform-vencimentos-demo.js',
+  'platform-caixa-parado-demo.js',
   'platform-utils.jsx',
   'platform-dashboard.jsx',
   'platform-carteira.jsx',
@@ -163,6 +164,7 @@ const CONTRATO = [
   'platform-achados.jsx',
   'platform-oportunidades.jsx',
   'platform-vencimentos.jsx',
+  'platform-caixa-parado.jsx',
   'platform-comparativo.jsx',
   'platform-custos.jsx',
   'platform-receitas.jsx',
@@ -982,6 +984,43 @@ ok('página de vencimentos não usa primitiva de envio (dado fica no navegador)'
 
 ok('.gitignore nega o overlay real platform-vencimentos.js',
   gitignore.split(/\r?\n/).some((l) => l.trim() === 'platform-vencimentos.js'));
+
+// ─── 21. Fase 4 — Caixa parado ──────────────────────────────────────────────
+//
+// Mesmas regras das Fases 2 e 3: demo sintético, página registrada, rota e
+// menu no shell, overlay real negado no .gitignore, dado que não sai do
+// navegador.
+
+const caixaDemoPath = path.join(ROOT, 'platform-caixa-parado-demo.js');
+const caixaPagePath = path.join(ROOT, 'platform-caixa-parado.jsx');
+const caixaDemo = fs.existsSync(caixaDemoPath) ? fs.readFileSync(caixaDemoPath, 'utf8') : '';
+const caixaPage = fs.existsSync(caixaPagePath) ? fs.readFileSync(caixaPagePath, 'utf8') : '';
+
+ok('platform-caixa-parado-demo.js existe', fs.existsSync(caixaDemoPath));
+ok('platform-caixa-parado.jsx existe', fs.existsSync(caixaPagePath));
+ok('sem mojibake: platform-caixa-parado-demo.js', !MOJIBAKE.test(caixaDemo));
+ok('sem mojibake: platform-caixa-parado.jsx', !MOJIBAKE.test(caixaPage));
+
+ok('demo de caixa parado publica window.ATLAS_CAIXA_PARADO_DATA',
+  caixaDemo.includes('window.ATLAS_CAIXA_PARADO_DATA'));
+ok('demo de caixa parado é sintético (geradoEm null)',
+  /geradoEm:\s*null/.test(caixaDemo));
+
+ok('página registra AtlasPages.CaixaParado',
+  caixaPage.includes('AtlasPages.CaixaParado'));
+ok('rota /caixa-parado em platform-app.jsx',
+  appContent.includes("path === '/caixa-parado'"));
+ok('navegação contém Caixa parado em platform-app.jsx',
+  appContent.includes("label:'Caixa parado'"));
+
+ok('caixa parado oferece criar oportunidade pré-preenchida (link Fase 2)',
+  caixaPage.includes('Criar oportunidade') && caixaPage.includes('/oportunidades?nova=1'));
+
+ok('página de caixa parado não usa primitiva de envio (dado fica no navegador)',
+  !/fetch\s*\(|XMLHttpRequest|sendBeacon|WebSocket|EventSource/.test(caixaPage));
+
+ok('.gitignore nega o overlay real platform-caixa-parado.js',
+  gitignore.split(/\r?\n/).some((l) => l.trim() === 'platform-caixa-parado.js'));
 
 // ─── Resultado ──────────────────────────────────────────────────────────────
 

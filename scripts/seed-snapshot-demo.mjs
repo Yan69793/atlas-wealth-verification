@@ -66,6 +66,10 @@ function main() {
   for (const dia of dias.slice(1)) {
     snapshot('diff', '--data', dia, '--root', diarioRoot);
   }
+  // Caixa parado (Fase 4): com 5 dias de serie e o default de 7 dias parados
+  // a lista sai vazia (comportamento correto); o comando exercita o calculo e
+  // grava o artefato com schema valido.
+  snapshot('caixa-parado', '--data', '2026-08-14', '--root', diarioRoot);
 
   console.log('\n— Mensal (xlsx) —');
   snapshot('ingest', 'custodiante-sintetico', path.join(FIXTURES, 'mensais', 'posicao-2026-05.xlsx'), '--data', '2026-05', '--root', mensalRoot);
@@ -91,6 +95,8 @@ function main() {
     path.join(formatoB3, 'class-map.local.json')
   );
   snapshot('ingest', 'custodiante-sintetico', path.join(FIXTURES, 'formatos', 'diario-2026-08-13-b3.txt'), '--data', '2026-08-13', '--formato', 'txt-b3', '--root', formatoB3);
+  // 1 snapshot apenas: exercita o caminho serie-curta (itens [] + motivo).
+  snapshot('caixa-parado', '--data', '2026-08-13', '--root', formatoB3);
 
   console.log('\nArtefatos em ' + base);
 }

@@ -43,6 +43,21 @@ export const THRESHOLDS = {
   /** Severidade por materialidade: [0, baixaMax) baixa, [baixaMax, mediaMax) media, >= mediaMax alta */
   severidade: { baixaMax: 0.10, mediaMax: 0.30 },
 
+  /** Caixa parado (Fase 4): liquidez >= 10% do PL do dia conta como parada.
+      Mais estrito que cashMovimentoPct (5%): movimento é evento de um dia;
+      "parado" sustenta lista contínua, ruído custa mais. PL de R$ 1M →
+      R$ 100k parados, material e acionável. */
+  caixaParadoMinPct: 0.10,
+
+  /** Entra na lista se parado há >= 7 dias corridos: uma semana filtra
+      fim de semana e variação de fluxo corriqueira. */
+  caixaParadoMinDias: 7,
+
+  /** Janela de análise: 90 dias corridos (mesmo horizonte máximo de
+      maturidadeJanelas; um trimestre é o horizonte natural de dinheiro
+      parado). */
+  caixaParadoJanelaDias: 90,
+
   /** Reservado Fase 5 — regra desativada nesta fase (constante documentada, não usada) */
   revenueDropPct: 0.05,
 } as const;

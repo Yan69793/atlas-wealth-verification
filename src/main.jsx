@@ -45,6 +45,9 @@ import '../platform-oportunidades-demo.js';
 /* 3e. Fallback sintético de VENCIMENTOS (idem). */
 import '../platform-vencimentos-demo.js';
 
+/* 3f. Fallback sintético de CAIXA PARADO (idem). */
+import '../platform-caixa-parado-demo.js';
+
 /* 4. Utilitários, ícones, gráficos, UI primitives */
 import '../platform-utils.jsx';
 
@@ -55,6 +58,7 @@ import '../platform-report.jsx';
 import '../platform-achados.jsx';
 import '../platform-oportunidades.jsx';
 import '../platform-vencimentos.jsx';
+import '../platform-caixa-parado.jsx';
 import '../platform-comparativo.jsx';
 import '../platform-custos.jsx';
 import '../platform-receitas.jsx';

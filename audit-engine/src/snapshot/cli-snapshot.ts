@@ -10,11 +10,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { helpTexto, parseArgs, protegerRoot, tipoPeriodo, validarData } from './args.js';
+import { THRESHOLDS } from './thresholds.js';
 import { diffSnapshots, encontrarPeriodoAnterior, salvarEventsFile } from './diff.js';
+import { caixaParado, type CaixaParadoFile } from '../intel/idle-cash.js';
 import { vencimentosProximos, type VencimentosFile } from '../intel/maturities.js';
 import { ingestSnapshot } from './ingest.js';
+import { listarSnapshotsDiarios } from './series.js';
 import { carregarSnapshot } from './state.js';
-import type { FormatoEntrada } from './types.js';
+import type { FormatoEntrada, Snapshot } from './types.js';
 
 const FORMATOS = new Set<FormatoEntrada>(['xlsx', 'csv', 'pdf', 'html', 'api-json', 'txt-b3']);
 
@@ -112,6 +115,47 @@ async function main(): Promise<void> {
     };
     fs.writeFileSync(arquivo, JSON.stringify(saida, null, 2), 'utf8');
     console.log(`[vencimentos] ${data}: ${vencimentos.length} vencimento(s) → ${arquivo}`);
+    return;
+  }
+
+  if (comando === 'caixa-parado') {
+    const data = exigirData(args);
+    const root = resolverRoot(args);
+    // data sem snapshot = erro, mesma regra de state/diff/vencimentos
+    carregarSnapshot(root, data);
+    const periodo = tipoPeriodo(data) ?? 'diario';
+    const motivo = periodo !== 'diario' ? 'periodo-mensal' : null;
+    // Só varre a série quando o período permite: no mensal o resultado seria
+    // descartado (caixa parado é conceito de dia).
+    let serie: Snapshot[] = [];
+    let motivoFinal: 'serie-curta' | 'periodo-mensal' | null = motivo;
+    if (motivo === null) {
+      serie = listarSnapshotsDiarios(root, data);
+      if (serie.length < 2) motivoFinal = 'serie-curta';
+    }
+    const itens = motivoFinal === null ? caixaParado(serie) : [];
+    const arquivo = path.join(root, 'audits', data, 'caixa-parado.json');
+    fs.mkdirSync(path.dirname(arquivo), { recursive: true });
+    const saida: CaixaParadoFile = {
+      schema: 'caixa-parado/v1',
+      data,
+      periodo,
+      geradoEm: new Date().toISOString(),
+      engine: {
+        nome: 'atlas-audit-engine',
+        versao: process.env.npm_package_version ?? '0.0.0',
+      },
+      janelaDias: THRESHOLDS.caixaParadoJanelaDias,
+      limiares: { caixaParadoMinPct: THRESHOLDS.caixaParadoMinPct, caixaParadoMinDias: THRESHOLDS.caixaParadoMinDias },
+      motivo: motivoFinal,
+      itens,
+    };
+    fs.writeFileSync(arquivo, JSON.stringify(saida, null, 2), 'utf8');
+    console.log(
+      `[caixa-parado] ${data}: ${itens.length} carteira(s) parada(s)` +
+        (motivoFinal ? ` (motivo: ${motivoFinal})` : '') +
+        ` → ${arquivo}`
+    );
     return;
   }
 
