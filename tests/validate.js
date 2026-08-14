@@ -1022,6 +1022,17 @@ ok('página de caixa parado não usa primitiva de envio (dado fica no navegador)
 ok('.gitignore nega o overlay real platform-caixa-parado.js',
   gitignore.split(/\r?\n/).some((l) => l.trim() === 'platform-caixa-parado.js'));
 
+// A trava de publicacao conhece os overlays das Fases 2-4 (lacuna fechada na
+// publicacao do demo de 2026-08-14): se um overlay real aparecer no build, a
+// publicacao recusa em vez de subir dado de cliente.
+const buildDeploySrc = fs.readFileSync(path.join(ROOT, 'scripts', 'build-deploy.mjs'), 'utf8');
+const verifyBuildSrc = fs.readFileSync(path.join(ROOT, 'scripts', 'verify-build.mjs'), 'utf8');
+for (const f of ['platform-oportunidades.js', 'platform-vencimentos.js', 'platform-caixa-parado.js']) {
+  const base = f.replace(/\.js$/, '');
+  ok('build-deploy.mjs proíbe o overlay ' + f, buildDeploySrc.includes(base));
+  ok('verify-build.mjs proíbe o overlay ' + f, verifyBuildSrc.includes(base));
+}
+
 // ─── Resultado ──────────────────────────────────────────────────────────────
 
 const total = pass + fail;

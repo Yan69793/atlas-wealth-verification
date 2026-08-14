@@ -27,6 +27,9 @@ const NUNCA = [
   /^platform-data-audit(\.min)?\.js$/i,
   /^platform-historico(\.min)?\.js$/i,
   /^platform-brand(\.min)?\.js$/i,
+  /^platform-oportunidades(\.min)?\.js$/i,
+  /^platform-vencimentos(\.min)?\.js$/i,
+  /^platform-caixa-parado(\.min)?\.js$/i,
   /^data\.js(on)?$/i,
   /^historico\.js(on)?$/i,
 ];
@@ -50,7 +53,7 @@ export function verificarDist(dir) {
   const indexHtml = path.join(dir, 'index.html');
   if (fs.existsSync(indexHtml)) {
     const html = fs.readFileSync(indexHtml, 'utf8');
-    if (/platform-data-real\.js|platform-data-audit\.js|platform-historico\.js/.test(html)) {
+    if (/platform-data-real\.js|platform-data-audit\.js|platform-historico\.js|platform-oportunidades\.js|platform-vencimentos\.js|platform-caixa-parado\.js/.test(html)) {
       suspeitos.push('index.html (tag de overlay presente no HTML buildado)');
     }
   }

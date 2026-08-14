@@ -37,6 +37,9 @@ const NUNCA = [
   /^platform-data-audit(\.min)?\.js$/i,
   /^platform-historico(\.min)?\.js$/i,
   /^platform-brand(\.min)?\.js$/i,
+  /^platform-oportunidades(\.min)?\.js$/i,
+  /^platform-vencimentos(\.min)?\.js$/i,
+  /^platform-caixa-parado(\.min)?\.js$/i,
   /^data\.js(on)?$/i,
   /^historico\.js(on)?$/i,
 ];
@@ -205,7 +208,7 @@ if (perdidos.length) {
   process.exit(1);
 }
 
-if (/platform-data-real\.js|platform-data-audit\.js|platform-historico\.js|platform-brand\.js/.test(htmlSaida)) {
+if (/platform-data-real\.js|platform-data-audit\.js|platform-historico\.js|platform-brand\.js|platform-oportunidades\.js|platform-vencimentos\.js|platform-caixa-parado\.js/.test(htmlSaida)) {
   console.error('\nABORTADO: tag de overlay de dado real presente no index publicado.');
   process.exit(1);
 }

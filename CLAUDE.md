@@ -35,10 +35,12 @@ inicialização: tokens → parsers → dados → utils → páginas → shell. 
 ordem quebra em tela branca. `tests/validate.js` trava esse contrato.
 
 - Overlays de dado real (`platform-data-real.js`, `platform-data-audit.js`,
-  `platform-historico.js`, `platform-brand.js`) são scripts clássicos em
-  runtime, NUNCA entram no bundle. O build os retira do HTML. Quem reinjeta:
-  em produção, o Worker da instância (no HTML que ele serve, apontando para a
-  rota autenticada do R2); localmente, o `scripts/gen-index.mjs` da instância.
+  `platform-historico.js`, `platform-brand.js`, e os das fases de inteligência
+  `platform-oportunidades.js`, `platform-vencimentos.js`, `platform-caixa-parado.js`)
+  são scripts clássicos em runtime, NUNCA entram no bundle. O build os retira
+  do HTML. Quem reinjeta: em produção, o Worker da instância (no HTML que ele
+  serve, apontando para a rota autenticada do R2); localmente, o
+  `scripts/gen-index.mjs` da instância.
 - Desenvolvimento: `npm run dev` (Vite com HMR). Publicação do demo: primeiro
   `npm run build`, depois `scripts/deploy-cf.ps1 -Target worker`.
 - `scripts/verify-build.mjs` e `scripts/build-deploy.mjs` recusam publicação
@@ -64,14 +66,9 @@ Cole a saída real na resposta. Se falhar ou não puder executar, diga explicita
 
 ## Pendências abertas
 
-Nenhuma pendência de código. As duas abaixo dependem do dono e não bloqueiam a
-Fase 2 (o pipeline é exercitado com os fixtures sintéticos enquanto isso):
-
-1. **Primeira fonte real (dono)**: validar um adaptador com o primeiro arquivo
-   diário/mensal real de custodiante na instância.
-2. **Thresholds do snapshot (dono)**: confirmar os limiares de evento (liquidez
-   5%, posição nova R$ 5 mil, saque 10% ou R$ 50 mil, janelas de vencimento
-   7/15/30/60/90 dias) antes da estreia na instância.
+Nenhuma. As duas pendências que dependiam do dono foram fechadas em 2026-08-14
+(ver abaixo). Quando o custodiante mandar o primeiro arquivo diário real, ele
+entra como dado de instância normal, sem pendência de produto.
 
 ### Resolvidas em 2026-08-14
 
@@ -86,3 +83,14 @@ Fase 2 (o pipeline é exercitado com os fixtures sintéticos enquanto isso):
 - **Corte da instância para o build Vite**: submodule no commit fecbe17, gen-index e
   build-worker-assets consumindo core/dist-app, CSP do worker no contrato novo,
   injeção de overlays no HTML servido + no-cache. Validado no fluxo diário do dono.
+
+- **Primeira fonte real (dono)**: substituída pelo arquivo modelo da convenção B3
+  (autorizado pelo dono em 2026-08-14). Entregues o adaptador de arquivo posicional
+  estilo B3 e o mapa de classes da instância; a estreia do acompanhamento diário foi
+  provada com a série sintética de 5 dias (eventos idênticos aos desenhados). O
+  primeiro arquivo real do custodiante entra como dado de instância normal.
+
+- **Thresholds do snapshot (dono)**: confirmados e calibrados pelo dono em 2026-08-14,
+  tudo percentual (posição nova/encerrada 3% do PL, liquidez parada 10% do PL com
+  mínimo de 7 dias, janela de 90 dias; os demais limiares seguem a calibração do
+  diff). Fase 4 aprovada e publicada no demo com esses valores.
