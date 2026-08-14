@@ -154,11 +154,13 @@ const CONTRATO = [
   'platform-data.js',
   'platform-data-risk.js',
   'platform-historico-demo.js',
+  'platform-oportunidades-demo.js',
   'platform-utils.jsx',
   'platform-dashboard.jsx',
   'platform-carteira.jsx',
   'platform-report.jsx',
   'platform-achados.jsx',
+  'platform-oportunidades.jsx',
   'platform-comparativo.jsx',
   'platform-custos.jsx',
   'platform-receitas.jsx',
@@ -892,6 +894,56 @@ if (fs.existsSync(distIndexPath)) {
   ok('build: dist-app ausente (ok em clone limpo; rode npm run build antes de publicar)',
     true, 'ausente');
 }
+
+// ─── 19. Fase 2 — Oportunidades & CRM-lite ─────────────────────────────────
+//
+// A página nova vive sob as mesmas regras das demais: demo sintético quando o
+// overlay da instância não carregou, dado que não sai do navegador, ciclo de
+// status espelhado do motor, rota e menu travados no shell.
+
+const oportDemoPath = path.join(ROOT, 'platform-oportunidades-demo.js');
+const oportPagePath = path.join(ROOT, 'platform-oportunidades.jsx');
+const oportDemo = fs.existsSync(oportDemoPath) ? fs.readFileSync(oportDemoPath, 'utf8') : '';
+const oportPage = fs.existsSync(oportPagePath) ? fs.readFileSync(oportPagePath, 'utf8') : '';
+
+ok('platform-oportunidades-demo.js existe', fs.existsSync(oportDemoPath));
+ok('platform-oportunidades.jsx existe', fs.existsSync(oportPagePath));
+ok('sem mojibake: platform-oportunidades-demo.js', !MOJIBAKE.test(oportDemo));
+ok('sem mojibake: platform-oportunidades.jsx', !MOJIBAKE.test(oportPage));
+
+ok('demo de oportunidades publica window.ATLAS_OPORTUNIDADES_DATA',
+  oportDemo.includes('window.ATLAS_OPORTUNIDADES_DATA'));
+ok('demo de oportunidades é sintético (geradoEm null)',
+  /geradoEm:\s*null/.test(oportDemo));
+
+// O ciclo do CRM-lite vive no motor (audit-engine/src/opportunities/types.ts);
+// a página mantém um espelho. Este check trava que o espelho tenha as saídas
+// obrigatórias: Contatar/Descartada na Nova, Convertida no Em andamento.
+ok('página registra AtlasPages.Oportunidades',
+  oportPage.includes('AtlasPages.Oportunidades'));
+ok('página espelha o ciclo de status do motor',
+  /'Nova':\s*\[/.test(oportPage) && oportPage.includes("'Contatar', 'Descartada'")
+  && oportPage.includes("'Convertida', 'Perdida', 'Descartada'"));
+
+ok('rota /oportunidades em platform-app.jsx',
+  appContent.includes("path === '/oportunidades'"));
+ok('navegação contém Oportunidades em platform-app.jsx',
+  appContent.includes("label:'Oportunidades'"));
+
+const achadosContent = fs.readFileSync(path.join(ROOT, 'platform-achados.jsx'), 'utf8');
+ok('achados oferece criar oportunidade a partir do achado (pré-preenchido)',
+  achadosContent.includes('Criar oportunidade') && achadosContent.includes('/oportunidades?nova=1'));
+
+// CRM-lite: nada sai do navegador nesta fase. Mesma regra da importação.
+ok('página de oportunidades não usa primitiva de envio (dado fica no navegador)',
+  !/fetch\s*\(|XMLHttpRequest|sendBeacon|WebSocket|EventSource/.test(oportPage));
+
+// O overlay real da instância (platform-oportunidades.js) carrega dado de
+// cliente e precisa estar negado no .gitignore, como os demais overlays. Sem
+// essa entrada, um git add . versiona o arquivo.
+const gitignore = fs.readFileSync(path.join(ROOT, '.gitignore'), 'utf8');
+ok('.gitignore nega o overlay real platform-oportunidades.js',
+  gitignore.split(/\r?\n/).some((l) => l.trim() === 'platform-oportunidades.js'));
 
 // ─── Resultado ──────────────────────────────────────────────────────────────
 

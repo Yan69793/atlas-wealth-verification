@@ -169,6 +169,7 @@ import ReactDOM from 'react-dom/client';
     { id:'risco',       label:'Radar de Risco',      icon:'alert',      path:'#/risco'       },
     { id:'comparativo', label:'Comparativo',         icon:'compare',    path:'#/comparativo' },
     { id:'achados',     label:'Achados & Exceções',  icon:'findings',   path:'#/achados'     },
+    { id:'oportunidades', label:'Oportunidades',      icon:'portfolios', path:'#/oportunidades' },
     { id:'tendencia',   label:'Tendência do Ciclo',  icon:'trend',      path:'#/tendencia'   },
     { id:'custos',      label:'Transp. de Custos',   icon:'revenue',    path:'#/custos'      },
     { id:'receitas',    label:'Receitas & ROA',      icon:'revenue',    path:'#/receitas'    },
@@ -346,6 +347,7 @@ import ReactDOM from 'react-dom/client';
     if (path === '/dashboard') return 'dashboard';
     if (path.startsWith('/carteira/')) return 'carteira';
     if (path === '/achados') return 'achados';
+    if (path === '/oportunidades') return 'oportunidades';
     if (path === '/comparativo') return 'comparativo';
     if (path === '/receitas') return 'receitas';
     if (path === '/custos') return 'custos';
@@ -363,6 +365,7 @@ import ReactDOM from 'react-dom/client';
     dashboard:  'Dashboard',
     carteira:   'Carteira',
     achados:    'Achados & Exceções',
+    oportunidades: 'Oportunidades',
     comparativo:'Comparativo',
     receitas:   'Receitas & ROA',
     cadastro:   'Cadastro & Compliance',
@@ -469,6 +472,11 @@ import ReactDOM from 'react-dom/client';
         return pages.Achados
           ? React.createElement(pages.Achados)
           : <PlaceholderPage title="Achados & Exceções" etapa={5} />;
+
+      case 'oportunidades':
+        return pages.Oportunidades
+          ? React.createElement(pages.Oportunidades, { location })
+          : <PlaceholderPage title="Oportunidades" etapa={5} />;
 
       case 'comparativo':
         return pages.Comparativo

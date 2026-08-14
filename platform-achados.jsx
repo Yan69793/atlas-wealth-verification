@@ -81,6 +81,7 @@ import React from 'react';
               <th>Severidade</th>
               <th>Achado</th>
               <th>Gestor</th>
+              <th>Ações</th>
             </tr>
           </thead>
           <tbody>
@@ -102,6 +103,21 @@ import React from 'react';
                   </td>
                   <td style={{ fontSize: '0.786rem', color: 'var(--muted)' }}>
                     {row && row.manager ? row.manager.name : '—'}
+                  </td>
+                  <td>
+                    <button
+                      className="btn btn--ghost"
+                      title="Criar oportunidade a partir deste achado"
+                      onClick={(ev) => {
+                        ev.stopPropagation();
+                        navigate('#/oportunidades?nova=1&carteira=' + encodeURIComponent(f.code)
+                          + '&motivo=' + encodeURIComponent(f.finding.text || '')
+                          + '&origem=achado&periodo=' + encodeURIComponent(month));
+                      }}
+                      style={{ fontSize: '0.714rem', padding: '2px 8px', whiteSpace: 'nowrap' }}
+                    >
+                      Criar oportunidade
+                    </button>
                   </td>
                 </tr>
               );

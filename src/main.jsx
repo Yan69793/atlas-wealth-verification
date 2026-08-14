@@ -38,6 +38,10 @@ import '../platform-data-risk.js';
    antes deste bundle, então window.HISTORICO_DATA já existe quando chega aqui. */
 import '../platform-historico-demo.js';
 
+/* 3d. Fallback sintético de OPORTUNIDADES (mesmo papel: só roda se o overlay
+   da instância ainda não populou a janela). */
+import '../platform-oportunidades-demo.js';
+
 /* 4. Utilitários, ícones, gráficos, UI primitives */
 import '../platform-utils.jsx';
 
@@ -46,6 +50,7 @@ import '../platform-dashboard.jsx';
 import '../platform-carteira.jsx';
 import '../platform-report.jsx';
 import '../platform-achados.jsx';
+import '../platform-oportunidades.jsx';
 import '../platform-comparativo.jsx';
 import '../platform-custos.jsx';
 import '../platform-receitas.jsx';
