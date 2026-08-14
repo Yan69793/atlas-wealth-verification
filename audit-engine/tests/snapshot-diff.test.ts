@@ -33,6 +33,7 @@ function mkSnapshot(data: string, carteiras: { nome: string; posicoes: { ativo: 
         valor: p.valor,
         vencimento: p.vencimento ?? null,
         quantidade: null,
+        instituicao: null,
       })),
     })),
   };
