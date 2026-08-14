@@ -64,13 +64,22 @@ Cole a saída real na resposta. Se falhar ou não puder executar, diga explicita
 
 ## Pendências abertas
 
-1. **Publicar no GitHub** (2026-08-14): o repositório `Yan69793/atlas-wealth-verification`
-   não existe no GitHub (404) e o token do `gh` não tem escopo `createRepository`.
-   Commits estão locais (branch `feat/vite-migration`: fecbe17, 53198f1). Caminhos:
-   dono cria o repo privado na UI do GitHub, OU regenera o token com permissão de
-   escrita, e então `git push origin feat/vite-migration`.
+Nenhuma pendência de código. As duas abaixo dependem do dono e não bloqueiam a
+Fase 2 (o pipeline é exercitado com os fixtures sintéticos enquanto isso):
+
+1. **Primeira fonte real (dono)**: validar um adaptador com o primeiro arquivo
+   diário/mensal real de custodiante na instância.
+2. **Thresholds do snapshot (dono)**: confirmar os limiares de evento (liquidez
+   5%, posição nova R$ 5 mil, saque 10% ou R$ 50 mil, janelas de vencimento
+   7/15/30/60/90 dias) antes da estreia na instância.
 
 ### Resolvidas em 2026-08-14
+
+- **Publicar no GitHub**: repo privado `Yan69793/atlas-wealth-verification` criado;
+  branch `feat/vite-migration` publicada até 217d1c4 (hash local = remoto, conferido
+  em 2026-08-14). Cuidado operacional: a variável `GH_TOKEN` do ambiente sombreia o
+  token do keyring do `gh`. Antes de qualquer push, rodar
+  `$env:GH_TOKEN=$null; $env:GITHUB_TOKEN=$null`.
 
 - **pdfplumber ausente**: instalada via pip no interpretador padrão. Era o que fazia
   a parity PDF vs Excel falhar; com ela, as suítes de parity rodam com dado real.
