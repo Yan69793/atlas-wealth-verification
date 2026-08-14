@@ -62,6 +62,7 @@ import '../platform-achados.jsx';
 import '../platform-oportunidades.jsx';
 import '../platform-vencimentos.jsx';
 import '../platform-caixa-parado.jsx';
+import '../platform-valor-assessor.jsx';
 import '../platform-comparativo.jsx';
 import '../platform-custos.jsx';
 import '../platform-receitas.jsx';

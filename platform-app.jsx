@@ -172,6 +172,7 @@ import ReactDOM from 'react-dom/client';
     { id:'oportunidades', label:'Oportunidades',      icon:'portfolios', path:'#/oportunidades' },
     { id:'vencimentos',   label:'Vencimentos',        icon:'trending_up', path:'#/vencimentos'  },
     { id:'caixa-parado',  label:'Caixa parado',       icon:'revenue',    path:'#/caixa-parado'  },
+    { id:'valor-assessor', label:'Valor do assessor', icon:'star',      path:'#/valor-assessor' },
     { id:'tendencia',   label:'Tendência do Ciclo',  icon:'trend',      path:'#/tendencia'   },
     { id:'custos',      label:'Transp. de Custos',   icon:'revenue',    path:'#/custos'      },
     { id:'receitas',    label:'Receitas & ROA',      icon:'revenue',    path:'#/receitas'    },
@@ -352,6 +353,7 @@ import ReactDOM from 'react-dom/client';
     if (path === '/oportunidades') return 'oportunidades';
     if (path === '/vencimentos') return 'vencimentos';
     if (path === '/caixa-parado') return 'caixa-parado';
+    if (path === '/valor-assessor') return 'valor-assessor';
     if (path === '/comparativo') return 'comparativo';
     if (path === '/receitas') return 'receitas';
     if (path === '/custos') return 'custos';
@@ -372,6 +374,7 @@ import ReactDOM from 'react-dom/client';
     oportunidades: 'Oportunidades',
     vencimentos:   'Vencimentos',
     'caixa-parado': 'Caixa parado',
+    'valor-assessor': 'Valor do assessor',
     comparativo:'Comparativo',
     receitas:   'Receitas & ROA',
     cadastro:   'Cadastro & Compliance',
@@ -493,6 +496,11 @@ import ReactDOM from 'react-dom/client';
         return pages.CaixaParado
           ? React.createElement(pages.CaixaParado)
           : <PlaceholderPage title="Caixa parado" etapa={5} />;
+
+      case 'valor-assessor':
+        return pages.ValorAssessor
+          ? React.createElement(pages.ValorAssessor)
+          : <PlaceholderPage title="Valor do assessor" etapa="valor-assessor" />;
 
       case 'comparativo':
         return pages.Comparativo

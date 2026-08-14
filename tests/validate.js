@@ -166,6 +166,7 @@ const CONTRATO = [
   'platform-oportunidades.jsx',
   'platform-vencimentos.jsx',
   'platform-caixa-parado.jsx',
+  'platform-valor-assessor.jsx',
   'platform-comparativo.jsx',
   'platform-custos.jsx',
   'platform-receitas.jsx',
@@ -1062,6 +1063,68 @@ ok('aba de queda de receita não usa primitiva de envio (dado fica no navegador)
   !/fetch\s*\(|XMLHttpRequest|sendBeacon|WebSocket|EventSource/.test(receitasPage));
 ok('.gitignore nega o overlay real platform-receita-drop.js',
   gitignore.split(/\r?\n/).some((l) => l.trim() === 'platform-receita-drop.js'));
+
+// ─── 23. Fase 6 — Valor do assessor ─────────────────────────────────────────
+//
+// Página de síntese: lê AtlasData (getRow) + ATLAS_CAIXA_PARADO_DATA, sem
+// overlay próprio. A matemática vive em módulo puro importável em Node
+// (precedente: platform-parsers.js).
+
+const VM = require('../platform-valor-math.js');
+const valorMathPath = path.join(ROOT, 'platform-valor-math.js');
+const valorPagePath = path.join(ROOT, 'platform-valor-assessor.jsx');
+const valorMath = fs.existsSync(valorMathPath) ? fs.readFileSync(valorMathPath, 'utf8') : '';
+const valorPage = fs.existsSync(valorPagePath) ? fs.readFileSync(valorPagePath, 'utf8') : '';
+
+ok('platform-valor-math.js existe', fs.existsSync(valorMathPath));
+ok('platform-valor-math.js é JS puro (sem import/React/JSX)',
+  !/^import\s|React|export\s+default|<\w/.test(valorMath));
+ok('módulo de matemática exporta as 5 funções',
+  typeof VM.acumularSerie === 'function' && typeof VM.retornoLiquidoMensal === 'function' &&
+  typeof VM.custoInacao === 'function' && typeof VM.valorEmReais === 'function' &&
+  typeof VM.janelaMeses === 'function');
+
+const perto = (a, b) => Math.abs(a - b) < 1e-9;
+ok('acumularSerie vazia = 0', perto(VM.acumularSerie([]), 0));
+ok('acumularSerie 6x CDI 0,0116', perto(VM.acumularSerie([0.0116, 0.0116, 0.0116, 0.0116, 0.0116, 0.0116]), 0.071649891));
+ok('acumularSerie 3x 1%', perto(VM.acumularSerie([0.01, 0.01, 0.01]), 0.030301));
+ok('acumularSerie com mês ausente vira fator 1', perto(VM.acumularSerie([null, 0.005, undefined]), 0.005));
+ok('retornoLiquidoMensal (2%, 1%)', perto(VM.retornoLiquidoMensal(0.02, 0.01), 0.0098));
+ok('retornoLiquidoMensal custo 0', perto(VM.retornoLiquidoMensal(0.02, 0), 0.02));
+ok('retornoLiquidoMensal retorno 0', perto(VM.retornoLiquidoMensal(0, 0.005), -0.005));
+ok('custoInacao 3.000.000 x 0,0111', perto(VM.custoInacao(3000000, 0.0111), 1110));
+ok('custoInacao 900.000 x 0,01', perto(VM.custoInacao(900000, 0.01), 300));
+ok('custoInacao rsDias 0', perto(VM.custoInacao(0, 0.0111), 0));
+ok('custoInacao CDI ausente/zero = 0',
+  perto(VM.custoInacao(900000, null), 0) && perto(VM.custoInacao(900000, undefined), 0) && perto(VM.custoInacao(900000, 0), 0));
+ok('valorEmReais positivo', perto(VM.valorEmReais(0.012, 5000000), 60000));
+ok('valorEmReais negativo', perto(VM.valorEmReais(-0.005, 2000000), -10000));
+ok('valorEmReais plFinal 0', perto(VM.valorEmReais(0.05, 0), 0));
+const serie6 = ['2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06'];
+ok('janelaMeses normal', JSON.stringify(VM.janelaMeses(serie6, '2026-06', 3)) === JSON.stringify(['2026-04', '2026-05', '2026-06']));
+ok('janelaMeses maior que a série', VM.janelaMeses(serie6, '2026-06', 24).length === 6);
+ok('janelaMeses desde o início', VM.janelaMeses(serie6, '2026-06', null).length === 6);
+ok('janelaMeses dataFim fora', VM.janelaMeses(serie6, '2025-01', 3).length === 0);
+ok('janelaMeses N=0', VM.janelaMeses(serie6, '2026-06', 0).length === 0);
+
+ok('sem mojibake: platform-valor-math.js', !MOJIBAKE.test(valorMath));
+ok('sem mojibake: platform-valor-assessor.jsx', !MOJIBAKE.test(valorPage));
+ok('página registra AtlasPages.ValorAssessor', valorPage.includes('AtlasPages.ValorAssessor'));
+ok('rota /valor-assessor em platform-app.jsx', appContent.includes("path === '/valor-assessor'"));
+ok('navegação contém Valor do assessor em platform-app.jsx', appContent.includes("label:'Valor do assessor'"));
+ok('título da página registrado', appContent.includes("'valor-assessor': 'Valor do assessor'"));
+ok('main.jsx importa a página após platform-caixa-parado.jsx',
+  mainJsx.indexOf("import '../platform-valor-assessor.jsx'") > mainJsx.indexOf("import '../platform-caixa-parado.jsx'"));
+ok('página usa o módulo de matemática', valorPage.includes('AtlasValorMath') && valorPage.includes('acumularSerie'));
+ok('página usa getRow (séries reais)', valorPage.includes('getRow'));
+ok('página soma a taxa da casa ao custo (8 camadas)', valorPage.includes('totalCost') && valorPage.includes('revenue'));
+ok('página lê a inação da Fase 4', valorPage.includes('ATLAS_CAIXA_PARADO_DATA'));
+ok('página não usa primitiva de envio (dado fica no navegador)',
+  !/fetch\s*\(|XMLHttpRequest|sendBeacon|WebSocket|EventSource/.test(valorPage));
+ok('nota de rodapé honesta presente',
+  valorPage.includes('aproximado') && valorPage.includes('taxa da casa') && valorPage.includes('Vanguard'));
+ok('sem overlay novo no gitignore', !gitignore.split(/\r?\n/).some((l) => /valor/.test(l.trim())));
+ok('sem mudança de motor (trava anti-escopo)', !/threshold|intel/.test(valorMath) && !/threshold|intel/.test(valorPage));
 
 // ─── Resultado ──────────────────────────────────────────────────────────────
 
