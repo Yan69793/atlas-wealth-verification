@@ -175,7 +175,7 @@ describe('ingestSnapshot', () => {
     );
   });
 
-  it('vencimento malformado e ativo duplicado são rejeitados na normalização', async () => {
+  it('vencimento malformado é rejeitado na normalização', async () => {
     const { root } = tmpRoot();
     const vencRuim = path.join(root, 'venc-ruim.csv');
     fs.writeFileSync(
@@ -187,17 +187,25 @@ describe('ingestSnapshot', () => {
       () => ingestSnapshot({ arquivo: vencRuim, data: DATA, fonte: FONTE, formato: 'csv', root }),
       /vencimento malformado/
     );
+  });
 
+  it('ativo repetido (mesmo título em custodiantes diferentes) soma em vez de rejeitar', async () => {
+    // Padrão real do book: NTN-B parte no BTG, parte no XPM, duas linhas com o
+    // mesmo nome. O próprio book consolida somando — o snapshot segue o book.
+    const { root } = tmpRoot();
     const dup = path.join(root, 'dup.csv');
     fs.writeFileSync(
       dup,
-      'carteira,ativo,classe,valor,vencimento,quantidade\nTeste Alfa,Fundo XYZ,Renda Fixa,400000,,\nTeste Alfa,Fundo XYZ,Renda Fixa,500000,,\n',
+      'carteira,ativo,classe,valor,vencimento,quantidade\nTeste Alfa,Fundo XYZ,Renda Fixa,400000,,10\nTeste Alfa,Fundo XYZ,Renda Fixa,500000,,7\n',
       'utf8'
     );
-    await assert.rejects(
-      () => ingestSnapshot({ arquivo: dup, data: DATA, fonte: FONTE, formato: 'csv', root }),
-      /ativo duplicado/
-    );
+    await ingestSnapshot({ arquivo: dup, data: DATA, fonte: FONTE, formato: 'csv', root });
+    const snap = carregarSnapshotDoDisco(root, DATA)!;
+    const alfa = snap.carteiras.find((c) => c.nome === 'Teste Alfa')!;
+    assert.equal(alfa.posicoes.length, 1, 'uma posição única após a soma');
+    assert.equal(alfa.posicoes[0].valor, 900_000, 'valores somados');
+    assert.equal(alfa.posicoes[0].quantidade, 17, 'quantidades somadas');
+    assert.equal(alfa.plTotal, 900_000, 'plTotal segue a soma (fonte única)');
   });
 
   it('.xls binário é rejeitado com mensagem própria', async () => {

@@ -60,32 +60,40 @@ export function normalize(
     const nome = normalizarIdentificador(mapa[rawC.nome] ?? rawC.nome);
     if (!nome) throw new Error(`Snapshot: carteira com nome vazio após normalização.`);
 
-    const vistos = new Set<string>();
-    const posicoes: SnapshotPosition[] = rawC.posicoes.map((rawP) => {
+    // Mesmo ativo em mais de um custodiante (ex.: NTN-B parte no BTG, parte
+    // no XPM) vem como duas linhas no book, e o próprio book consolida
+    // somando. Rejeitar derrubaria o snapshot inteiro de um dado real comum.
+    // Política: soma valor (e quantidade quando numérica), mantém a primeira
+    // classe/vencimento. A ordem do mapa = primeira ocorrência, determinística.
+    const porAtivo = new Map<string, SnapshotPosition>();
+    for (const rawP of rawC.posicoes) {
       if (!Number.isFinite(rawP.valor)) {
         throw new Error(`Snapshot: valor nao finito na carteira "${nome}", ativo "${rawP.ativo}".`);
       }
       const ativo = normalizarIdentificador(mapa[rawP.ativo] ?? rawP.ativo);
-      if (vistos.has(ativo)) {
-        // Duplicata de ativo somaria errado no mapa do diff (chave carteira|ativo
-        // sobrescreveria silenciosamente). Erro explícito em vez de furo mudo.
-        throw new Error(`Snapshot: ativo duplicado "${ativo}" na carteira "${nome}".`);
-      }
-      vistos.add(ativo);
       if (rawP.vencimento && !/^\d{4}-\d{2}-\d{2}$/.test(rawP.vencimento)) {
         throw new Error(
           `Snapshot: vencimento malformado "${rawP.vencimento}" (carteira "${nome}", ativo "${ativo}"). Use AAAA-MM-DD.`
         );
       }
-      return {
-        carteira: nome,
-        ativo,
-        classe: rawP.classe ? normalizarIdentificador(rawP.classe) : null,
-        valor: rawP.valor,
-        vencimento: rawP.vencimento || null,
-        quantidade: rawP.quantidade ?? null,
-      };
-    });
+      const existente = porAtivo.get(ativo);
+      if (existente) {
+        existente.valor += rawP.valor;
+        if (rawP.quantidade != null) {
+          existente.quantidade = (existente.quantidade ?? 0) + rawP.quantidade;
+        }
+      } else {
+        porAtivo.set(ativo, {
+          carteira: nome,
+          ativo,
+          classe: rawP.classe ? normalizarIdentificador(rawP.classe) : null,
+          valor: rawP.valor,
+          vencimento: rawP.vencimento || null,
+          quantidade: rawP.quantidade ?? null,
+        });
+      }
+    }
+    const posicoes = [...porAtivo.values()];
 
     const plTotal = posicoes.reduce((acc, p) => acc + p.valor, 0);
     return { nome, plTotal, posicoes };
