@@ -72,14 +72,43 @@ export function loadClassMapping(root: string): Record<string, string> {
   return {};
 }
 
+/** taxa-map: taxa-map.local.json (instância) sobre taxa-map.json (produto, vazio).
+   Fonte da receita da casa (Fase 5): chave = nome canônico da carteira
+   (pós name-map), valor = taxa ANUAL (ex. 0.0048). O normalize deriva a
+   receita mensal (PL x taxa / 12) só no período mensal. Valores que não
+   sejam números finitos são ignorados; mapa ilegível vira vazio. */
+export function loadTaxaMapping(root: string): Record<string, number> {
+  for (const rel of ['taxa-map.local.json', 'taxa-map.json']) {
+    const p = path.join(root, rel);
+    if (!fs.existsSync(p)) continue;
+    try {
+      const raw = JSON.parse(fs.readFileSync(p, 'utf8')) as {
+        mappings?: Record<string, number>;
+      };
+      if (raw && typeof raw === 'object' && raw.mappings && typeof raw.mappings === 'object') {
+        const limpos: Record<string, number> = {};
+        for (const [k, v] of Object.entries(raw.mappings)) {
+          if (typeof v === 'number' && Number.isFinite(v) && v >= 0) limpos[k] = v;
+        }
+        return limpos;
+      }
+    } catch {
+      // mapa ilegível: segue sem taxa; a receita fica ausente e o diff ignora
+    }
+  }
+  return {};
+}
+
 export function normalize(
   raw: RawSnapshot,
   periodo: 'diario' | 'mensal',
   mapping?: Record<string, string>,
-  classMapping?: Record<string, string>
+  classMapping?: Record<string, string>,
+  taxaMapping?: Record<string, number>
 ): Snapshot {
   const mapa = mapping ?? {};
   const mapaClasse = classMapping ?? {};
+  const mapaTaxa = taxaMapping ?? {};
 
   const carteiras: SnapshotCarteira[] = raw.carteiras.map((rawC) => {
     const nome = normalizarIdentificador(mapa[rawC.nome] ?? rawC.nome);
@@ -126,7 +155,20 @@ export function normalize(
     const posicoes = [...porAtivo.values()];
 
     const plTotal = posicoes.reduce((acc, p) => acc + p.valor, 0);
-    return { nome, plTotal, posicoes };
+
+    // Receita da casa (Fase 5): conceito mensal. No diário o campo fica
+    // ausente de propósito, o diff de receita ignora. Fonte: raw.receita
+    // (adaptador futuro) com prioridade; senão taxa-map × PL / 12.
+    let receita: number | undefined;
+    if (periodo === 'mensal') {
+      if (rawC.receita !== undefined && Number.isFinite(rawC.receita)) {
+        receita = rawC.receita;
+      } else if (typeof mapaTaxa[nome] === 'number') {
+        receita = Math.round((plTotal * (mapaTaxa[nome] / 12)) * 100) / 100;
+      }
+    }
+
+    return { nome, plTotal, ...(receita !== undefined ? { receita } : {}), posicoes };
   });
 
   if (!carteiras.length) {

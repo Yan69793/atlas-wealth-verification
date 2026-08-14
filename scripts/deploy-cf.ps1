@@ -76,7 +76,7 @@ try {
 
 # Rede de seguranca independente da varredura do build-deploy.mjs. Custa nada e
 # cobre o caso de alguem liberar um overlay la e esquecer aqui.
-$proibidos = @('platform-data-real.js', 'platform-data-audit.js', 'platform-historico.js', 'platform-brand.js', 'platform-oportunidades.js', 'platform-vencimentos.js', 'platform-caixa-parado.js', 'data.js', 'historico.js')
+$proibidos = @('platform-data-real.js', 'platform-data-audit.js', 'platform-historico.js', 'platform-brand.js', 'platform-oportunidades.js', 'platform-vencimentos.js', 'platform-caixa-parado.js', 'platform-receita-drop.js', 'data.js', 'historico.js')
 $achados = Get-ChildItem -Recurse -File $out | Where-Object { $proibidos -contains $_.Name }
 if ($achados) {
   Write-Error ("Dado real no pacote, publicacao cancelada: " + ($achados.Name -join ', '))

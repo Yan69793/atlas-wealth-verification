@@ -56,6 +56,21 @@ export const REGRAS_PADRAO: RegraOportunidade[] = [
     prazoDias: 7,
   },
   {
+    nome: 'queda-receita',
+    ligada: true,
+    gatilho: (e) => e.tipo === 'REVENUE_DROP',
+    texto: (e) => {
+      const pct = typeof e.deltaPct === 'number' ? Math.abs(e.deltaPct) : 0;
+      const queda = typeof e.evidencias.queda === 'number' ? e.evidencias.queda : 0;
+      const pctPt = (pct * 100).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+      return `Receita da casa caiu ${pctPt}% no mes (R$ ${Math.round(queda).toLocaleString('pt-BR')}): avaliar causas da queda de patrimonio`;
+    },
+    // receita da casa é direta, mas o evento só nasce no fechamento do mês:
+    // 15 dias dão prazo de contato dentro do ciclo sem urgência de saque
+    prioridade: 'P1',
+    prazoDias: 15,
+  },
+  {
     nome: 'reinvestimento',
     ligada: true,
     gatilho: (e) => e.tipo === 'POSITION_CLOSED',

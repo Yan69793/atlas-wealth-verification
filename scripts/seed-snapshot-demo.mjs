@@ -72,6 +72,8 @@ function main() {
   snapshot('caixa-parado', '--data', '2026-08-14', '--root', diarioRoot);
 
   console.log('\n— Mensal (xlsx) —');
+  // taxa-map da instancia: fonte da receita da casa no mensal (Fase 5).
+  fs.copyFileSync(path.join(FIXTURES, 'taxa-map.json'), path.join(mensalRoot, 'taxa-map.local.json'));
   snapshot('ingest', 'custodiante-sintetico', path.join(FIXTURES, 'mensais', 'posicao-2026-05.xlsx'), '--data', '2026-05', '--root', mensalRoot);
   snapshot('ingest', 'custodiante-sintetico', path.join(FIXTURES, 'mensais', 'posicao-2026-06.xlsx'), '--data', '2026-06', '--root', mensalRoot);
   snapshot('diff', '--data', '2026-06', '--root', mensalRoot);

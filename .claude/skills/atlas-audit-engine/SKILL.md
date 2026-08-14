@@ -71,8 +71,10 @@ Contrato dos artefatos (na instancia, `audits/<AAAA-MM-DD>/`):
 - `events.json` — schema `events/v1`: eventos do diff contra o dia anterior
   existente. Tipos: CASH_INCREASE/DECREASE, NEW_POSITION, POSITION_CLOSED,
   MATURITY_APPROACHING (janelas 7/15/30/60/90, 1 evento por ativo por troca de
-  janela), LARGE_WITHDRAWAL, ALLOCATION_SHIFT, CONCENTRATION_INCREASE.
-  REVENUE_DROP e reservado para a Fase 5 e nunca e emitido.
+  janela), LARGE_WITHDRAWAL, ALLOCATION_SHIFT, CONCENTRATION_INCREASE,
+  REVENUE_DROP (Fase 5: queda >= 5% da receita mensal da carteira; receita =
+  PL x taxa anual / 12, taxa-map da instancia; conceito mensal — no diario a
+  receita nao existe).
 
 Semantica de idempotencia: mesmo dia + mesmo hash pula (`skip`); mesmo dia +
 hash diferente reingere, arquivando o snapshot anterior como
@@ -81,8 +83,10 @@ anteriores nunca sao sobrescritos — `state` devolve o dia pedido mesmo depois
 de D+1 ingerido.
 
 Thresholds em `src/snapshot/thresholds.ts`, defaults conservadores, com teste
-de contrato. Name-map da instancia e aplicado no normalize (primeiro consumidor
-do `name-map.local.json`).
+de contrato. Mapas da instancia aplicados no normalize: `name-map.local.json`
+(nomes), `class-map.local.json` (classes, para arquivos que nao trazem classe)
+e `taxa-map.local.json` (taxa anual por carteira, fonte da receita da casa no
+mensal). Local sempre sobre o produto.
 
 ## Fixtures sinteticos (dado ficticio, 100% regeneraveis)
 

@@ -23,6 +23,9 @@ export interface RawPosition {
 
 export interface RawCarteira {
   nome: string;
+  /** Receita da casa no período (R$), quando a fonte informa; senão, o
+      normalize deriva no mensal via taxa-map (PL x taxa anual / 12). */
+  receita?: number;
   posicoes: RawPosition[];
 }
 
@@ -46,6 +49,9 @@ export interface SnapshotPosition {
 export interface SnapshotCarteira {
   nome: string;
   plTotal: number; // sempre derivado: soma das posições (fonte única de verdade)
+  /** Receita da casa no período (R$). Só existe no mensal (normalize calcula
+      via taxa-map quando a fonte não informa); no diário fica ausente. */
+  receita?: number;
   posicoes: SnapshotPosition[];
 }
 
@@ -68,7 +74,7 @@ export type EventoTipo =
   | 'LARGE_WITHDRAWAL'
   | 'ALLOCATION_SHIFT'
   | 'CONCENTRATION_INCREASE'
-  | 'REVENUE_DROP'; // reservado para a Fase 5: o diff desta fase NUNCA o emite
+  | 'REVENUE_DROP'; // Fase 5: queda >= 5% da receita mensal da carteira (receita = PL x taxa anual / 12; taxa-map da instancia)
 
 export type Severidade = 'baixa' | 'media' | 'alta';
 

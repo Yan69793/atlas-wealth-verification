@@ -157,6 +157,7 @@ const CONTRATO = [
   'platform-oportunidades-demo.js',
   'platform-vencimentos-demo.js',
   'platform-caixa-parado-demo.js',
+  'platform-receita-drop-demo.js',
   'platform-utils.jsx',
   'platform-dashboard.jsx',
   'platform-carteira.jsx',
@@ -1027,11 +1028,40 @@ ok('.gitignore nega o overlay real platform-caixa-parado.js',
 // publicacao recusa em vez de subir dado de cliente.
 const buildDeploySrc = fs.readFileSync(path.join(ROOT, 'scripts', 'build-deploy.mjs'), 'utf8');
 const verifyBuildSrc = fs.readFileSync(path.join(ROOT, 'scripts', 'verify-build.mjs'), 'utf8');
-for (const f of ['platform-oportunidades.js', 'platform-vencimentos.js', 'platform-caixa-parado.js']) {
+for (const f of ['platform-oportunidades.js', 'platform-vencimentos.js', 'platform-caixa-parado.js', 'platform-receita-drop.js']) {
   const base = f.replace(/\.js$/, '');
   ok('build-deploy.mjs proíbe o overlay ' + f, buildDeploySrc.includes(base));
   ok('verify-build.mjs proíbe o overlay ' + f, verifyBuildSrc.includes(base));
 }
+
+// ─── 22. Fase 5 — Queda de receita ──────────────────────────────────────────
+//
+// Aba dentro da página Receitas & ROA, sem página ou rota nova. Mesmas
+// regras das fases anteriores: demo sintético, overlay real negado, dado que
+// não sai do navegador. A receita aqui é a da casa (PL x taxa anual / 12);
+// rentabilidade do cliente é outra métrica, fora do evento.
+
+const rdDemoPath = path.join(ROOT, 'platform-receita-drop-demo.js');
+const rdDemo = fs.existsSync(rdDemoPath) ? fs.readFileSync(rdDemoPath, 'utf8') : '';
+const receitasPagePath = path.join(ROOT, 'platform-receitas.jsx');
+const receitasPage = fs.existsSync(receitasPagePath) ? fs.readFileSync(receitasPagePath, 'utf8') : '';
+
+ok('platform-receita-drop-demo.js existe', fs.existsSync(rdDemoPath));
+ok('sem mojibake: platform-receita-drop-demo.js', !MOJIBAKE.test(rdDemo));
+ok('demo de queda de receita publica window.ATLAS_RECEITA_DROP_DATA',
+  rdDemo.includes('window.ATLAS_RECEITA_DROP_DATA'));
+ok('demo de queda de receita é sintético (geradoEm null)',
+  /geradoEm:\s*null/.test(rdDemo));
+ok('página de receitas usa ATLAS_RECEITA_DROP_DATA',
+  receitasPage.includes('ATLAS_RECEITA_DROP_DATA'));
+ok('página de receitas tem a aba Queda de receita',
+  receitasPage.includes("label: 'Queda de receita'"));
+ok('queda de receita oferece criar oportunidade pré-preenchida (link Fase 2)',
+  receitasPage.includes('Criar oportunidade') && receitasPage.includes('/oportunidades?nova=1'));
+ok('aba de queda de receita não usa primitiva de envio (dado fica no navegador)',
+  !/fetch\s*\(|XMLHttpRequest|sendBeacon|WebSocket|EventSource/.test(receitasPage));
+ok('.gitignore nega o overlay real platform-receita-drop.js',
+  gitignore.split(/\r?\n/).some((l) => l.trim() === 'platform-receita-drop.js'));
 
 // ─── Resultado ──────────────────────────────────────────────────────────────
 

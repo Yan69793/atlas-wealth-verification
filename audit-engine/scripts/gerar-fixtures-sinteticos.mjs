@@ -137,6 +137,17 @@ const GAMA_CONC = [
   pos('GAMA', 'NTN-B 2035', RF, 160000, '2035-05-15', 40),
   pos('GAMA', 'ACOES SYNTH', ACOES, 294400),
 ];
+/* Fase 5: queda desenhada de receita no mensal. PL de GAMA cai de 640.000 para
+   600.000 (-6,25%, so em Acoes), abaixo do saque grande (50 mil / 10%), com
+   liquidez inalterada e posicao presente: nenhum outro evento dispara, e com
+   taxa 0,006 a receita cai de 320,00 para 300,00 (-6,25% >= 5%) — um unico
+   REVENUE_DROP. */
+const GAMA_QUEDA = [
+  pos('GAMA', 'FUNDO SYNTH DI', LIQUIDEZ, 64000),
+  pos('GAMA', 'FUNDO SYNTH DI PREV', RF, 160000),
+  pos('GAMA', 'NTN-B 2035', RF, 160000, '2035-05-15', 40),
+  pos('GAMA', 'ACOES SYNTH', ACOES, 216000),
+];
 const GAMA = {
   '2026-08-10': GAMA_BASE,
   '2026-08-11': GAMA_BASE,
@@ -151,8 +162,15 @@ function posicoesDoDia(dia) {
   return [...ALFA[dia], ...BETA[dia], ...GAMA[dia]];
 }
 
-/* Mensal: 2026-05 = dia base; 2026-06 com os três eventos mensais.
+/* Mensal: 2026-05 = dia base; 2026-06 com os quatro eventos mensais
+   (CASH_INCREASE, NEW_POSITION e MATURITY_APPROACHING em ALFA; REVENUE_DROP
+   em GAMA via GAMA_QUEDA + taxa-map).
    O CDB do mensal vence em 2027 (não herda o vencimento do fixture diário). */
+
+/* Taxa anual da casa por carteira (Fase 5): fonte da receita mensal no
+   normalize (PL x taxa / 12). GAMA 0,006: 640.000 → 320,00; 600.000 →
+   300,00, queda exata de 6,25%. */
+const TAXAS = { ALFA: 0.0048, BETA: 0.008, GAMA: 0.006 };
 const MENSAL_05 = [
   ...ALFA['2026-08-10'].map((p) =>
     p.ativo === 'CDB BANCO FICTICIO' ? { ...p, vencimento: '2027-03-01' } : p
@@ -170,7 +188,7 @@ const MENSAL_06 = [
   ),
   pos('ALFA', 'LCI MENSAL NOVA', RF, 80000, '2026-07-20', 80),
   ...BETA_BASE,
-  ...GAMA_BASE,
+  ...GAMA_QUEDA,
 ];
 
 /* ── Escrita de formatos ──────────────────────────────────────────────── */
@@ -514,6 +532,14 @@ async function main() {
   fs.writeFileSync(
     path.join(OUT, 'formatos', 'class-map-b3.json'),
     JSON.stringify({ mappings: classesB3 }, null, 2) + '\n',
+    'utf8'
+  );
+
+  // Taxa anual da casa por carteira (Fase 5): mesmo papel do class-map para
+  // classes — o produto versiona o fixture, a instancia usa taxa-map.local.json.
+  fs.writeFileSync(
+    path.join(OUT, 'taxa-map.json'),
+    JSON.stringify({ mappings: TAXAS }, null, 2) + '\n',
     'utf8'
   );
 

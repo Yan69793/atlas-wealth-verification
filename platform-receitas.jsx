@@ -4,7 +4,7 @@ import React from 'react';
 (() => {
   const { useState, useMemo, useEffect } = React;
 
-  const { fmtCompactBRL, fmtPct, fmtMonthLabel, signClass, navigate } = window.AtlasUtils;
+  const { fmtCompactBRL, fmtPct, fmtMonthLabel, signClass, downloadCSV, navigate } = window.AtlasUtils;
   const { Icon }          = window.AtlasIcons;
   const { LineChart }     = window.AtlasCharts;
   const { KPITile, SeverityBadge, EmptyState } = window.AtlasUI;
@@ -17,6 +17,7 @@ import React from 'react';
     { id: 'serie',   label: 'Série Mensal' },
     { id: 'gestor',  label: 'Por Gestor'   },
     { id: 'cliente', label: 'Por Cliente'  },
+    { id: 'queda',   label: 'Queda de receita' },
   ];
 
   const SEG_ORDER = ['Ultra', 'Large', 'Mid', 'Small', 'Micro'];
@@ -531,6 +532,171 @@ import React from 'react';
   }
 
   /* ============================================================
+     TAB: QUEDA DE RECEITA (Fase 5)
+     Receita da casa por carteira (PL x taxa anual / 12), comparada mes a
+     mes. Tres cortes: total da casa (KPIs), por gerente (filtro) e por
+     carteira (tabela). Rentabilidade do cliente e outra metrica e nao
+     entra aqui.
+  ============================================================ */
+
+  function corSev(sev) {
+    if (sev === 'alta') return 'var(--red, #b91c1c)';
+    if (sev === 'media') return 'var(--amber, #b45309)';
+    return 'var(--navy, #1e3a5f)';
+  }
+
+  function nomeAssessor(id) {
+    if (!D || !D.managers) return id || '';
+    const m = D.managers.find((x) => x.id === id);
+    return m ? m.name : (id || '');
+  }
+
+  function assessorDe(carteira) {
+    if (!D || !D.CATALOG) return '';
+    const p = D.CATALOG.find((x) => x.code === carteira);
+    return p ? p.mgr : '';
+  }
+
+  function nomeCarteira(code) {
+    if (!D || !D.CATALOG) return code;
+    const p = D.CATALOG.find((x) => x.code === code);
+    return p ? p.name : code;
+  }
+
+  function TabQueda() {
+    const DATA = window.ATLAS_RECEITA_DROP_DATA;
+    const itens = useMemo(() => (DATA && DATA.itens ? DATA.itens : []), []);
+    const [filtroMgr, setFiltroMgr] = useState('');
+
+    const visiveis = useMemo(
+      () => (filtroMgr ? itens.filter((v) => assessorDe(v.carteira) === filtroMgr) : itens),
+      [itens, filtroMgr]
+    );
+
+    if (!itens.length) {
+      return (
+        <EmptyState
+          title="Nenhuma queda de receita no mês"
+          sub="Quando a receita da casa cair 5% ou mais no mês contra o anterior, as carteiras aparecem aqui."
+          icon="revenue"
+        />
+      );
+    }
+
+    const totalQueda = itens.reduce((s, v) => s + v.queda, 0);
+    const maior = itens.reduce((m, v) => (m === null || v.queda > m.queda ? v : m), null);
+
+    function criarOportunidade(v) {
+      const motivo = 'Receita da casa caiu ' + fmtPct(v.quedaPct, 1) + ' no mes: avaliar causas';
+      navigate(
+        '#/oportunidades?nova=1&carteira=' + encodeURIComponent(v.carteira) +
+        '&motivo=' + encodeURIComponent(motivo) +
+        '&origem=achado&periodo=' + encodeURIComponent(v.periodo)
+      );
+    }
+
+    function exportar() {
+      const rows = visiveis.map((v) => ({
+        Carteira: v.carteira,
+        Assessor: nomeAssessor(assessorDe(v.carteira)),
+        'Receita base': v.receitaBase,
+        'Receita atual': v.receitaAtual,
+        'Queda (R$)': v.queda,
+        'Queda (%)': Math.round(v.quedaPct * 1000) / 10,
+        Severidade: v.severidade,
+        Periodo: v.periodo,
+      }));
+      downloadCSV(rows, 'atlas_queda_receita_' + new Date().toISOString().slice(0, 10));
+    }
+
+    return (
+      <div>
+        <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: 16 }}>
+          <KPITile label="Queda total no mês" value={fmtCompactBRL(totalQueda)} sub="Soma da receita perdida" variant="red" />
+          <KPITile label="Carteiras com queda" value={itens.length} sub="Queda de 5% ou mais" variant="amber" />
+          <KPITile label="Maior queda" value={maior ? fmtCompactBRL(maior.queda) : '—'} sub={maior ? nomeCarteira(maior.carteira) : ''} variant="navy" />
+        </div>
+
+        <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ fontSize: '0.857rem', color: 'var(--muted)' }}>
+            {fmtMonthLabel(DATA && DATA.data ? DATA.data : '')} vs {fmtMonthLabel(DATA && DATA.baseData ? DATA.baseData : '')}
+          </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <select
+              value={filtroMgr}
+              onChange={(e) => setFiltroMgr(e.target.value)}
+              style={{ fontSize: '0.786rem', padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)' }}
+            >
+              <option value="">Todos os assessores</option>
+              {D.MANAGERS.map((m) => (
+                <option key={m.id} value={m.id}>{m.name}</option>
+              ))}
+            </select>
+            <button className="btn btn--ghost" onClick={exportar} style={{ fontSize: '0.786rem', padding: '6px 12px' }}>
+              <Icon name="export" size={14} /> Exportar CSV
+            </button>
+          </div>
+        </div>
+
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style={{ minWidth: 140 }}>Carteira</th>
+                <th>Assessor</th>
+                <th style={{ textAlign: 'right' }}>Receita base</th>
+                <th style={{ textAlign: 'right' }}>Receita atual</th>
+                <th style={{ textAlign: 'right' }}>Queda R$</th>
+                <th style={{ textAlign: 'right' }}>Queda %</th>
+                <th>Severidade</th>
+                <th>Ação</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visiveis.map((v) => (
+                <tr key={v.carteira}>
+                  <td>
+                    <div style={{ fontWeight: 600, fontSize: '0.857rem' }}>{v.carteira}</div>
+                    <div style={{ fontSize: '0.714rem', color: 'var(--muted)' }}>{nomeCarteira(v.carteira)}</div>
+                  </td>
+                  <td style={{ fontSize: '0.786rem', color: 'var(--muted)' }}>{nomeAssessor(assessorDe(v.carteira))}</td>
+                  <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>{fmtCompactBRL(v.receitaBase)}</td>
+                  <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>{fmtCompactBRL(v.receitaAtual)}</td>
+                  <td style={{ textAlign: 'right', whiteSpace: 'nowrap', color: 'var(--red)' }}>-{fmtCompactBRL(v.queda)}</td>
+                  <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>{fmtPct(v.quedaPct, 1)}</td>
+                  <td>
+                    <span style={{
+                      display: 'inline-block', padding: '2px 8px', borderRadius: 999,
+                      fontSize: '0.714rem', fontWeight: 600, color: corSev(v.severidade),
+                      border: '1px solid ' + corSev(v.severidade), whiteSpace: 'nowrap',
+                    }}>
+                      {v.severidade}
+                    </span>
+                  </td>
+                  <td>
+                    <button
+                      className="btn btn--ghost"
+                      title="Criar oportunidade a partir desta queda de receita"
+                      onClick={() => criarOportunidade(v)}
+                      style={{ fontSize: '0.714rem', padding: '2px 8px', whiteSpace: 'nowrap' }}
+                    >
+                      Criar oportunidade
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div style={{ fontSize: '0.786rem', color: 'var(--muted)', marginTop: 12, padding: '10px 14px', borderRadius: 8, background: 'var(--surface-2, #f1f5f9)' }}>
+          Aqui é a receita da casa (patrimônio × taxa anual ÷ 12). A rentabilidade do cliente, o retorno da carteira que o book do custodiante traz, é outra métrica e não entra neste evento.
+        </div>
+      </div>
+    );
+  }
+
+  /* ============================================================
      RECEITAS — componente principal
   ============================================================ */
   function Receitas() {
@@ -613,6 +779,7 @@ import React from 'react';
           {tab === 'serie'   && <TabSerie   series={series} selectedMonth={selectedMonth} />}
           {tab === 'gestor'  && <TabGestor  selectedMonth={selectedMonth} />}
           {tab === 'cliente' && <TabCliente selectedMonth={selectedMonth} />}
+          {tab === 'queda'   && <TabQueda />}
         </div>
       </div>
     );

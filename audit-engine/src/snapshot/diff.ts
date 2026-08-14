@@ -3,8 +3,11 @@
  *
  * Todas as comparações usam >= (consistente com rules/alocacao.ts). Base de
  * materialidade = plTotal do snapshot anterior. Sem dia anterior: eventos []
- * com baseData null (linha de base documentada). REVENUE_DROP é reservado
- * para a Fase 5 e NUNCA é emitido aqui.
+ * com baseData null (linha de base documentada). REVENUE_DROP (Fase 5) é
+ * conceito MENSAL: a receita da casa (PL x taxa anual / 12, taxa-map da
+ * instância) só existe no normalize mensal; no diário o campo é undefined e
+ * o bloco ignora. Não adicionar gate de período aqui: a garantia mora no
+ * normalize, de propósito.
  */
 
 import fs from 'node:fs';
@@ -250,6 +253,32 @@ export function diffSnapshots(atual: Snapshot, anterior: Snapshot | null): DiffR
           materialidade: calcularMaterialidade(-queda, cBase.plTotal),
           severidade: 'alta',
           evidencias: { plBase: cBase.plTotal, plAtual: cAtual.plTotal, queda },
+        });
+      }
+    }
+
+    // --- queda de receita (REVENUE_DROP) — conceito mensal ---
+    if (cBase && cAtual) {
+      const receitaBase = cBase.receita;
+      const receitaAtual = cAtual.receita;
+      if (
+        receitaBase !== undefined &&
+        receitaAtual !== undefined &&
+        receitaAtual < receitaBase &&
+        atingiu((receitaBase - receitaAtual) / receitaBase, THRESHOLDS.revenueDropPct)
+      ) {
+        const queda = receitaBase - receitaAtual;
+        eventos.push({
+          schema: 'evento/v1',
+          tipo: 'REVENUE_DROP',
+          carteira: nome,
+          valorAnterior: receitaBase,
+          valorAtual: receitaAtual,
+          delta: -queda,
+          deltaPct: receitaBase !== 0 ? -queda / receitaBase : null,
+          materialidade: calcularMaterialidade(-queda, cBase.plTotal),
+          severidade: classificarSeveridade(calcularMaterialidade(-queda, cBase.plTotal) ?? 0),
+          evidencias: { receitaBase, receitaAtual, queda },
         });
       }
     }

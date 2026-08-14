@@ -69,12 +69,32 @@ describe('regras declarativas evento → oportunidade', () => {
     assert.equal(ops[0].volume, 120_000);
   });
 
-  it('tipos sem regra aprovada não geram nada (CASH_INCREASE, NEW_POSITION, ALLOCATION_SHIFT, REVENUE_DROP)', () => {
-    const tipos = ['CASH_INCREASE', 'NEW_POSITION', 'ALLOCATION_SHIFT', 'REVENUE_DROP'] as const;
+  it('tipos sem regra aprovada não geram nada (CASH_INCREASE, NEW_POSITION, ALLOCATION_SHIFT)', () => {
+    const tipos = ['CASH_INCREASE', 'NEW_POSITION', 'ALLOCATION_SHIFT'] as const;
     for (const tipo of tipos) {
       const ops = gerarOportunidades([evento({ tipo, carteira: 'ALFA' })], CTX);
       assert.equal(ops.length, 0, tipo);
     }
+  });
+
+  it('REVENUE_DROP gera queda-receita P1 com prazo de 15 dias e id na convenção', () => {
+    const ev = evento({
+      tipo: 'REVENUE_DROP',
+      carteira: 'ALFA',
+      valorAnterior: 320,
+      valorAtual: 300,
+      delta: -20,
+      deltaPct: -0.0625,
+      evidencias: { receitaBase: 320, receitaAtual: 300, queda: 20 },
+    });
+    const ops = gerarOportunidades([ev], { periodo: '2026-06', assessor: '' });
+    assert.equal(ops.length, 1);
+    assert.equal(ops[0].id, '2026-06|ALFA|REVENUE_DROP|');
+    assert.equal(ops[0].prioridade, 'P1');
+    assert.equal(ops[0].prazo, '2026-07-15', 'prazo = fim do mês de referência + 15 dias');
+    assert.equal(ops[0].volume, 20, 'volume = módulo do delta');
+    assert.ok(ops[0].motivo.includes('6,3%'), `motivo: ${ops[0].motivo}`);
+    assert.ok(ops[0].motivo.includes('R$ 20'), `motivo: ${ops[0].motivo}`);
   });
 
   it('regra desligada não gera; regras personalizadas substituem o padrão', () => {

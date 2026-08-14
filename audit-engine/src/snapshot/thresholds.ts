@@ -58,6 +58,10 @@ export const THRESHOLDS = {
       parado). */
   caixaParadoJanelaDias: 90,
 
-  /** Reservado Fase 5 — regra desativada nesta fase (constante documentada, não usada) */
+  /** REVENUE_DROP: queda >= 5% da receita mensal da carteira (receita =
+      PL x taxa anual / 12, taxa-map da instancia no normalize mensal).
+      Percentual puro por decisao do dono (2026-08-14): sem piso absoluto —
+      a receita e proporcional ao PL, piso nominal excluiria carteiras
+      pequenas. */
   revenueDropPct: 0.05,
 } as const;

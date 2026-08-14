@@ -106,6 +106,8 @@ describe('fixtures sintéticos — semana diária', () => {
 describe('fixtures sintéticos — mensal', () => {
   it('2026-05 → 2026-06 emite os eventos mensais desenhados', async () => {
     const root = tmpRoot();
+    // taxa-map da instância: fonte da receita da casa no mensal (Fase 5).
+    fs.copyFileSync(path.join(FIXTURES, 'taxa-map.json'), path.join(root, 'taxa-map.local.json'));
     await ingestSnapshot({ arquivo: path.join(FIXTURES, 'mensais', 'posicao-2026-05.xlsx'), data: '2026-05', fonte: 'custodiante-sintetico', formato: 'xlsx', root });
     await ingestSnapshot({ arquivo: path.join(FIXTURES, 'mensais', 'posicao-2026-06.xlsx'), data: '2026-06', fonte: 'custodiante-sintetico', formato: 'xlsx', root });
 
@@ -115,6 +117,19 @@ describe('fixtures sintéticos — mensal', () => {
     const mat = ev.find((e) => e.tipo === 'MATURITY_APPROACHING' && e.ativo?.includes('LCI MENSAL NOVA'))!;
     assert.ok(mat, 'mensal: vencimento na janela 30 (referência = fim do mês)');
     assert.equal(mat.evidencias.janelaDias, 30);
+
+    // Fase 5: exatamente um REVENUE_DROP, desenhado em GAMA (PL -6,25% com
+    // taxa fixa 0,006 → receita 320,00 → 300,00, queda 6,25%).
+    const drops = ev.filter((e) => e.tipo === 'REVENUE_DROP');
+    assert.equal(drops.length, 1, 'um unico REVENUE_DROP');
+    const drop = drops[0];
+    assert.equal(drop.carteira, 'GAMA');
+    assert.equal(drop.valorAnterior, 320);
+    assert.equal(drop.valorAtual, 300);
+    assert.equal(drop.delta, -20);
+    assert.equal(drop.deltaPct, -0.0625);
+    assert.equal(drop.severidade, 'baixa');
+    assert.deepEqual(drop.evidencias, { receitaBase: 320, receitaAtual: 300, queda: 20 });
   });
 });
 

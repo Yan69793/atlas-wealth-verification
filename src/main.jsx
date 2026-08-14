@@ -48,6 +48,9 @@ import '../platform-vencimentos-demo.js';
 /* 3f. Fallback sintético de CAIXA PARADO (idem). */
 import '../platform-caixa-parado-demo.js';
 
+/* 3g. Fallback sintético de QUEDA DE RECEITA (idem). */
+import '../platform-receita-drop-demo.js';
+
 /* 4. Utilitários, ícones, gráficos, UI primitives */
 import '../platform-utils.jsx';
 

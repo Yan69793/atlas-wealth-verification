@@ -15,7 +15,7 @@ import type { Snapshot, SnapshotEvent } from '../src/snapshot/types.js';
 const DATA_D1 = '2026-08-12';
 const DATA_D = '2026-08-13';
 
-function mkSnapshot(data: string, carteiras: { nome: string; posicoes: { ativo: string; valor: number; classe?: string | null; vencimento?: string | null }[] }[]): Snapshot {
+function mkSnapshot(data: string, carteiras: { nome: string; receita?: number; posicoes: { ativo: string; valor: number; classe?: string | null; vencimento?: string | null }[] }[]): Snapshot {
   return {
     schema: 'snapshot/v1',
     data,
@@ -26,6 +26,7 @@ function mkSnapshot(data: string, carteiras: { nome: string; posicoes: { ativo: 
     carteiras: carteiras.map((c) => ({
       nome: c.nome,
       plTotal: c.posicoes.reduce((a, p) => a + p.valor, 0),
+      ...(c.receita !== undefined ? { receita: c.receita } : {}),
       posicoes: c.posicoes.map((p) => ({
         carteira: c.nome,
         ativo: p.ativo,
@@ -198,10 +199,48 @@ describe('diffSnapshots', () => {
     assert.ok(!tipos(diffSnapshots(nivelAbaixo, base5).eventos).includes('CONCENTRATION_INCREASE'));
   });
 
-  it('REVENUE_DROP nunca é emitido nesta fase', () => {
-    const base = mkSnapshot(DATA_D1, [{ nome: 'A', posicoes: [{ ...FIX, valor: 1_000_000 }] }]);
-    const atual = mkSnapshot(DATA_D, [{ nome: 'A', posicoes: [{ ...FIX, valor: 1_000_000 }] }]);
-    assert.ok(!tipos(diffSnapshots(atual, base).eventos).includes('REVENUE_DROP'));
+  describe('REVENUE_DROP (Fase 5 — conceito mensal)', () => {
+    it('queda >= 5% exata emite com campos exatos', () => {
+      const base = mkSnapshot('2026-05', [{ nome: 'A', receita: 400, posicoes: [{ ...FIX, valor: 1_000_000 }] }]);
+      const atual = mkSnapshot('2026-06', [{ nome: 'A', receita: 380, posicoes: [{ ...FIX, valor: 950_000 }] }]);
+      const ev = diffSnapshots(atual, base).eventos.find((e) => e.tipo === 'REVENUE_DROP');
+      assert.ok(ev, 'emite no limiar exato');
+      assert.equal(ev!.valorAnterior, 400);
+      assert.equal(ev!.valorAtual, 380);
+      assert.equal(ev!.delta, -20);
+      assert.ok(Math.abs(ev!.deltaPct! + 0.05) < 1e-12, `deltaPct: ${ev!.deltaPct}`);
+      assert.equal(ev!.materialidade, 20 / 1_000_000);
+      assert.equal(ev!.severidade, 'baixa');
+      assert.deepEqual(ev!.evidencias, { receitaBase: 400, receitaAtual: 380, queda: 20 });
+    });
+
+    it('queda abaixo do limiar (4,99%) não emite', () => {
+      const base = mkSnapshot('2026-05', [{ nome: 'A', receita: 400, posicoes: [{ ...FIX, valor: 1_000_000 }] }]);
+      const atual = mkSnapshot('2026-06', [{ nome: 'A', receita: 380.04, posicoes: [{ ...FIX, valor: 950_000 }] }]);
+      assert.ok(!tipos(diffSnapshots(atual, base).eventos).includes('REVENUE_DROP'));
+    });
+
+    it('aumento de receita não emite', () => {
+      const base = mkSnapshot('2026-05', [{ nome: 'A', receita: 380, posicoes: [{ ...FIX, valor: 950_000 }] }]);
+      const atual = mkSnapshot('2026-06', [{ nome: 'A', receita: 420, posicoes: [{ ...FIX, valor: 1_050_000 }] }]);
+      assert.ok(!tipos(diffSnapshots(atual, base).eventos).includes('REVENUE_DROP'));
+    });
+
+    it('receita ausente num dos lados não emite', () => {
+      const base = mkSnapshot('2026-05', [{ nome: 'A', posicoes: [{ ...FIX, valor: 1_000_000 }] }]);
+      const atual = mkSnapshot('2026-06', [{ nome: 'A', receita: 380, posicoes: [{ ...FIX, valor: 950_000 }] }]);
+      assert.ok(!tipos(diffSnapshots(atual, base).eventos).includes('REVENUE_DROP'), 'base sem receita');
+
+      const base2 = mkSnapshot('2026-05', [{ nome: 'A', receita: 400, posicoes: [{ ...FIX, valor: 1_000_000 }] }]);
+      const atual2 = mkSnapshot('2026-06', [{ nome: 'A', posicoes: [{ ...FIX, valor: 950_000 }] }]);
+      assert.ok(!tipos(diffSnapshots(atual2, base2).eventos).includes('REVENUE_DROP'), 'atual sem receita');
+    });
+
+    it('receita base 0 não emite (sem denominador)', () => {
+      const base = mkSnapshot('2026-05', [{ nome: 'A', receita: 0, posicoes: [{ ...FIX, valor: 1_000_000 }] }]);
+      const atual = mkSnapshot('2026-06', [{ nome: 'A', receita: 0, posicoes: [{ ...FIX, valor: 950_000 }] }]);
+      assert.ok(!tipos(diffSnapshots(atual, base).eventos).includes('REVENUE_DROP'));
+    });
   });
 
   it('sem base: eventos vazios e baseData null', () => {
