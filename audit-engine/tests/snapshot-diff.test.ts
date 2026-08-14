@@ -78,29 +78,29 @@ describe('diffSnapshots', () => {
     assert.equal(ev2.deltaPct, null); // liquidez base 0
   });
 
-  it('NEW_POSITION no limiar de R$ 5.000; abaixo não', () => {
+  it('NEW_POSITION no limiar de 3% do PL; abaixo não', () => {
     const base = mkSnapshot(DATA_D1, [{ nome: 'A', posicoes: [{ ...FIX, valor: 1_000_000 }] }]);
-    const noLimite = mkSnapshot(DATA_D, [{ nome: 'A', posicoes: [{ ...FIX, valor: 1_000_000 }, { ativo: 'LCI Nova', valor: 5_000, classe: 'Renda Fixa' }] }]);
-    const abaixo = mkSnapshot(DATA_D, [{ nome: 'A', posicoes: [{ ...FIX, valor: 1_000_000 }, { ativo: 'LCI Nova', valor: 4_999.99, classe: 'Renda Fixa' }] }]);
+    const noLimite = mkSnapshot(DATA_D, [{ nome: 'A', posicoes: [{ ...FIX, valor: 1_000_000 }, { ativo: 'LCI Nova', valor: 30_000, classe: 'Renda Fixa' }] }]);
+    const abaixo = mkSnapshot(DATA_D, [{ nome: 'A', posicoes: [{ ...FIX, valor: 1_000_000 }, { ativo: 'LCI Nova', valor: 29_999, classe: 'Renda Fixa' }] }]);
 
     const ev = diffSnapshots(noLimite, base).eventos.find((e) => e.tipo === 'NEW_POSITION')!;
     assert.ok(ev);
     assert.equal(ev.valorAnterior, 0);
-    assert.equal(ev.valorAtual, 5_000);
+    assert.equal(ev.valorAtual, 30_000);
     assert.equal(ev.deltaPct, null);
     assert.ok(!tipos(diffSnapshots(abaixo, base).eventos).includes('NEW_POSITION'));
   });
 
-  it('POSITION_CLOSED no limiar de R$ 5.000; abaixo não', () => {
-    const base = mkSnapshot(DATA_D1, [{ nome: 'A', posicoes: [{ ...FIX, valor: 995_000 }, { ativo: 'CDB Velho', valor: 5_000, classe: 'Renda Fixa' }] }]);
-    const atual = mkSnapshot(DATA_D, [{ nome: 'A', posicoes: [{ ...FIX, valor: 995_000 }] }]);
+  it('POSITION_CLOSED no limiar de 3% do PL; abaixo não', () => {
+    const base = mkSnapshot(DATA_D1, [{ nome: 'A', posicoes: [{ ...FIX, valor: 970_000 }, { ativo: 'CDB Velho', valor: 30_000, classe: 'Renda Fixa' }] }]);
+    const atual = mkSnapshot(DATA_D, [{ nome: 'A', posicoes: [{ ...FIX, valor: 970_000 }] }]);
     const ev = diffSnapshots(atual, base).eventos.find((e) => e.tipo === 'POSITION_CLOSED')!;
     assert.ok(ev);
-    assert.equal(ev.valorAnterior, 5_000);
+    assert.equal(ev.valorAnterior, 30_000);
     assert.equal(ev.valorAtual, 0);
     assert.equal(ev.deltaPct, -1);
 
-    const basePequeno = mkSnapshot(DATA_D1, [{ nome: 'A', posicoes: [{ ...FIX, valor: 995_000 }, { ativo: 'CDB Velho', valor: 4_999.99, classe: 'Renda Fixa' }] }]);
+    const basePequeno = mkSnapshot(DATA_D1, [{ nome: 'A', posicoes: [{ ...FIX, valor: 970_001 }, { ativo: 'CDB Velho', valor: 29_999, classe: 'Renda Fixa' }] }]);
     assert.ok(!tipos(diffSnapshots(atual, basePequeno).eventos).includes('POSITION_CLOSED'));
   });
 
@@ -223,7 +223,7 @@ describe('diffSnapshots', () => {
 describe('modo mensal (data AAAA-MM)', () => {
   it('diff mês a mês emite os mesmos tipos de evento', () => {
     const base = mkSnapshot('2026-06', [{ nome: 'A', posicoes: [{ ...LIQ, valor: 100_000 }, { ...FIX, valor: 900_000 }] }]);
-    const atual = mkSnapshot('2026-07', [{ nome: 'A', posicoes: [{ ...LIQ, valor: 150_000 }, { ...FIX, valor: 900_000 }, { ativo: 'LCI Nova', classe: 'Renda Fixa', valor: 10_000 }] }]);
+    const atual = mkSnapshot('2026-07', [{ nome: 'A', posicoes: [{ ...LIQ, valor: 150_000 }, { ...FIX, valor: 900_000 }, { ativo: 'LCI Nova', classe: 'Renda Fixa', valor: 30_000 }] }]);
     const res = diffSnapshots(atual, base);
     assert.equal(res.baseData, '2026-06');
     assert.ok(tipos(res.eventos).includes('CASH_INCREASE'));

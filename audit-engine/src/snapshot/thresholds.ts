@@ -13,11 +13,14 @@ export const THRESHOLDS = {
   /** >= 5% do plTotal da carteira em movimento de liquidez → CASH_INCREASE/CASH_DECREASE */
   cashMovimentoPct: 0.05,
 
-  /** NEW_POSITION só para posição nova com valor >= R$ 5.000 */
-  novaPosicaoMinValor: 5000,
+  /** NEW_POSITION: posição nova que representa >= 3% do plTotal da carteira.
+      Percentual por decisão do dono (2026-08-14): o piso nominal antigo
+      (R$ 5.000) disparava 329 eventos por mês no dado real de maio→junho,
+      a maioria rotação rotineira. 3% pega o movimento que redefine a carteira. */
+  novaPosicaoMinPct: 0.03,
 
-  /** POSITION_CLOSED só para posição que valia >= R$ 5.000 em D-1 */
-  posicaoEncerradaMinValor: 5000,
+  /** POSITION_CLOSED: posição encerrada que valia >= 3% do plTotal em D-1 */
+  posicaoEncerradaMinPct: 0.03,
 
   /** Janelas de vencimento em dias corridos, inclusivas (7 exatos = janela 7) */
   maturidadeJanelas: [7, 15, 30, 60, 90],

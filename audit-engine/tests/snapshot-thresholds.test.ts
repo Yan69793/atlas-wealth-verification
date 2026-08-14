@@ -11,8 +11,8 @@ import { CASH_CLASSES, THRESHOLDS } from '../src/snapshot/thresholds.js';
 describe('contrato dos thresholds do snapshot', () => {
   it('valores exatos documentados', () => {
     assert.equal(THRESHOLDS.cashMovimentoPct, 0.05);
-    assert.equal(THRESHOLDS.novaPosicaoMinValor, 5000);
-    assert.equal(THRESHOLDS.posicaoEncerradaMinValor, 5000);
+    assert.equal(THRESHOLDS.novaPosicaoMinPct, 0.03);
+    assert.equal(THRESHOLDS.posicaoEncerradaMinPct, 0.03);
     assert.deepEqual([...THRESHOLDS.maturidadeJanelas], [7, 15, 30, 60, 90]);
     assert.equal(THRESHOLDS.saqueGrandePct, 0.10);
     assert.equal(THRESHOLDS.saqueGrandeMinAbs, 50_000);

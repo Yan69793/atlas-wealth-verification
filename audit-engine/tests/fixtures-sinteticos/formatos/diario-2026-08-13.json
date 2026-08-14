@@ -19,10 +19,10 @@
         },
         {
           "ativo": "LCI BANCO W",
-          "valor": 10000,
+          "valor": 50000,
           "classe": "Renda Fixa",
           "vencimento": "2026-08-19",
-          "quantidade": 10
+          "quantidade": 50
         },
         {
           "ativo": "LTN 2027",

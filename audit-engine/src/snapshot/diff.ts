@@ -163,8 +163,9 @@ export function diffSnapshots(atual: Snapshot, anterior: Snapshot | null): DiffR
 
     for (const p of cAtual?.posicoes ?? []) {
       const k = chave(p.carteira, p.ativo);
-      if (!base.has(k) && p.valor >= THRESHOLDS.novaPosicaoMinValor) {
+      if (!base.has(k)) {
         const mat = calcularMaterialidade(p.valor, plBase);
+        if (mat === null || !atingiu(mat, THRESHOLDS.novaPosicaoMinPct)) continue;
         eventos.push({
           schema: 'evento/v1',
           tipo: 'NEW_POSITION',
@@ -183,8 +184,9 @@ export function diffSnapshots(atual: Snapshot, anterior: Snapshot | null): DiffR
 
     for (const p of cBase?.posicoes ?? []) {
       const k = chave(p.carteira, p.ativo);
-      if (!atualSet.has(k) && p.valor >= THRESHOLDS.posicaoEncerradaMinValor) {
+      if (!atualSet.has(k)) {
         const mat = calcularMaterialidade(-p.valor, plBase);
+        if (mat === null || !atingiu(mat, THRESHOLDS.posicaoEncerradaMinPct)) continue;
         eventos.push({
           schema: 'evento/v1',
           tipo: 'POSITION_CLOSED',

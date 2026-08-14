@@ -80,7 +80,7 @@ const ALFA = {
   '2026-08-12': [
     pos('ALFA', 'FUNDO SYNTH DI', LIQUIDEZ, 110000),
     pos('ALFA', 'CDB BANCO FICTICIO II', RF, 300000, '2027-03-01', 3000),
-    pos('ALFA', 'LCI BANCO W', RF, 10000, '2026-08-19', 10),
+    pos('ALFA', 'LCI BANCO W', RF, 50000, '2026-08-19', 50),
     pos('ALFA', 'LTN 2027', RF, 150000, '2027-01-01', 150),
     pos('ALFA', 'ACOES SYNTH', ACOES, 200000),
     pos('ALFA', 'ETF GLOBAL X', INTER, 150000, '', 1200),
@@ -89,7 +89,7 @@ const ALFA = {
   '2026-08-13': [
     pos('ALFA', 'FUNDO SYNTH DI', LIQUIDEZ, 110000),
     pos('ALFA', 'CDB BANCO FICTICIO II', RF, 300000, '2027-03-01', 3000),
-    pos('ALFA', 'LCI BANCO W', RF, 10000, '2026-08-19', 10),
+    pos('ALFA', 'LCI BANCO W', RF, 50000, '2026-08-19', 50),
     pos('ALFA', 'LTN 2027', RF, 150000, '2027-01-01', 150),
     pos('ALFA', 'ACOES SYNTH', ACOES, 200000),
     pos('ALFA', 'ETF GLOBAL X', INTER, 150000, '', 1200),
@@ -98,7 +98,7 @@ const ALFA = {
   '2026-08-14': [
     pos('ALFA', 'FUNDO SYNTH DI', LIQUIDEZ, 110000),
     pos('ALFA', 'CDB BANCO FICTICIO II', RF, 300000, '2027-03-01', 3000),
-    pos('ALFA', 'LCI BANCO W', RF, 10000, '2026-08-19', 10),
+    pos('ALFA', 'LCI BANCO W', RF, 50000, '2026-08-19', 50),
     pos('ALFA', 'LTN 2027', RF, 150000, '2027-01-01', 150),
     pos('ALFA', 'ACOES SYNTH', ACOES, 200000),
     pos('ALFA', 'ETF GLOBAL X', INTER, 150000, '', 1200),
@@ -168,7 +168,7 @@ const MENSAL_06 = [
         ? { ...p, vencimento: '2027-03-01' }
         : p
   ),
-  pos('ALFA', 'LCI MENSAL NOVA', RF, 20000, '2026-07-20', 20),
+  pos('ALFA', 'LCI MENSAL NOVA', RF, 80000, '2026-07-20', 80),
   ...BETA_BASE,
   ...GAMA_BASE,
 ];
