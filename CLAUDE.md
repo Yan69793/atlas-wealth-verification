@@ -36,8 +36,9 @@ ordem quebra em tela branca. `tests/validate.js` trava esse contrato.
 
 - Overlays de dado real (`platform-data-real.js`, `platform-data-audit.js`,
   `platform-historico.js`, `platform-brand.js`) são scripts clássicos em
-  runtime, NUNCA entram no bundle. O build os retira do HTML; a instância
-  injeta os dela via `scripts/gen-index.mjs`.
+  runtime, NUNCA entram no bundle. O build os retira do HTML. Quem reinjeta:
+  em produção, o Worker da instância (no HTML que ele serve, apontando para a
+  rota autenticada do R2); localmente, o `scripts/gen-index.mjs` da instância.
 - Desenvolvimento: `npm run dev` (Vite com HMR). Publicação do demo: primeiro
   `npm run build`, depois `scripts/deploy-cf.ps1 -Target worker`.
 - `scripts/verify-build.mjs` e `scripts/build-deploy.mjs` recusam publicação
