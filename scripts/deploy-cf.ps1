@@ -1,4 +1,4 @@
-# deploy-cf.ps1 — publica o demo publico do ATLAS.
+# deploy-cf.ps1 ,  publica o demo publico do ATLAS.
 #
 # Este roteiro NAO decide o que entra no pacote. Ate 08/08/2026 ele carregava a
 # propria lista de arquivos, escrita a mao, e a lista envelheceu:

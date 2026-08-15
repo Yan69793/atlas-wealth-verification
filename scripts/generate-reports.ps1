@@ -55,7 +55,7 @@ function New-PerMonthReport($monthDir, $dashboardJson, $periodo) {
     # Atualizar titulo
     $html = $html -replace '<title>[^<]+</title>', "<title>$pageTitle</title>"
 
-    # Ajustar paths relativos — estando em reports/<mes>/, subimos um nivel
+    # Ajustar paths relativos ,  estando em reports/<mes>/, subimos um nivel
     # styles.css -> ../styles.css, data.js fica local, demais .js/.jsx -> ../
     $html = $html -replace 'src="(?!https?://)([^"]+)"', 'src="../$1"'
     $html = $html -replace 'href="(?!https?://)([^"]+)"', 'href="../$1"'
@@ -219,7 +219,7 @@ foreach ($af in $auditFiles) {
     $dashboard = $dashboardJson.dashboard
 
     if (-not $dashboard) {
-        Write-Warning "  audit.json sem dashboard — pulando $mes"
+        Write-Warning "  audit.json sem dashboard ,  pulando $mes"
         continue
     }
 
