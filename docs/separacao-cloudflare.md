@@ -235,3 +235,11 @@ Ordem sugerida, cada item é manual e não delegável:
   domínio e zona para a conta nova, ligar custom domain ao demo, trocar
   og:url/og:image/rodapé, regerar cartão, npm test, verificação por curl e
   redirecionamento do demo.multi-assets.com.
+- **Decisão final do dono em 2026-08-15: separação suspensa.** O demo foi
+  removido da conta nova (Worker apagado via API, lista de Workers da conta
+  nova vazia, conferido). O demo segue publicado só na conta antiga,
+  `demo.multi-assets.com` respondendo 200. A conta nova permanece criada
+  mas vazia, com o subdomínio workers.dev `atlaswealth` registrado, e o
+  token na máquina como `CLOUDFLARE_API_TOKEN_ATLAS`. As branches
+  feat/separacao-cloudflare e fix/workers-dev-off ficam no GitHub como
+  histórico do plano, prontas para reabrir se a decisão mudar.
