@@ -86,9 +86,29 @@ Cole a saída real na resposta. Se falhar ou não puder executar, diga explicita
 
 ## Pendências abertas
 
-Nenhuma. As duas pendências que dependiam do dono foram fechadas em 2026-08-14
-(ver abaixo). Quando o custodiante mandar o primeiro arquivo diário real, ele
-entra como dado de instância normal, sem pendência de produto.
+Revistas em 2026-08-14, ao fim da sessão das Fases 5-7:
+
+1. **Revogar chave Cloudflare exposta**: o valor circulou em texto numa
+   conversa em 2026-08-10 e segue ATIVO em 2026-08-14 (conferido por API, id
+   `6a8d3ce39ed73eb9d71088e35b1a9187`). Não é revogável pelos tokens via MCP
+   (sem permissão de gerir chaves, erro 9109 nos dois servidores). Ação manual
+   do dono em <https://dash.cloudflare.com/profile/api-tokens>. O valor também
+   está gravado em texto nas memórias do workspace, a sanitizar depois.
+2. **Perímetro da instância**: `atlas-instancia.prospects-intel.workers.dev`
+   serve sem Access, com dupla tranca documentada no Worker (401 + bypass por
+   cookie). `workers_dev = true` é deliberado, é a URL de diretor usada em
+   teste no telefone. Fechar custa uma linha e um redeploy, e derruba o canal
+   de teste. Decisão do dono: manter como está ou fechar (ver
+   `docs/separacao-cloudflare.md`).
+3. **Separação de conta Cloudflare**: domínio novo + conta dedicada para o
+   ATLAS segue como caminho decidido, sem data (ver
+   `docs/separacao-cloudflare.md`).
+4. **CDN do demo**: o risco de página em branco morreu com o build Vite (CSP
+   do demo não referencia unpkg/jsdelivr). Resta dependência pontual de CDN
+   só na importação de planilha (sheetjs) e no analytics.
+
+Quando o custodiante mandar o primeiro arquivo diário real, ele entra como
+dado de instância normal, sem pendência de produto.
 
 ### Resolvidas em 2026-08-14
 
