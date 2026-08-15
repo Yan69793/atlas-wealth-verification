@@ -7,7 +7,7 @@ Analisa nomes canonicos extraidos dos audit.json e sinaliza:
 import json, os
 from collections import defaultdict
 
-ROOT = r'E:\Diretorio\Claude\ATLAS'
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 AUDITS = os.path.join(ROOT, 'audits')
 
 def levenshtein(s1, s2):

@@ -4,25 +4,25 @@
     {
       "name": "atlas-spa",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "7821", "--directory", "E:/Diretorio/Claude/ATLAS"],
+      "runtimeArgs": ["-m", "http.server", "7821", "--directory", "${workspaceFolder}"],
       "port": 7821
     },
     {
       "name": "atlas-demo-pacote",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "7822", "--directory", "E:/Diretorio/Claude/ATLAS/dist-deploy"],
+      "runtimeArgs": ["-m", "http.server", "7822", "--directory", "${workspaceFolder}/dist-deploy"],
       "port": 7822
     },
     {
       "name": "atlas-go-to-market",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "7823", "--directory", "E:/Diretorio/Claude/ATLAS/docs/go-to-market"],
+      "runtimeArgs": ["-m", "http.server", "7823", "--directory", "${workspaceFolder}/docs/go-to-market"],
       "port": 7823
     },
     {
       "name": "audit-engine-server",
       "runtimeExecutable": "node",
-      "runtimeArgs": ["--env-file=E:/Diretorio/Claude/ATLAS/audit-engine/.env", "E:/Diretorio/Claude/ATLAS/audit-engine/dist/src/server.js"],
+      "runtimeArgs": ["--env-file=${workspaceFolder}/audit-engine/.env", "${workspaceFolder}/audit-engine/dist/src/server.js"],
       "port": 3456
     }
   ]
