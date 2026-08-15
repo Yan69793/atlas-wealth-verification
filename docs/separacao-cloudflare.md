@@ -227,7 +227,11 @@ Ordem sugerida, cada item é manual e não delegável:
   tentado duas vezes via API, as duas recusadas na cobrança
   (billing_auth_failed), cartão segue sem autorizar. Reserva:
   atlasverifica.com.
-- Próximo quando o cartão liberar: registrar, mover domínio e zona para a
-  conta nova, ligar custom domain ao demo, trocar og:url/og:image/rodapé,
-  regerar cartão, npm test, verificação por curl e redirecionamento do
-  demo.multi-assets.com.
+- **Decisão do dono em 2026-08-15: não registrar o domínio agora.** O demo
+  permanece publicado na conta nova no endereço técnico workers.dev, e o
+  endereço comercial continua sendo `demo.multi-assets.com` (conta antiga),
+  sem redirecionamento. `atlasverif.com` fica como candidato escolhido para
+  quando a fase de domínio for retomada. Quando for: registrar, mover
+  domínio e zona para a conta nova, ligar custom domain ao demo, trocar
+  og:url/og:image/rodapé, regerar cartão, npm test, verificação por curl e
+  redirecionamento do demo.multi-assets.com.
