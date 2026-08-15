@@ -1515,6 +1515,80 @@ th.sort-asc .th-sort-icon, th.sort-desc .th-sort-icon { opacity: 1; }
   .table-wrap { -webkit-overflow-scrolling: touch; }
 }
 
+/* =========================================================
+   TELA DE VISITA (Fase 7) — mobile-first, uma rolagem
+========================================================= */
+.split-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.split-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+
+.visita-stack {
+  display: flex; flex-direction: column; gap: 12px;
+  max-width: 960px;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.visita-card {
+  background: var(--paper);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-card);
+  padding: 14px 16px;
+}
+.visita-card-title {
+  font-size: 0.714rem; font-weight: 600; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--muted);
+  margin-bottom: 10px;
+}
+.visita-kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.visita-kpis .kpi-tile { padding: 12px 14px; }
+.visita-kpis .kpi-value { font-size: 1.4rem; }
+.visita-back {
+  display: inline-flex; align-items: center; gap: 6px;
+  min-height: 44px; padding: 0 14px;
+  border: 1px solid var(--border); border-radius: var(--r-sm);
+  background: var(--paper); color: var(--body);
+  font-size: 0.857rem; cursor: pointer;
+}
+.visita-chip {
+  display: inline-flex; align-items: center;
+  border: 1px solid var(--border); border-radius: 999px;
+  padding: 4px 10px; font-size: 0.714rem; font-weight: 600;
+  white-space: nowrap; flex-shrink: 0;
+}
+.visita-chip--red   { color: var(--red);   border-color: var(--red); }
+.visita-chip--amber { color: var(--amber); border-color: var(--amber); }
+.visita-chip--green { color: var(--green); border-color: var(--green); }
+.visita-chip--navy  { color: var(--navy);  border-color: var(--navy); }
+.visita-row {
+  display: flex; justify-content: space-between; align-items: baseline;
+  gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border);
+}
+.visita-row:last-child { border-bottom: none; }
+.visita-frase {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 1.05rem; line-height: 1.45; color: var(--heading);
+}
+.visita-note { font-size: 0.714rem; color: var(--muted); margin-top: 8px; }
+
+/* Colapso dos grids herdados (precedente: .kpi-grid !important) */
+@media (max-width: 767px) {
+  .split-2, .split-3 { grid-template-columns: 1fr !important; }
+  .split-2 { gap: 12px; }
+  .visita-kpis { grid-template-columns: repeat(2, 1fr) !important; }
+  .visita-stack { max-width: 100%; }
+}
+
+/* Desktop: a mesma página vira grade de 2 colunas de cards */
+@media (min-width: 1024px) {
+  .visita-stack {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start; gap: 16px; max-width: 1200px;
+  }
+  .visita-card--full { grid-column: 1 / -1; }
+  .visita-kpis { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* Valor de KPI longo não quebra no meio do número (ex.: PL de 7 dígitos) */
+.kpi-value { overflow-wrap: anywhere; word-break: break-word; }
+
 /* Hambúrguer: aparece sempre que a sidebar é recolhível, some quando ela é
    fixa. O estilo vivia dentro do bloco de celular e a visibilidade era negada
    a partir de 768px, o que deixava o tablet sem sidebar e sem botão para

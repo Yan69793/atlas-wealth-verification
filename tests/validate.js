@@ -167,6 +167,7 @@ const CONTRATO = [
   'platform-vencimentos.jsx',
   'platform-caixa-parado.jsx',
   'platform-valor-assessor.jsx',
+  'platform-visita.jsx',
   'platform-comparativo.jsx',
   'platform-custos.jsx',
   'platform-receitas.jsx',
@@ -1125,6 +1126,56 @@ ok('nota de rodapé honesta presente',
   valorPage.includes('aproximado') && valorPage.includes('taxa da casa') && valorPage.includes('Vanguard'));
 ok('sem overlay novo no gitignore', !gitignore.split(/\r?\n/).some((l) => /valor/.test(l.trim())));
 ok('sem mudança de motor (trava anti-escopo)', !/threshold|intel/.test(valorMath) && !/threshold|intel/.test(valorPage));
+
+// ─── 24. Visita mobile (gerentes e assessores em visita externa) ─────────────
+//
+// Briefing de UM cliente numa rolagem só: reusa AtlasData + as 4 fases por
+// carteira + a matemática (e a frase) do valor do assessor. Sem overlay novo.
+
+const visitaCss = fs.readFileSync(path.join(ROOT, 'platform-styles.css'), 'utf8');
+const visitaPagePath = path.join(ROOT, 'platform-visita.jsx');
+const visitaPage = fs.existsSync(visitaPagePath) ? fs.readFileSync(visitaPagePath, 'utf8') : '';
+const carteiraPagePath = path.join(ROOT, 'platform-carteira.jsx');
+const carteiraPage = fs.existsSync(carteiraPagePath) ? fs.readFileSync(carteiraPagePath, 'utf8') : '';
+
+ok('platform-visita.jsx existe', fs.existsSync(visitaPagePath));
+ok('sem mojibake: platform-visita.jsx', !MOJIBAKE.test(visitaPage));
+ok('página registra AtlasPages.Visita', visitaPage.includes('AtlasPages.Visita'));
+ok('rota /visita/ em platform-app.jsx', appContent.includes("startsWith('/visita/')"));
+ok('título da página registrado', appContent.includes("'visita': 'Visita'"));
+ok('main.jsx importa a página após platform-valor-assessor.jsx',
+  mainJsx.indexOf("import '../platform-visita.jsx'") > mainJsx.indexOf("import '../platform-valor-assessor.jsx'"));
+ok('página da carteira oferece Modo visita', carteiraPage.includes('Modo visita') && carteiraPage.includes('/visita/'));
+ok('visita usa getRow (dados do mês)', visitaPage.includes('getRow'));
+ok('visita lê oportunidades por cliente', visitaPage.includes('ATLAS_OPORTUNIDADES_DATA') && visitaPage.includes('o.cliente'));
+ok('visita lê vencimentos por carteira', visitaPage.includes('ATLAS_VENCIMENTOS_DATA') && visitaPage.includes('v.carteira'));
+ok('visita lê caixa parado por carteira', visitaPage.includes('ATLAS_CAIXA_PARADO_DATA') && visitaPage.includes('itens.find'));
+ok('visita lê queda de receita por carteira', visitaPage.includes('ATLAS_RECEITA_DROP_DATA') && visitaPage.includes('itens.find'));
+ok('visita reusa AtlasValorMath (acumularSerie + frase)',
+  visitaPage.includes('acumularSerie') && visitaPage.includes('VM.frase'));
+ok('visita não usa primitiva de envio (dado fica no navegador)',
+  !/fetch\s*\(|XMLHttpRequest|sendBeacon|WebSocket|EventSource/.test(visitaPage));
+ok('sem overlay novo no gitignore (visita)', !gitignore.split(/\r?\n/).some((l) => /visita/.test(l.trim())));
+ok('sem mudança de motor (trava anti-escopo)', !/threshold|intel/.test(visitaPage));
+
+// matemática: frase migrada para o módulo puro, fonte única das duas telas
+ok('módulo de matemática exporta frase()', typeof VM.frase === 'function');
+ok('frase() acima do CDI', VM.frase(0.02, 0).indexOf('acima do CDI') >= 0);
+ok('frase() empate', VM.frase(0.004, 0).indexOf('Empatou') >= 0);
+ok('frase() abaixo (agendar conversa)', VM.frase(-0.005, 0).indexOf('agendar conversa') >= 0);
+ok('frase() na mesa com inação', VM.frase(-0.02, 3000).indexOf('na mesa') >= 0 && VM.frase(-0.02, 3000).indexOf('R$') >= 0);
+ok('frase() aceita formatador externo', VM.frase(-0.02, 3000, (v) => 'X' + v).indexOf('X3000') >= 0);
+
+// acabamentos do shell
+ok('CSS define .split-2 e .split-3', visitaCss.includes('.split-2') && visitaCss.includes('.split-3'));
+const mq767 = visitaCss.slice(visitaCss.indexOf('@media (max-width: 767px)'));
+ok('CSS colapsa grids no mobile', mq767.includes('.split-2') && mq767.includes('.split-3'));
+ok('kpi-value não quebra valores longos', /\.kpi-value\s*\{[^}]*overflow-wrap/.test(visitaCss));
+ok('CSS da visita presente', visitaCss.includes('.visita-stack') && visitaCss.includes('.visita-card') && visitaCss.includes('.visita-kpis'));
+ok('CSS da visita tem desktop 2 colunas (1024px)', /@media \(min-width: 1024px\)[\s\S]{0,900}\.visita-stack/.test(visitaCss));
+ok('AppShell fecha drawer ao girar (matchMedia)', appContent.includes('matchMedia'));
+ok('AppShell trava scroll do body com drawer aberto', appContent.includes('document.body.style.overflow'));
+ok('viewport tem viewport-fit=cover (safe-area)', indexHtml.includes('viewport-fit=cover'));
 
 // ─── Resultado ──────────────────────────────────────────────────────────────
 

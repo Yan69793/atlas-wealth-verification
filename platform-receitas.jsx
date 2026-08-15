@@ -468,7 +468,7 @@ import React from 'react';
         )}
 
         {/* Segmentação + Concentração side by side */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+        <div className="split-2">
           {/* Segmentação por porte */}
           <div className="card">
             <div style={{ fontWeight: 600, fontSize: '0.857rem', color: 'var(--heading)', marginBottom: 12 }}>

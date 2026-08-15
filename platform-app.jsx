@@ -354,6 +354,7 @@ import ReactDOM from 'react-dom/client';
     if (path === '/vencimentos') return 'vencimentos';
     if (path === '/caixa-parado') return 'caixa-parado';
     if (path === '/valor-assessor') return 'valor-assessor';
+    if (path.startsWith('/visita/')) return 'visita';
     if (path === '/comparativo') return 'comparativo';
     if (path === '/receitas') return 'receitas';
     if (path === '/custos') return 'custos';
@@ -375,6 +376,7 @@ import ReactDOM from 'react-dom/client';
     vencimentos:   'Vencimentos',
     'caixa-parado': 'Caixa parado',
     'valor-assessor': 'Valor do assessor',
+    'visita': 'Visita',
     comparativo:'Comparativo',
     receitas:   'Receitas & ROA',
     cadastro:   'Cadastro & Compliance',
@@ -434,6 +436,24 @@ import ReactDOM from 'react-dom/client';
     const title = PAGE_TITLES[page] || 'ATLAS';
     const { toasts } = useToast();
     const { ToastContainer } = window.AtlasUI;
+
+    // Mobile: com o menu aberto, o corpo não rola por trás do overlay.
+    useEffect(() => {
+      document.body.style.overflow = sidebarOpen ? 'hidden' : '';
+      return () => { document.body.style.overflow = ''; };
+    }, [sidebarOpen]);
+
+    // Mobile: girar o aparelho para largura de desktop fecha o drawer.
+    useEffect(() => {
+      const mq = window.matchMedia('(min-width: 768px)');
+      const fechar = () => setSidebarOpen(false);
+      if (mq.addEventListener) mq.addEventListener('change', fechar);
+      else mq.addListener(fechar);
+      return () => {
+        if (mq.removeEventListener) mq.removeEventListener('change', fechar);
+        else mq.removeListener(fechar);
+      };
+    }, []);
 
     return (
       <div className="app-shell">
@@ -501,6 +521,13 @@ import ReactDOM from 'react-dom/client';
         return pages.ValorAssessor
           ? React.createElement(pages.ValorAssessor)
           : <PlaceholderPage title="Valor do assessor" etapa="valor-assessor" />;
+
+      case 'visita': {
+        const code = location.segments[1];
+        return pages.Visita
+          ? React.createElement(pages.Visita, { code })
+          : <PlaceholderPage title="Visita" etapa={7} />;
+      }
 
       case 'comparativo':
         return pages.Comparativo

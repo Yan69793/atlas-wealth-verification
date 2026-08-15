@@ -783,6 +783,14 @@ import React from 'react';
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', paddingTop: 4, flexWrap: 'wrap' }}>
             <button
               className="btn btn--ghost btn--sm"
+              onClick={() => navigate('#/visita/' + encodeURIComponent(code))}
+              title="Briefing do cliente em uma rolagem só, pensado para visita externa"
+            >
+              <Icon name="star" size={14} />
+              Modo visita
+            </button>
+            <button
+              className="btn btn--ghost btn--sm"
               onClick={() => navigate('#/dashboard')}
             >
               <Icon name="dashboard" size={14} />

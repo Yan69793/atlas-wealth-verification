@@ -53,20 +53,8 @@ import './platform-valor-math.js';
     return p ? p.name : code;
   }
 
-  function ppTxt(pp) {
-    return (pp * 100).toFixed(1).replace('.', ',') + ' pp';
-  }
-
-  function frase(deltaPp, inacaoR$) {
-    const pp = ppTxt(Math.abs(deltaPp));
-    let base;
-    if (deltaPp >= 0.01) base = 'Entregou +' + pp + ' acima do CDI na janela — a tese agregou.';
-    else if (deltaPp >= 0) base = 'Empatou com o CDI (' + pp + ' de diferença) — dentro da margem de gestao.';
-    else if (deltaPp >= -0.01) base = 'Ficou ' + pp + ' abaixo do CDI — agendar conversa sobre a tese.';
-    else base = 'Deixou ' + pp + ' na mesa versus CDI — revisao de alocacao recomendada.';
-    if (inacaoR$ > 0) base += ' · E ' + fmtCompactBRL(inacaoR$) + ' em caixa parado deixaram de render na janela.';
-    return base;
-  }
+  // Fonte única: platform-valor-math.js (compartilhada com a tela de visita).
+  const frase = (deltaPp, inacaoR$) => VM.frase(deltaPp, inacaoR$, fmtCompactBRL);
 
   function ValorAssessor() {
     const [janelaSel, setJanelaSel] = useState(12);

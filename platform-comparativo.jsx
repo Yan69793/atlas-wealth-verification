@@ -285,7 +285,7 @@ import React from 'react';
             <div style={{ fontSize: '0.714rem', color: 'var(--muted)', marginBottom: 10 }}>
               Status — ref. vs baseline
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6 }}>
+            <div className="split-3">
               {[
                 { key: 'LIBERAR',      label: 'LIBERAR' },
                 { key: 'COM ALERTA',   label: 'ALERTA'  },
@@ -311,7 +311,7 @@ import React from 'react';
         <MoversChart comp={comp} labelA={labelA} labelB={labelB} />
 
         {/* Top movers */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
+        <div className="split-2" style={{ marginBottom: 24 }}>
           <TopMovers title="Top 5 — Maior crescimento de PL" rows={comp.top5Altas} labelA={labelA} labelB={labelB} />
           <TopMovers title="Top 5 — Maior queda de PL"       rows={comp.top5Quedas} labelA={labelA} labelB={labelB} />
         </div>

@@ -52,12 +52,36 @@
     return serie.slice(fim - N + 1, fim + 1);
   }
 
+  function ppTxt(pp) {
+    return (pp * 100).toFixed(1).replace('.', ',') + ' pp';
+  }
+
+  // Frase da janela do valor do assessor. Fonte única das duas telas que a
+  // exibem. fmt e um formatador de moeda opcional (AtlasUtils.fmtCompactBRL);
+  // sem ele, usa formatacao pura inline (o modulo segue sem globals).
+  function frase(deltaPp, inacaoR$, fmt) {
+    const pp = ppTxt(Math.abs(deltaPp));
+    let base;
+    if (deltaPp >= 0.01) base = 'Entregou +' + pp + ' acima do CDI na janela — a tese agregou.';
+    else if (deltaPp >= 0) base = 'Empatou com o CDI (' + pp + ' de diferença) — dentro da margem de gestao.';
+    else if (deltaPp >= -0.01) base = 'Ficou ' + pp + ' abaixo do CDI — agendar conversa sobre a tese.';
+    else base = 'Deixou ' + pp + ' na mesa versus CDI — revisao de alocacao recomendada.';
+    if (inacaoR$ > 0) {
+      const moeda = typeof fmt === 'function'
+        ? fmt(inacaoR$)
+        : 'R$ ' + Math.round(inacaoR$).toLocaleString('pt-BR');
+      base += ' · E ' + moeda + ' em caixa parado deixaram de render na janela.';
+    }
+    return base;
+  }
+
   var API = {
     acumularSerie: acumularSerie,
     retornoLiquidoMensal: retornoLiquidoMensal,
     custoInacao: custoInacao,
     valorEmReais: valorEmReais,
     janelaMeses: janelaMeses,
+    frase: frase,
   };
   if (typeof window !== 'undefined') window.AtlasValorMath = API;
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
