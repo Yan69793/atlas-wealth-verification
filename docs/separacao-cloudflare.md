@@ -208,3 +208,26 @@ Ordem sugerida, cada item é manual e não delegável:
   dono (diff e testes já apresentados).
 - Migração do R2 exige decisão explícita de mover dado real de cliente para
   serviço externo (LGPD).
+
+## Progresso em 2026-08-15 (noite)
+
+- Conta nova criada pelo dono: `6448fd4d57773e5e38cbd1a763283a90`
+  (szuchmacheryan44@gmail.com), subdomínio workers.dev `atlaswealth`
+  registrado.
+- Token da conta nova disponível na máquina como
+  `CLOUDFLARE_API_TOKEN_ATLAS`, nunca em arquivo nem em chat.
+- Demo publicado na conta nova:
+  `app-verificacao-carteiras-atlas.atlaswealth.workers.dev`, versão
+  94a1c3bb, pacote com 6 arquivos e sem dado real. Servindo, confirmado por
+  busca externa. O curl da máquina local falha no handshake TLS desse
+  hostname específico (schannel), sem relação com o deploy.
+- `demo-worker/wrangler.nova-conta.toml` e `scripts/deploy-nova-conta.ps1`
+  commitados na branch feat/separacao-cloudflare.
+- Domínio escolhido: `atlasverif.com`, disponível, US$ 10,46/ano. Registro
+  tentado duas vezes via API, as duas recusadas na cobrança
+  (billing_auth_failed), cartão segue sem autorizar. Reserva:
+  atlasverifica.com.
+- Próximo quando o cartão liberar: registrar, mover domínio e zona para a
+  conta nova, ligar custom domain ao demo, trocar og:url/og:image/rodapé,
+  regerar cartão, npm test, verificação por curl e redirecionamento do
+  demo.multi-assets.com.
