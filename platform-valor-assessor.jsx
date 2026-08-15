@@ -13,7 +13,7 @@ import './platform-valor-math.js';
 (() => {
   const { useMemo, useState } = React;
 
-  const { fmtCompactBRL, fmtPct, fmtMonthLabel, downloadCSV } = window.AtlasUtils;
+  const { fmtCompactBRL, fmtPct, fmtMonthLabel, downloadCSV, navigate } = window.AtlasUtils;
   const { Icon } = window.AtlasIcons;
   const { KPITile, EmptyState } = window.AtlasUI;
   const D = window.AtlasData;
@@ -228,7 +228,12 @@ import './platform-valor-math.js';
             </thead>
             <tbody>
               {visiveis.map((v) => (
-                <tr key={v.code}>
+                <tr
+                  key={v.code}
+                  onClick={() => navigate('#/carteira/' + encodeURIComponent(v.code))}
+                  style={{ cursor: 'pointer' }}
+                  title="Abrir a carteira"
+                >
                   <td>
                     <div style={{ fontWeight: 600, fontSize: '0.857rem' }}>{v.code}</div>
                     <div style={{ fontSize: '0.714rem', color: 'var(--muted)' }}>{nomeCarteira(v.code)}</div>

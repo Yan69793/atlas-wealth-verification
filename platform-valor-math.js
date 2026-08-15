@@ -70,7 +70,9 @@
       const moeda = typeof fmt === 'function'
         ? fmt(inacaoR$)
         : 'R$ ' + Math.round(inacaoR$).toLocaleString('pt-BR');
-      base += ' · E ' + moeda + ' em caixa parado deixaram de render na janela.';
+      // Horizonte declarado: a inação vem da varredura de caixa de 90 dias
+      // (Fase 4), não da janela de retorno — a frase não mistura prazos.
+      base += ' · E ' + moeda + ' em caixa parado deixaram de render (varredura de 90 dias).';
     }
     return base;
   }

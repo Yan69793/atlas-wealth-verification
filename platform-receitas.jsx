@@ -704,7 +704,14 @@ import React from 'react';
     const { selectedMonth } = useMonth();
     const [tab, setTab] = useState('serie');
 
-    const series  = useMemo(() => D.revenueSeries(), []);
+    // Recorte ao mês mais recente com dado (mesmo padrão do Comparativo):
+    // sem isto, a série arrasta meses sem extrato no fim.
+    const visiveisMeses = useMemo(() => (D.visibleMonths ? D.visibleMonths().months : null), []);
+    const series = useMemo(() => {
+      const s = D.revenueSeries();
+      if (!visiveisMeses) return s;
+      return s.filter((x) => visiveisMeses.indexOf(x.month) >= 0);
+    }, [visiveisMeses]);
     const yearPfx = selectedMonth.slice(0, 4);
     const monthData = series.find(s => s.month === selectedMonth) || series[series.length - 1];
 

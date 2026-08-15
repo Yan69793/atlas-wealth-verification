@@ -1127,6 +1127,13 @@ ok('nota de rodapé honesta presente',
 ok('sem overlay novo no gitignore', !gitignore.split(/\r?\n/).some((l) => /valor/.test(l.trim())));
 ok('sem mudança de motor (trava anti-escopo)', !/threshold|intel/.test(valorMath) && !/threshold|intel/.test(valorPage));
 
+// Residuais fechados (2026-08-14): ranking do valor abre a carteira no
+// clique; Receitas respeita o mês mais recente com dado; frase declara o
+// horizonte da varredura de caixa (não mistura prazos).
+ok('ranking do valor abre a carteira no clique', valorPage.includes('#/carteira/') && valorPage.includes('cursor'));
+ok('Receitas recorta a série pelo mês mais recente com dado', receitasPage.includes('visibleMonths'));
+ok('frase declara a varredura de 90 dias (horizontes separados)', valorMath.includes('varredura de 90 dias'));
+
 // ─── 24. Visita mobile (gerentes e assessores em visita externa) ─────────────
 //
 // Briefing de UM cliente numa rolagem só: reusa AtlasData + as 4 fases por
