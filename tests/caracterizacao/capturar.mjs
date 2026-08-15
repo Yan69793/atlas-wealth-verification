@@ -68,7 +68,7 @@ async function carregarPlaywright() {
   } catch {
     console.error('ERRO: pacote "playwright" nao encontrado.');
     console.error('Instale no repo ATLAS (sem sujar o package.json):');
-    console.error('  cd "E:/Diretorio/Claude/ATLAS"');
+    console.error(`  cd "${path.resolve(__dirname, '..', '..')}"`);
     console.error('  npm install --no-save playwright && npx playwright install chromium');
     process.exit(2);
   }

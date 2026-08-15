@@ -87,6 +87,26 @@ for (const fn of platformFiles) {
   ok(`sem mojibake: ${fn}`, !hit, hit ? `encontrado: "${hit[0]}"` : '');
 }
 
+// UTF-8 BOM (EF BB BF) no início quebra JS no browser (Unexpected token).
+// Windows PowerShell 5.x grava BOM com -Encoding UTF8 — trava a regressão.
+function startsWithBom(absPath) {
+  const buf = fs.readFileSync(absPath);
+  return buf.length >= 3 && buf[0] === 0xEF && buf[1] === 0xBB && buf[2] === 0xBF;
+}
+
+const bomCandidates = [
+  ...platformFiles.map(fn => path.join(ROOT, fn)),
+  path.join(ROOT, 'relatorio-mensal.html'),
+  path.join(ROOT, 'src', 'main.jsx'),
+  path.join(ROOT, 'vite.config.mjs'),
+  path.join(ROOT, 'scripts', 'generate-reports.ps1'),
+].filter(p => fs.existsSync(p));
+
+for (const abs of bomCandidates) {
+  const rel = path.relative(ROOT, abs).replace(/\\/g, '/');
+  ok(`sem BOM UTF-8: ${rel}`, !startsWithBom(abs));
+}
+
 // ─── 3. platform-data.js — estrutura mínima ────────────────────────────────
 
 const dataContent = fs.readFileSync(path.join(ROOT, 'platform-data.js'), 'utf8');

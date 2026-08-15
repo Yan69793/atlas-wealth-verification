@@ -16,6 +16,13 @@ $REPORTS_DIR = "$ROOT/reports"
 $TEMPLATE = "$ROOT/index.html"
 
 # --- helpers ---
+# Windows PowerShell 5.x: -Encoding UTF8 grava BOM (EF BB BF) e quebra JS no browser.
+# utf8NoBOM evita isso em 5.x e 7+.
+$Utf8NoBom = New-Object System.Text.UTF8Encoding $false
+function Write-TextNoBom([string]$Path, [string]$Content) {
+    [System.IO.File]::WriteAllText($Path, $Content, $Utf8NoBom)
+}
+
 function Get-MonthLabel($ym) {
     $parts = $ym -split '-'
     $y = [int]$parts[0]
@@ -38,7 +45,7 @@ function New-PerMonthReport($monthDir, $dashboardJson, $periodo) {
 
     # Gravar data.js local com o dashboard do mes
     $dataJs = "window.AUDIT_DATA = $dashboardJson;"
-    $dataJs | Set-Content -Path "$monthDir/data.js" -Encoding UTF8 -NoNewline
+    Write-TextNoBom "$monthDir/data.js" $dataJs
 
     # Ler template, ajustar paths e titulo
     $html = Get-Content $TEMPLATE -Raw -Encoding UTF8
@@ -57,7 +64,7 @@ function New-PerMonthReport($monthDir, $dashboardJson, $periodo) {
     # data.js deve ficar local (ja esta no mesmo diretorio)
     $html = $html -replace 'src="\.\./data\.js"', 'src="data.js"'
 
-    $html | Set-Content -Path "$monthDir/index.html" -Encoding UTF8 -NoNewline
+    Write-TextNoBom "$monthDir/index.html" $html
 }
 
 function New-LandingPage($months) {
@@ -189,7 +196,7 @@ $rows
 </html>
 "@
 
-    $html | Set-Content -Path "$REPORTS_DIR/index.html" -Encoding UTF8 -NoNewline
+    Write-TextNoBom "$REPORTS_DIR/index.html" $html
 }
 
 # --- Main ---

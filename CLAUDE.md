@@ -1,4 +1,14 @@
-# CLAUDE.md — ATLAS (hardened 2026-07-25)
+# CLAUDE.md — ATLAS (hardened 2026-07-25, atualizado 2026-08-14)
+
+## Localização e repos aninhados
+
+O projeto vive em `E:\Diretorio\Claude\FREQUENTE\ATLAS` desde 2026-08-14
+(antes `OCASIONAL\ATLAS`). Não existe caminho absoluto no código: os
+launch.json usam `${workspaceFolder}` e os scripts Python derivam a raiz do
+próprio arquivo. Três repos git viajam juntos na pasta: o ATLAS
+(`Yan69793/atlas-wealth-verification`) → `verificacao-carteiras/` (gitlink em
+b15f7eb) → `core/` (gitlink, HEAD detached em fecbe17). Instância do cliente
+em `verificacao-carteiras/`, fora do git do produto.
 
 ## Como responder neste projeto (regra fixa, 2026-08-08)
 
@@ -26,6 +36,16 @@ teste nunca são alterados nem humanizados.
 - `platform-data-real.js`, `platform-data-audit.js`, `platform-historico.js` são LGPD e estão no .gitignore
 - Nome de carteira, apelido, código real e caminho de pasta de cliente não entram em teste nem doc versionada
 - Se aparecerem em `git status`, investigar e corrigir o `.gitignore` antes de prosseguir
+
+## Inteligência competitiva (pasta `SyncIA/`)
+
+A pasta `SyncIA/` guarda o dossiê do concorrente SyncIA Desk
+(synciadesk.com.br, white-label para escritórios BTG): relatório OSINT e
+snapshots do site capturados em 2026-08-14. Não é parte do produto, não entra
+em build, teste nem deploy. Está fora do git até decisão explícita de commit.
+O material da SYNC TECNOLOGIA (syncai.com.br, site de consultoria) ficou
+arquivado em `SyncIA/SYNC-TECNOLOGIA/` e foi descartado como alvo pelo dono.
+O gap de features em comparação com o ATLAS está na memória do workspace.
 
 ## Ordem de carregamento (build Vite)
 

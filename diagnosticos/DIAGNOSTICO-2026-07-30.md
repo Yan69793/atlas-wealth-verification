@@ -1,4 +1,4 @@
-﻿# DIAGNÓSTICO — ATLAS Wealth Verification
+# DIAGNÓSTICO — ATLAS Wealth Verification
 **Data:** 2026-07-30
 **Alvo:** https://atlas.szuchmacher.com.br / https://atlas-instancia.prospects-intel.workers.dev
 **Método:** auditoria generalista (blocos A–F)
