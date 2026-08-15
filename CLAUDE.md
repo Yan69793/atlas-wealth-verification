@@ -1,4 +1,4 @@
-# CLAUDE.md — ATLAS (hardened 2026-07-25, atualizado 2026-08-14)
+# CLAUDE.md — ATLAS (hardened 2026-07-25, atualizado 2026-08-15)
 
 ## Localização e repos aninhados
 
@@ -7,8 +7,9 @@ O projeto vive em `E:\Diretorio\Claude\FREQUENTE\ATLAS` desde 2026-08-14
 launch.json usam `${workspaceFolder}` e os scripts Python derivam a raiz do
 próprio arquivo. Três repos git viajam juntos na pasta: o ATLAS
 (`Yan69793/atlas-wealth-verification`) → `verificacao-carteiras/` (gitlink em
-b15f7eb) → `core/` (gitlink, HEAD detached em fecbe17). Instância do cliente
-em `verificacao-carteiras/`, fora do git do produto.
+c0ad7b4) → `core/` (gitlink em d33ee42, branch `fix/paths-bom-pos-mudanca`).
+`core/` é outro checkout do mesmo repo do ATLAS, pinado no commit do corte
+Vite. Instância do cliente em `verificacao-carteiras/`, fora do git do produto.
 
 ## Como responder neste projeto (regra fixa, 2026-08-08)
 
@@ -134,3 +135,16 @@ dado de instância normal, sem pendência de produto.
   tudo percentual (posição nova/encerrada 3% do PL, liquidez parada 10% do PL com
   mínimo de 7 dias, janela de 90 dias; os demais limiares seguem a calibração do
   diff). Fase 4 aprovada e publicada no demo com esses valores.
+
+### Resolvidas em 2026-08-15
+
+- **Publicação pendente + cadeia de gitlinks**: autorizado pelo dono. Os 2 commits
+  locais foram publicados na `feat/vite-migration` e a cadeia dos 3 repos foi
+  fechada: as mesmas 5 correções de caminho/BOM foram commitadas no `core/` na
+  branch `fix/paths-bom-pos-mudanca` (d33ee42), o gitlink do
+  `verificacao-carteiras/` avançou para c0ad7b4 e o do ATLAS para 810f0d9. Não
+  mergear a branch do core na `feat/vite-migration`: os mesmos ajustes já vivem lá
+  como 466cb7a. Suíte após tudo: 352/352 checks + 101/101 testes.
+- **Credencial do git para GitHub**: `gh auth setup-git` configurado; o git passa a
+  usar o keyring do `gh` (conta Yan69793) como credencial no github.com. Antes valia
+  só para o repo do ATLAS, agora vale para os três.
