@@ -1,0 +1,26 @@
+# Gemeo do wrangler.toml para a conta nova (separacao Cloudflare, 2026-08-15).
+#
+# Mesmo Worker de assets estaticos do demo, publicado na conta dedicada do
+# ATLAS (6448fd4d57773e5e38cbd1a763283a90). O wrangler.toml original continua
+# publicando na conta antiga enquanto demo.multi-assets.com estiver no ar.
+#
+# Deploy via scripts/deploy-nova-conta.ps1, que injeta o token da conta nova
+# a partir da variavel de ambiente CLOUDFLARE_API_TOKEN_ATLAS. Nunca rodar
+# com o token da conta antiga no ambiente: quem garante a conta certa e o
+# account_id aqui em cima, nao o nome do arquivo.
+#
+# Sem [[routes]] por enquanto: o dominio neutro entra aqui depois do
+# registro, como custom domain. Ate la, o endereco workers.dev da conta nova
+# serve de teste tecnico, igual ao da conta antiga.
+
+name = "app-verificacao-carteiras-atlas"
+compatibility_date = "2026-08-01"
+account_id = "6448fd4d57773e5e38cbd1a763283a90"
+
+# Publico e sem Access, pelo mesmo motivo do original: nao existe dado real
+# dentro do pacote, e o prospect precisa abrir o link e ver o sistema.
+workers_dev = true
+
+[assets]
+directory = "./public"
+not_found_handling = "single-page-application"
