@@ -94,3 +94,117 @@ Chave da Cloudflare colada em texto puro em conversa, log ou arquivo deve ser
 revogada, não reaproveitada. Em 2026-08-10 uma chave com permissão de escrita
 em Pages foi exposta dessa forma e precisa ser rotacionada em
 https://dash.cloudflare.com/profile/api-tokens.
+
+---
+
+## Inventário canônico — conferido por API em 2026-08-15 (somente leitura)
+
+O que o ATLAS usa de verdade na conta única
+`7ac79fb1030e4e81115ef33c21a9b070` hoje. Fonte: Workers, R2, KV, D1, Access,
+Pages e zonas da conta, lidos por API em 2026-08-15.
+
+### Workers do ATLAS (2)
+
+**`atlas-instancia`** (`7e229c8e624e416a9df3171fd9cf033e`) — instância do
+cliente. Rota: `atlas.szuchmacher.com.br` (custom domain na zona
+szuchmacher.com.br). Bindings: R2 `ATLAS_DATA` (bucket `atlas-data`), assets
+`ASSETS`, variáveis `ACCESS_TEAM_DOMAIN` (`tapetier-pages.cloudflareaccess.com`)
+e `ACCESS_AUD` (audience da app Access). Um secret: `DIRECTOR_KEY`. Sem KV,
+sem D1, sem Durable Object, sem service binding. `workers_dev` era `true`
+(canal técnico do diretor); patch de 2026-08-15 muda para `false`, aguardando
+deploy autorizado.
+
+**`app-verificacao-carteiras-atlas`** (`e159b7b6c7b34ada84ac611d95fde842`) —
+demo comercial, só assets estáticos. Rota: `demo.multi-assets.com` (custom
+domain na zona multi-assets.com). `workers_dev = true`, aberto de propósito
+(não existe dado real no pacote). Nenhum binding, nenhum secret.
+
+### Storage
+
+- **R2 `atlas-data` NÃO está vazio**: 40 objetos, `audits/` com 37 JSON
+  mensais (2023-06 a 2026-06) e `overlays/` com 3 arquivos JS de dado real
+  (LGPD). A premissa de bucket vazio não se confirma.
+- **KV**: 9 namespaces existem na conta, todos de outros projetos. Nenhum
+  está vinculado aos Workers do ATLAS. Não há KV escondido do ATLAS.
+- **D1**: `verificacao-db` (`57ec4a65-173d-4752-8b91-b32d288c1fc8`) existe na
+  conta e **não** tem binding em nenhum Worker do ATLAS. Propriedade incerta:
+  não mexer até comprovar dono. Nenhum outro storage vinculado ao ATLAS.
+
+### Access (Zero Trust)
+
+Três aplicações têm relação com o ATLAS:
+
+- **ATLAS — instância do cliente** (`atlas.szuchmacher.com.br`): 3 políticas
+  (Yan, gerente, e service token `atlas-verificacao-claude` com decisão
+  non_identity). Este é o perímetro real da instância.
+- **atlas-wealth-verification.pages.dev**: projeto Pages legado, com Access
+  (acessos Fabio e Meyer).
+- **atlas-wealth-verification (previews) — LGPD**: `*.pages.dev`, Access.
+- Service token `atlas-verificacao-claude` (`a9c25b80-ff06-42ba-bc46-d15ed3b4c6e5`),
+  expira 2027-08-06, habilitado.
+
+### Pages
+
+`atlas-wealth-verification.pages.dev` é o projeto legado do ATLAS, ainda em
+uso, com Access. O projeto `radar-credito` (VIX Radar, `vixradar.com`) tem na
+configuração de produção uma variável `CLOUDFLARE_API_TOKEN`; o valor não é
+legível por API, então a dependência com a chave exposta fica NÃO COMPROVADA
+até o dono conferir a máscara no painel.
+
+### Recursos de propriedade incerta (não mexer)
+
+- D1 `verificacao-db`.
+- KV `CACHE`, `SZ_CACHE` e demais namespaces (aparência de site
+  szuchmacher.com.br, sem confirmação).
+- Zona `multi-assets.com` e `demo.multi-assets.com`: o subdomínio `demo` é do
+  ATLAS, a zona é da plataforma MultiAsset.
+- Zona `szuchmacher.com.br`: o subdomínio `atlas` é do ATLAS, a zona é do
+  site institucional.
+
+### O que a chave exposta alcança (impacto da revogação)
+
+A chave de ID `6a8d3ce39ed73eb9d71088e35b1a9187` (final `c17`) circulou em
+texto em 2026-08-10. Nenhum arquivo do repositório ATLAS referencia essa
+chave, e o pipeline de deploy não depende dela (a credencial vem da variável
+de ambiente `CLOUDFLARE_API_TOKEN` da máquina). O ponto cego é a variável
+`CLOUDFLARE_API_TOKEN` do projeto Pages do VIX Radar: valor ilegível por API.
+Revogação não quebra o deploy do ATLAS. O risco residual é exclusivamente
+essa variável do Pages, a conferir no painel pela máscara.
+
+---
+
+## Checklist manual da conta nova (só o dono executa)
+
+Ordem sugerida, cada item é manual e não delegável:
+
+1. Registrar domínio neutro do produto (passo 1 do caminho decidido).
+2. Criar a conta Cloudflare nova e adicionar a zona do domínio novo.
+3. Emitir duas chaves, uma por conta, escopo mínimo por recurso.
+4. Criar bucket R2 `atlas-data` na conta nova. A migração dos 40 objetos
+   (37 audits + 3 overlays LGPD) só sobe com decisão explícita do operador.
+5. Recriar a app Access "ATLAS — instância do cliente" na conta nova com as
+   3 políticas (dono, gerente, service token) e emitir novo service token.
+   Atenção: o `ACCESS_AUD` muda na conta nova, e o valor novo precisa entrar
+   no wrangler da instância.
+6. Reaplicar o secret `DIRECTOR_KEY` no worker da instância.
+7. Deploy do demo na conta nova via `scripts/deploy-cf.ps1 -Target worker`,
+   com `[[routes]]` do `demo-worker/wrangler.toml` apontando para o domínio
+   novo, e `account_id` novo.
+8. Deploy da instância na conta nova com `workers_dev = false`.
+9. Atualizar `og:url`, `og:image` e rodapé da apresentação, regerar o cartão.
+   `npm test` trava endereço errado.
+10. Aposentar `demo.multi-assets.com` com redirecionamento, sem apagar.
+11. Trocar a fonte de credencial da máquina (variável
+    `CLOUDFLARE_API_TOKEN` do ambiente) junto com o `account_id` dos dois
+    wrangler.toml. Enquanto o ambiente apontar para a conta antiga, nenhum
+    deploy sai do lugar.
+
+## Bloqueadores para a Fase 1
+
+- Registro do domínio novo (decisão de marca, passo do dono, sem data).
+- Revogação manual da chave exposta e conferência da variável do Pages do
+  VIX Radar no painel.
+- Deploy do patch `workers_dev = false` da instância aguarda autorização do
+  dono (diff e testes já apresentados).
+- Migração do R2 exige decisão explícita de mover dado real de cliente para
+  serviço externo (LGPD).
