@@ -1,4 +1,20 @@
-# CLAUDE.md — ATLAS (hardened 2026-07-25, atualizado 2026-08-15)
+# CLAUDE.md — ATLAS (hardened 2026-07-25, atualizado 2026-08-17)
+
+## Estado do projeto: comece por `ESTADO/`
+
+Antes de qualquer trabalho, leia `ESTADO/LEIA-PRIMEIRO.md`. A pasta `ESTADO/` na
+raiz é a fonte única do estado do projeto, feita para orientar quem chega sem
+contexto:
+
+- `ESTADO/LEIA-PRIMEIRO.md` — orientação e as regras que quebram coisa
+- `ESTADO/ESTADO-ATUAL.md` — pendência, prioridade, decisão em aberto, número de
+  teste, o que é código morto. **Se este arquivo divergir do `CLAUDE.md`, ele ganha.**
+- `ESTADO/MAPA.md` — onde achar cada coisa, comandos, e a lista de documentação
+  que já se provou desatualizada
+
+Regra: um assunto, um arquivo, zero cópia. Estado não é duplicado aqui, é
+apontado. Os hashes de gitlink citados abaixo são de 2026-08-15 e já derivaram,
+o valor corrente está em `ESTADO/ESTADO-ATUAL.md`.
 
 ## Localização e repos aninhados
 

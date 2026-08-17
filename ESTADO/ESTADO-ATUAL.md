@@ -1,0 +1,338 @@
+# ESTADO ATUAL do ATLAS
+
+**Data-base: 2026-08-17.** Colhido rodando os comandos, não de memória.
+
+Fonte única do estado do projeto. Se outro arquivo divergir deste, este ganha. Se você chegou
+sem contexto, leia [[LEIA-PRIMEIRO]] primeiro. Para achar coisa, [[MAPA]].
+
+Se hoje passou de trinta dias desta data, ou se houve trabalho no meio que não foi registrado
+aqui, trate este arquivo como suspeito e rode o refresh do fim da página.
+
+## Portão de verificação, medido hoje
+
+```
+352/352 checks OK — todos os checks passaram
+ℹ tests 101   ℹ suites 29   ℹ pass 100   ℹ fail 0   ℹ skipped 1
+```
+
+O único pulado é o de parity, que só roda com `ATLAS_FIXTURES` e `ATLAS_BOOKS` apontando
+para dado de instância. Pular é o comportamento correto no repo do produto.
+
+## Cadeia de gitlink, com deriva aberta
+
+| Camada | Branch | HEAD | Registra o filho em |
+|---|---|---|---|
+| Produto | `feat/separacao-cloudflare` | `0848b56` (15/ago) | instância em `95d159c` |
+| Instância | `fix/workers-dev-off` | `468af8d` (15/ago) | core em `d33ee42` |
+| Core | `fix/paths-bom-pos-mudanca` | `e693239` (15/ago) | folha |
+
+Deriva não publicada em dois níveis, confirmada hoje:
+
+1. O produto aponta a instância em `95d159c`, mas a instância está em `468af8d`. Aparece
+   como `M verificacao-carteiras` em `git status`.
+2. A instância aponta o core em `d33ee42`, mas o core está em `e693239`.
+
+Os commits soltos nas duas pontas são as trocas de travessão por vírgula para PowerShell
+5.1. Estão commitados localmente, mas os pais ainda não apontam para eles. Fechar a cadeia
+exige avançar de baixo para cima, core primeiro.
+
+Os hashes que o `CLAUDE.md` do projeto registra (`c0ad7b4` para a instância, `810f0d9` para
+o produto, `d33ee42` para o core) descrevem o estado de 15 de agosto e já não batem com o
+disco. `d33ee42` é o único que ainda tem função, é o que a instância aponta.
+
+`git submodule status` não funciona aqui. São gitlink sem entrada em `.gitmodules`, o
+comando aborta com "no submodule mapping found". Para ler o ponteiro use
+`git ls-tree HEAD <caminho>`.
+
+## Decisões do dono, tomadas em 17/ago
+
+1. **Isolamento entre clientes: uma instância por cliente.** Decidido. Repete o modelo que já
+   funciona, separação física, custo de engenharia perto de zero agora. Paga depois em trabalho
+   operacional por cliente, e o palpite registrado é que aperta perto de dez clientes. A
+   evolução natural, quando apertar, é separação no perímetro Cloudflare. Opções e custo em
+   `docs/superpowers/plans/2026-08-17-caminho-multi-cliente.md`.
+
+   Consequência que vale registrar: isso **fecha o servidor Node como candidato a
+   multi-cliente**. Ele só era caminho na opção descartada.
+
+2. **A segunda cópia de dado real de cliente vai ser movida** para a área de instância, não
+   apagada. Decidido. Ainda **não executado**, ver a seção de LGPD abaixo.
+
+3. **Servidor morto: aberto.** O dono perguntou se dá para fazê-lo rodar com dado fictício.
+   Resposta: tecnicamente sim, pouco trabalho, corrigir o casamento da rota e apontar para os
+   fixtures sintéticos. Recomendação registrada é **não fazer**, porque a decisão 1 fechou o
+   caminho em que ele serviria, porque rodar não fecha nenhum dos sete buracos nem cria rota de
+   leitura ou isolamento, e porque o app já tem modo de demonstração com dado sintético que
+   mostra mais do que ele mostraria. Um servidor que liga e responde parece pronto muito mais
+   do que um que nem sobe, o que agrava o risco que motivou a pergunta. Aguardando o dono.
+
+## Segunda cópia de dado real de cliente no disco (LGPD)
+
+Encontrada em 17 de agosto, de passagem. `.archive/Verificacao-carteiras-legacy/` guarda um
+`data.js` de cerca de meio megabyte com resultado de auditoria real de julho, incluindo
+código de carteira e valor de patrimônio.
+
+Não há exposição no repositório, conferido: `.gitignore` cobre `.archive/` e nada ali está
+versionado. O problema é outro, é uma segunda cópia de dado real de cliente parada num
+diretório fácil de esquecer, fora da área de instância onde dado real deveria viver.
+
+Pendente de decisão do dono, apagar ou mover para a área de instância. Não tocar sem
+autorização explícita, é dado de cliente e a remoção não tem volta.
+
+A mesma pasta guarda uma terceira cópia da casca de app anterior à migração Vite, com o
+mesmo `fetch` sem autorização das outras duas. Nenhuma delas entra no bundle.
+
+## Trabalho não commitado no produto
+
+`git status` hoje mostra, além da deriva do gitlink, material não versionado que não é do
+produto: `.obsidian/`, `00-JARVIS-HOME.md`, `CANAL-CODE.md`, `SyncIA/`,
+`diagnosticos/DIAGNOSTICO-2026-08-15-dado-sintetico.md`, `scripts/screenshot-jarvis.py`.
+`SyncIA/` é dossiê de concorrente e está fora do git por decisão. O resto não foi triado.
+
+Esta pasta `ESTADO/` foi criada em 17 de agosto e ainda não foi commitada.
+
+## O backend em `audit-engine/src/server.ts` é código morto
+
+Levantado a fundo em 17 de agosto. Existe `server.ts`, `auth/jwt.ts`, `auth/middleware.ts`
+com papéis, `middleware/rate-limiter.ts`, `validation/schemas.ts`, `workers/` e
+`scheduler/`. Compila limpo (`npx tsc --noEmit`, exit 0) e entra no build. Nada disso roda.
+
+O que o levantamento estabeleceu, e vale contra a leitura otimista de que "já está pronto":
+
+- **Quatro rotas apenas**, health, login, refresh e ingest. **Nenhuma rota de leitura.**
+  Não existe GET de carteira, de dashboard nem de auditoria. Logo, não é a API autenticada
+  que `docs/produto.md` descreve como caminho desenhado. Nesse ponto o documento está
+  certo, não desatualizado.
+- **A rota de ingestão é inalcançável na forma que ela mesma anuncia.** O casamento é
+  `req.url === '/api/ingest'` e no Node `req.url` carrega a query string, então
+  `POST /api/ingest?mes=2026-04` cai no 404. Sem query, o mês cai num default fixo de
+  2026-04. Contradição interna, nunca exercitada.
+- **Nunca completou uma ingestão.** Não existe `data.json`, `data.js`, `audits/` nem
+  `audit-schedules.json` dentro de `audit-engine/`. Prova material.
+- **Usuário único vindo de variável de ambiente**, `ADMIN_EMAIL` e `ADMIN_PASSWORD_HASH`,
+  com `TODO: Replace with actual user lookup from database` no código. Sem cadastro, sem
+  banco. Dos três papéis declarados (`admin`, `auditor`, `viewer`) só `admin` chega a ser
+  emitido.
+- **Isolamento entre clientes não existe em nenhuma camada.** O token carrega apenas
+  usuário, e-mail e papel. O modelo de dados não tem campo de dono. Os caminhos de escrita
+  são globais e fixos, dois escritórios ingerindo sobrescrevem o mesmo arquivo. Categórico.
+- **Nada chama esse backend.** O app React não faz rede, e `tests/validate.js` proíbe
+  ativamente rede em sete páginas. O único `fetch` para ele está em `deploy_cf/app.jsx`,
+  casca anterior à migração Vite, sem header de autorização, duplamente quebrada. As telas
+  `platform-usuarios.jsx` e `platform-cadastro.jsx` são maquete em localStorage, com papéis
+  que nem correspondem aos do backend, e a segunda não é cadastro de usuário, é pendência
+  cadastral de compliance de carteira.
+- **Cobertura de teste zero.** Nenhum dos 17 arquivos de teste do motor menciona server,
+  auth, jwt, token, login, papel ou limite de taxa. O portão compila esse código e nunca o
+  executa.
+- `scheduler/audit-scheduler.ts` é código morto completo, ninguém o importa.
+
+Buracos confirmados nesse código morto, relevantes se alguém decidir ligá-lo:
+
+1. **Travessia de diretório com escrita arbitrária.** O nome de arquivo do upload multipart
+   entra no caminho de gravação sem validação. Quem tiver token sobe um nome com `../` e
+   sobrescreve o arquivo de dados que o app serve, injetando script na página.
+2. **Upload sem limite de tamanho.** O corpo é acumulado inteiro em memória e duplicado na
+   conversão. O schema com teto de 50MB e checagem de tipo existe e nunca é importado.
+3. **Pool de worker correlaciona resultado com requisição errada.** Com dois uploads
+   concorrentes, a resposta de um pedido cai no outro. Em cenário de dois escritórios isso
+   é vazamento cruzado de dado de carteira, não bug de fila.
+4. **Refresh sem revogação e sem limite de taxa.** Token de renovação vazado vale 7 dias e
+   troca-se indefinidamente. Sem logout, sem lista de bloqueio. Trocar a senha do admin não
+   invalida token nenhum.
+5. **Erro interno devolvido cru no corpo da resposta**, tipicamente com caminho absoluto de
+   arquivo, que inclui pasta de cliente.
+6. **Oráculo de tempo no login.** E-mail errado responde em microssegundos, e-mail certo
+   com senha errada paga o custo do bcrypt. Dá para descobrir o e-mail do admin.
+7. **Escuta em todas as interfaces sem TLS**, e limite de taxa por IP de socket ignorando
+   `X-Forwarded-For`, que atrás de proxy tranca todos juntos.
+
+Correção de premissa registrada: a suspeita inicial era que o `Access-Control-Allow-Origin: *`
+expunha dado de carteira. **Não expõe.** Nenhuma rota serve dado, a resposta do ingest traz
+só contagem agregada. O `*` continua errado, torna a resposta de login legível por qualquer
+site, mas não é exposição de carteira. Vale como lição de método, achado por leitura parcial
+merece confirmação antes de virar alarme.
+
+O que presta e é reaproveitável: bcrypt com custo 12, comparação de senha em tempo
+constante, fail-closed no boot se faltar segredo, expiração de 15 minutos, schemas de
+validação e a estrutura de papéis. Primitivas boas, servidor ruim.
+
+**Ação barata e recomendada, pendente de decisão:** esse código é passivo justamente porque
+parece terminado. Marcar explicitamente como protótipo não funcional, ou remover, antes que
+alguém o ligue acreditando que está pronto.
+
+## As cinco fases de inteligência de agosto
+
+Construídas em 14 e 15 de agosto de 2026 em reação ao estudo do concorrente SyncIA Desk.
+Recorte novo, não funcionalidade assentada. As quatro de cima alimentam a mesma fila de
+oportunidade da Fase 2, de propósito: um fato não fica preso na tela dele, vira ação com dono
+e prazo.
+
+| Fase | Entrega |
+|---|---|
+| 1, snapshot | retrato do dia, diff contra o anterior, eventos tipados |
+| 2, oportunidades | evento vira oportunidade com assessor, motivo, volume, prioridade, prazo, status |
+| 3, vencimentos | vencimento futuro em janelas de 7 a 90 dias, com peso na carteira |
+| 4, caixa parado | quanto está parado, há quantos dias, acumulado em 90 dias |
+| 5, queda de receita | aba em Receitas, sinaliza queda relevante de receita mensal por carteira |
+
+Threshold centralizado e versionado em `audit-engine/src/snapshot/thresholds.ts`, nunca
+decisão pontual de tela. Calibração percentual confirmada pelo dono em agosto: posição nova
+ou encerrada a 3% do PL, liquidez parada a 10% do PL com mínimo de 7 dias, janela de 90 dias.
+
+A Fase 4 é deliberadamente só descritiva. A decisão sobre o caixa é do assessor, a tela
+mostra fato, não julgamento. Manter assim.
+
+### Revisão independente, 17 de agosto: NÃO APROVADO
+
+Doze defeitos bloqueantes e seis não bloqueantes, todos passando por baixo da suíte, que está
+verde. Esse é o fato mais importante desta seção: **teste verde neste projeto não prova número
+certo**, porque a suíte valida existência de arquivo e casamento de string, não comportamento.
+Nenhum dos doze é pego por ela.
+
+O pior, e é de credibilidade de produto: **a instância do cliente mostra carteira fictícia como
+se fosse dele, sem faixa de aviso.** Os quatro fallbacks de demonstração só checam ausência do
+overlay, não o modo de dados, e o produtor do overlay das Fases 2, 3 e 4 nunca foi construído,
+não existe comando `oportunidades` no CLI de snapshot. Então na instância o fallback sempre
+dispara, e as telas mostram carteira inventada ao lado das páginas de dado real.
+
+Os doze bloqueantes, resumidos:
+
+1. Dado fictício exibido como real na instância, sem aviso.
+2. Volume de vencimento usa a variação do dia, não o valor do título. Um CDB de R$ 500 mil
+   aparece com R$ 137, e o score cai de 16 para 4.
+3. A ordem da fila na tela não é o score do motor, e inverte a regra aprovada. O score do motor
+   é código morto fora do teste.
+4. Um mesmo fato entra até cinco vezes na fila, porque o identificador inclui o tipo de evento.
+   Um saque de R$ 950 mil soma R$ 2,8 mi no indicador de volume, que ainda mistura receita
+   mensal com patrimônio.
+5. Severidade da queda de receita é estruturalmente sempre "baixa", inclusive numa perda de
+   99,9%, porque a materialidade é medida contra o patrimônio. O demo entrega severidade que o
+   motor não consegue produzir.
+6. Coluna Assessor mostra o código interno em vez do nome, nas quatro telas e nos quatro CSV,
+   porque leem `D.managers` e o namespace exporta `D.MANAGERS`. O guard mascara o erro.
+7. Os três indicadores da aba Queda de receita ignoram o filtro de assessor.
+8. Botão de criar oportunidade gera duplicata sem limite e nunca vira chip de status.
+9. Link de vencimento para oportunidade quebra quando o cruzamento da janela cai em fim de
+   semana ou feriado, dois em cada sete casos.
+10. Armazenamento local congela as linhas da base, então número corrigido no overlay nunca
+    chega na tela, e evento apagado numa reingestão sobrevive como linha órfã contada no
+    indicador.
+11. Limiar de posição nova e encerrada é medido contra o patrimônio de ontem, contra o que o
+    próprio arquivo de limiares promete.
+12. Caixa parado afirma dias de continuidade sem checar se houve snapshot no meio. Uma semana
+    sem ingestão vira "17 dias parado" com chip vermelho.
+
+Não bloqueantes: ordem invertida no demo de caixa parado sem sort na tela, "R$ × dias"
+formatado como moeda, motivo com quebra de linha corrompendo o CSV, dia do vencimento não
+produzindo evento nenhum, endereço malformado derrubando o app, leitura da série inteira sem
+janela.
+
+O que a revisão verificou e está limpo: LGPD sem vazamento nas cinco fases, contrato de build
+intacto (nenhum overlay importado como módulo, ordem de `src/main.jsx` respeitada), nenhuma
+regressão de senha fixa, e o ciclo de status da Fase 2 correto e sem transição inválida
+alcançável pela interface.
+
+Plano de correção em cinco ondas, ordem e portão definidos pelo dono, em
+`C:\Users\User\.claude\plans\cosmic-skipping-anchor.md`. Portão por onda: sem regressão com
+saída colada, caso concreto reproduzido mostrando número antes e depois, e um commit isolado.
+
+## Pendências, ordenadas por prioridade acordada com o dono em 17/ago
+
+1. **Distância entre protótipo e produto vendável.** Hoje quem opera o motor é o próprio
+   time. Falta gestão de usuário por cliente e a entrada de dado depende de alguém colocar
+   arquivo no lugar certo à mão. O backend existente não encurta esse caminho, ver a seção
+   acima, ele é esqueleto sem rota de leitura e sem noção de cliente. A decisão que trava
+   tudo é de arquitetura e é do dono. Enquanto ela não sai, construir aqui é aposta.
+2. **Corrigir as cinco fases de agosto.** A revisão foi feita em 17/ago e reprovou, doze
+   defeitos bloqueantes. Virou a prioridade prática da vez, porque número errado na tela do
+   assessor contradiz o argumento de venda do produto. Ver a seção das fases acima.
+3. **Integração oficial com a B3.** O time chama de "pagar a dívida da ingestão manual",
+   catalogada como 6 a 18 meses. O que existe hoje é adaptador para arquivo de posição
+   diária no espírito do layout B3 802, ainda arquivo colocado à mão, não feed autenticado.
+   Fica depois de 1 e 2 porque o escopo é feed de várias carteiras de vários clientes, não
+   de um CPF.
+4. **Quantidade e preço unitário por posição.** O parser extrai valor financeiro por ativo,
+   sem quantidade de cota nem preço. Relatório de performance por posição depende disso.
+   Encaixa junto de 2, não merece prioridade própria.
+
+Fora da fila por decisão do dono:
+
+- **Separação de conta Cloudflare.** Suspensa, sem data. Não tratar como pendência ativa.
+  Inventário em `docs/separacao-cloudflare.md`.
+- **Camada de educação, comunidade pública, gamificação.** Excluída por identidade de
+  produto, decidido em 17 de agosto após analisar a P3X, plataforma B2C do Charles
+  Mendlowicz. O que se aproveitou dessa análise foi confirmação de que conexão automática
+  com a B3 e mostrar a tese por trás do número são coisas que o mercado valoriza.
+- **Benchmark contra CDI, IBOV, IPCA.** Exige fonte externa que não existe no projeto.
+
+## Perímetro e deploy
+
+Fechado em 15 de agosto de 2026, versão `4f0caf1f`, `workers_dev = false`. A URL técnica
+da instância saiu do ar (404) e o domínio próprio segue servido pelo Cloudflare Access,
+302 sem JWT. O teste do diretor passa a ser pelo domínio próprio.
+
+Chave Cloudflare que ficou exposta em 10 de agosto foi revogada pelo dono em 15 de agosto
+(id `6a8d3ce39ed73eb9d71088e35b1a9187`, final `c17`). Cópias textuais do valor foram
+sanitizadas e verificadas, zero ocorrência restante no workspace e nas memórias.
+
+## Dado real e origem
+
+O primeiro arquivo real do custodiante ainda não chegou. A estreia do acompanhamento diário
+foi provada com série sintética de cinco dias, com eventos idênticos aos desenhados. Quando
+o arquivo real chegar, entra como dado de instância normal, sem pendência de produto.
+
+Fixtures sintéticos são 100% regeneráveis e versionados, custodiante fictício, carteiras
+ALFA, BETA e GAMA. `npm run seed:demo` roda o pipeline inteiro sem tocar na instância.
+
+## Como atualizar este arquivo
+
+### Gatilhos obrigatórios
+
+Atualize no mesmo trabalho, não depois, quando qualquer um acontecer:
+
+1. Fase nova entra ou fase existente muda de escopo.
+2. Pendência fecha, ou pendência nova aparece.
+3. Contagem de teste muda.
+4. Gitlink de qualquer um dos três repositórios avança.
+5. Perímetro, autenticação ou forma de entrada de dado muda.
+6. Threshold é recalibrado pelo dono.
+7. Uma das decisões pendentes é resolvida.
+8. Descobre-se rot novo em documento. Nesse caso registre também em [[MAPA]].
+
+### Comandos que colhem o estado
+
+Não escreva estado de cabeça:
+
+```powershell
+npm test
+git log -1 --date=short --format="%h %cd %s"
+git ls-tree HEAD verificacao-carteiras
+git status --short
+```
+
+### Regra de honestidade
+
+Não apague afirmação errada em silêncio. Se este arquivo afirmava algo que se provou falso,
+registre no log abaixo com o motivo do erro. O padrão de erro é informação sobre o projeto,
+e é o que impede a próxima pessoa de repetir.
+
+## Log de mudança
+
+- **2026-08-17.** Criado como `ESTADO.md` dentro da skill `atlas-sistema`. Portão medido em
+  352 checks e 101 testes. Registrada deriva de gitlink em dois níveis e hashes vencidos no
+  `CLAUDE.md`. Prioridades reordenadas com o dono.
+- **2026-08-17, correção.** A primeira versão afirmou que existia backend com autenticação
+  construído e que isso contrariava `docs/produto.md`. Errado nas duas pontas. O código
+  existe e compila, mas é esqueleto que nunca rodou, sem rota de leitura e sem isolamento
+  entre clientes, então a afirmação do documento de produto está correta. Também caiu o
+  alarme de que o CORS aberto expunha dado de carteira, nenhuma rota serve dado. Ambos os
+  erros vieram de concluir por leitura parcial de estrutura de diretório, antes de confirmar
+  comportamento.
+- **2026-08-17, mudança de lugar.** Movido para `ESTADO/ESTADO-ATUAL.md`, na raiz do
+  projeto, a pedido do dono, para que qualquer agente ache sem depender de invocar skill. A
+  skill `atlas-sistema` passa a apontar para cá em vez de guardar cópia.
+- **2026-08-17, Onda 0.** Removido o `ESTADO.md` duplicado da pasta da skill. Adicionado
+  ponteiro para `ESTADO/LEIA-PRIMEIRO.md` no topo do `CLAUDE.md` do projeto, com aviso de que
+  este arquivo ganha em caso de divergência. Registradas as duas decisões do dono e o resultado
+  da revisão das cinco fases, que reprovou com doze defeitos bloqueantes.
