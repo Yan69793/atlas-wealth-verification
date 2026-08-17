@@ -87,7 +87,14 @@ export interface SnapshotEvent {
   valorAtual: number;
   delta: number; // valorAtual - valorAnterior
   deltaPct: number | null; // null quando valorAnterior === 0
-  materialidade: number | null; // |delta| / plTotalBase; null quando base 0
+  /** Fração de referência do evento, usada para classificar a severidade.
+   *  Base por tipo, porque "material" não quer dizer a mesma coisa em todos:
+   *  - NEW_POSITION: |delta| / plTotal ATUAL (a posição existe hoje)
+   *  - REVENUE_DROP: |delta| / receita ANTERIOR (queda de receita se mede em
+   *    receita; com o PL no denominador a severidade era sempre "baixa")
+   *  - todos os demais: |delta| / plTotal base
+   *  null quando a base é 0. */
+  materialidade: number | null;
   severidade: Severidade;
   evidencias: Record<string, number | string | boolean>;
 }

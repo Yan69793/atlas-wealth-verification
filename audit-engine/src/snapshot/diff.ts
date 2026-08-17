@@ -167,7 +167,15 @@ export function diffSnapshots(atual: Snapshot, anterior: Snapshot | null): DiffR
     for (const p of cAtual?.posicoes ?? []) {
       const k = chave(p.carteira, p.ativo);
       if (!base.has(k)) {
-        const mat = calcularMaterialidade(p.valor, plBase);
+        // Peso de posição que existe HOJE se mede contra o PL de hoje. Antes
+        // usava plBase e o evento mentia nas duas direções: aporte grande fazia
+        // um fundo novo de 1,33% do PL atual disparar como 4% "que redefine a
+        // carteira", e saque grande engolia posição nova genuinamente relevante.
+        // É também o que thresholds.novaPosicaoMinPct promete ("do plTotal da
+        // carteira"). POSITION_CLOSED abaixo segue em plBase de propósito: a
+        // posição encerrada não está no PL de hoje, o peso dela é o de ontem.
+        const plAtualCarteira = cAtual?.plTotal ?? 0;
+        const mat = calcularMaterialidade(p.valor, plAtualCarteira);
         if (mat === null || !atingiu(mat, THRESHOLDS.novaPosicaoMinPct)) continue;
         eventos.push({
           schema: 'evento/v1',
@@ -180,7 +188,7 @@ export function diffSnapshots(atual: Snapshot, anterior: Snapshot | null): DiffR
           deltaPct: null,
           materialidade: mat,
           severidade: classificarSeveridade(mat ?? 0),
-          evidencias: { plBase, valorNovo: p.valor },
+          evidencias: { plBase, plAtual: plAtualCarteira, valorNovo: p.valor },
         });
       }
     }
@@ -276,9 +284,16 @@ export function diffSnapshots(atual: Snapshot, anterior: Snapshot | null): DiffR
           valorAtual: receitaAtual,
           delta: -queda,
           deltaPct: receitaBase !== 0 ? -queda / receitaBase : null,
-          materialidade: calcularMaterialidade(-queda, cBase.plTotal),
-          severidade: classificarSeveridade(calcularMaterialidade(-queda, cBase.plTotal) ?? 0),
-          evidencias: { receitaBase, receitaAtual, queda },
+          // A base da materialidade aqui é a RECEITA anterior, não o PL. Com o PL
+          // no denominador a severidade era estruturalmente sempre "baixa": como
+          // receita = PL x taxa anual / 12, a queda máxima possível vale cerca de
+          // taxa/12 do PL, e chegar em baixaMax (0,10) exigiria taxa anual acima
+          // de 120%. Perder 99,9% da receita de uma carteira saía como materialidade
+          // 0,0004 e chip azul de "baixa". Agora a fração é da própria receita:
+          // queda de 5% a 10% baixa, 10% a 30% média, 30% ou mais alta.
+          materialidade: calcularMaterialidade(-queda, receitaBase),
+          severidade: classificarSeveridade(calcularMaterialidade(-queda, receitaBase) ?? 0),
+          evidencias: { receitaBase, receitaAtual, queda, plBase: cBase.plTotal },
         });
       }
     }

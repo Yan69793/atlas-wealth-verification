@@ -1289,6 +1289,54 @@ ok('caixa parado tem formatador próprio para R$ × dias',
 ok('R$ × dias não é formatado como moeda',
   !/fmtCompactBRL\(\s*(totalRsDias|v\.rsDias|v\.rsDiasSequencia)\s*\)/.test(caixaPage));
 
+// ─── 26. Onda 2 — severidade do demo bate com a fórmula do motor ────────────
+//
+// A revisão apontou que o demo entregava severidade que o motor não conseguia
+// produzir. Investigando, o demo estava certo e o MOTOR estava errado: media e
+// alta eram inalcançáveis porque a materialidade do REVENUE_DROP era medida
+// contra o PL. Corrigido para a receita anterior, os dois lados coincidem. Este
+// check trava a coincidência, que nenhum teste dos dois lados cobria sozinho.
+
+{
+  const sevThresholds = { baixaMax: 0.10, mediaMax: 0.30 };
+  const severidadeDoMotor = (mat) =>
+    mat >= sevThresholds.mediaMax ? 'alta' : (mat >= sevThresholds.baixaMax ? 'media' : 'baixa');
+
+  // os limiares acima espelham audit-engine/src/snapshot/thresholds.ts; se lá
+  // mudar e aqui não, este check é o que avisa
+  const thresholdsSrc = fs.existsSync(path.join(ROOT, 'audit-engine/src/snapshot/thresholds.ts'))
+    ? fs.readFileSync(path.join(ROOT, 'audit-engine/src/snapshot/thresholds.ts'), 'utf8') : '';
+  ok('limiares de severidade espelhados do motor continuam 0,10 e 0,30',
+    /baixaMax:\s*0\.10\s*,\s*mediaMax:\s*0\.30/.test(thresholdsSrc));
+  ok('motor documenta o intervalo máximo entre snapshots do caixa parado',
+    /caixaParadoMaxIntervaloDias:\s*\d+/.test(thresholdsSrc));
+
+  const win = { };
+  win.window = win;
+  let itens = [];
+  try {
+    new Function('window', 'globalThis', receitaDropDemo)(win, win);
+    itens = (win.ATLAS_RECEITA_DROP_DATA && win.ATLAS_RECEITA_DROP_DATA.itens) || [];
+  } catch { /* falha aparece no check de contagem abaixo */ }
+
+  ok('demo de queda de receita tem itens avaliáveis', itens.length > 0);
+  const divergentes = itens.filter((v) => {
+    if (!v.receitaBase) return true;
+    return severidadeDoMotor(v.queda / v.receitaBase) !== v.severidade;
+  });
+  ok('severidade de cada item do demo bate com a fórmula do motor (base = receita anterior)',
+    divergentes.length === 0);
+  if (divergentes.length) {
+    for (const v of divergentes) {
+      process.stdout.write(`      ↳ ${v.carteira}: arquivo=${v.severidade} motor=${severidadeDoMotor(v.queda / v.receitaBase)}\n`);
+    }
+  }
+
+  // O caso que motivou a correção: queda quase total não pode sair como "baixa".
+  ok('perda de 99,9% da receita é classificada como alta, não baixa',
+    severidadeDoMotor(0.999) === 'alta');
+}
+
 // ─── Resultado ──────────────────────────────────────────────────────────────
 
 const total = pass + fail;

@@ -30,6 +30,39 @@ function evento(parcial: Partial<SnapshotEvent> & { tipo: SnapshotEvent['tipo'];
 
 const CTX = { periodo: '2026-08-13', assessor: '' };
 
+describe('volume da oportunidade', () => {
+  // Trava do defeito: em arquivo diario de custodia titulo de renda fixa se move
+  // todo dia por accrual, entao o delta do MATURITY_APPROACHING quase nunca e
+  // zero. Com o volume vindo do delta, um CDB de meio milhao chegava na tela
+  // como R$ 137 e o score caia de 16 para 4, do topo da fila para o fundo.
+  it('MATURITY_APPROACHING usa o valor do titulo, nao o rendimento do dia', () => {
+    const ev = evento({
+      tipo: 'MATURITY_APPROACHING',
+      carteira: 'ALFA',
+      ativo: 'CDB LONGO',
+      valorAnterior: 500_000,
+      valorAtual: 500_137,
+      delta: 137,
+      evidencias: { janelaDias: 30, diasRestantes: 30 },
+    });
+    const [op] = gerarOportunidades([ev], CTX);
+    assert.equal(op.volume, 500_137, 'volume e o valor do titulo');
+    assert.notEqual(op.volume, 137, 'volume nao e o accrual do dia');
+  });
+
+  it('evento de movimento continua usando o modulo do movimento', () => {
+    const ev = evento({
+      tipo: 'LARGE_WITHDRAWAL',
+      carteira: 'BETA',
+      valorAnterior: 2_000_000,
+      valorAtual: 1_050_000,
+      delta: -950_000,
+    });
+    const [op] = gerarOportunidades([ev], CTX);
+    assert.equal(op.volume, 950_000);
+  });
+});
+
 describe('regras declarativas evento → oportunidade', () => {
   it('MATURITY_APPROACHING gera renovação/rotação com prazo = janela do evento', () => {
     const ev = evento({

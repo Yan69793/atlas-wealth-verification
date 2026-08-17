@@ -215,4 +215,43 @@ describe('caixa parado', () => {
     assert.equal(itens.length, 0);
     assert.ok(!itens.some((i) => i.carteira === 'Z'));
   });
+
+  // Trava do defeito: a contagem andava para trás na série sem olhar o intervalo
+  // entre snapshots, então dois arquivos a 16 dias de distância viravam "17 dias
+  // parado" com chip vermelho, e R$-dias multiplicava a liquidez pelo tamanho do
+  // buraco. Uma semana de férias do operador enchia a lista de número inventado.
+  it('buraco na série interrompe a sequência em vez de afirmar continuidade', () => {
+    const caixa = (data: string) => mkSnapshot(data, [
+      { carteira: 'A', ativo: 'Caixa', valor: 150_000, classe: 'liquidez' },
+      { carteira: 'A', ativo: 'CDB', valor: 850_000, classe: 'Renda Fixa' },
+    ]);
+    // 16 dias sem ingestão entre os dois snapshots
+    const comBuraco = [caixa('2026-07-29'), caixa('2026-08-14')];
+    const itens = caixaParado(comBuraco, { minDias: 1 });
+    assert.equal(itens.length, 1);
+    assert.equal(itens[0].diasParado, 1, 'só o dia de referência tem evidência');
+    assert.equal(itens[0].inicioSequencia, '2026-08-14');
+
+    // com o mínimo de 7 dias, a carteira nem entra na lista: não há prova
+    assert.equal(caixaParado(comBuraco).length, 0);
+
+    // série contínua de verdade (dias úteis, com salto de fim de semana) mantém
+    const continua = [
+      caixa('2026-08-07'), caixa('2026-08-10'), caixa('2026-08-11'),
+      caixa('2026-08-12'), caixa('2026-08-13'), caixa('2026-08-14'),
+    ];
+    const ok = caixaParado(continua);
+    assert.equal(ok.length, 1);
+    assert.equal(ok[0].diasParado, 8, '07/ago a 14/ago, fim de semana não quebra');
+  });
+
+  it('R$-dias não é inflado pelo tamanho do buraco na série', () => {
+    const caixa = (data: string) => mkSnapshot(data, [
+      { carteira: 'A', ativo: 'Caixa', valor: 100_000, classe: 'liquidez' },
+      { carteira: 'A', ativo: 'CDB', valor: 400_000, classe: 'Renda Fixa' },
+    ]);
+    const comBuraco = caixaParado([caixa('2026-07-29'), caixa('2026-08-14')], { minDias: 1 });
+    // sem teto seriam 100.000 x 16 = 1.600.000; o teto é maxIntervalo (4 dias)
+    assert.equal(comBuraco[0].rsDias, 100_000 * 4);
+  });
 });

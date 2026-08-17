@@ -58,6 +58,16 @@ export const THRESHOLDS = {
       parado). */
   caixaParadoJanelaDias: 90,
 
+  /** Intervalo máximo entre dois snapshots consecutivos para que a sequência de
+      "parado" continue valendo. Arquivo diário de custódia pula fim de semana e
+      feriado, então 1 dia é o normal, sexta→segunda dá 3 e feriado colado dá 4.
+      Acima disso a série tem buraco de verdade e continuidade não se sustenta:
+      antes a contagem andava para trás sem olhar o intervalo, então dois
+      snapshots a 16 dias de distância viravam "17 dias parado" com chip
+      vermelho. Uma semana de férias do operador enchia a lista de número
+      inventado. */
+  caixaParadoMaxIntervaloDias: 4,
+
   /** REVENUE_DROP: queda >= 5% da receita mensal da carteira (receita =
       PL x taxa anual / 12, taxa-map da instancia no normalize mensal).
       Percentual puro por decisao do dono (2026-08-14): sem piso absoluto —

@@ -66,6 +66,9 @@ export interface OpcoesCaixaParado {
   minPct?: number;
   /** default THRESHOLDS.caixaParadoMinDias */
   minDias?: number;
+  /** default THRESHOLDS.caixaParadoMaxIntervaloDias — intervalo máximo entre
+   *  snapshots consecutivos para a sequência de "parado" continuar valendo. */
+  maxIntervaloDias?: number;
 }
 
 /** Dias corridos entre duas datas AAAA-MM-DD (de <= ate; determinístico). */
@@ -103,6 +106,7 @@ export function caixaParado(serie: Snapshot[], opcoes: OpcoesCaixaParado = {}): 
   const janelaDias = opcoes.janelaDias ?? THRESHOLDS.caixaParadoJanelaDias;
   const minPct = opcoes.minPct ?? THRESHOLDS.caixaParadoMinPct;
   const minDias = opcoes.minDias ?? THRESHOLDS.caixaParadoMinDias;
+  const maxIntervalo = opcoes.maxIntervaloDias ?? THRESHOLDS.caixaParadoMaxIntervaloDias;
   const ref = serie[serie.length - 1];
   const inicioJanela = adicionarDias(ref.data, -(janelaDias - 1));
   const janelaSerie = serie.filter((s) => s.data >= inicioJanela);
@@ -114,9 +118,13 @@ export function caixaParado(serie: Snapshot[], opcoes: OpcoesCaixaParado = {}): 
     const nome = cRef.nome;
     if (!qualifica(ref, nome, minPct)) continue;
 
-    // Sequência: de trás para frente na série completa enquanto qualifica.
+    // Sequência: de trás para frente na série completa enquanto qualifica E
+    // enquanto há evidência de continuidade. Buraco na série interrompe: sem
+    // snapshot no meio não se sabe se o caixa ficou parado, e afirmar que ficou
+    // é inventar número. Ver THRESHOLDS.caixaParadoMaxIntervaloDias.
     let inicioIdx = serie.length - 1;
     for (let i = serie.length - 2; i >= 0; i--) {
+      if (diasCorridos(serie[i].data, serie[i + 1].data) > maxIntervalo) break;
       if (!qualifica(serie[i], nome, minPct)) break;
       inicioIdx = i;
     }
@@ -127,18 +135,23 @@ export function caixaParado(serie: Snapshot[], opcoes: OpcoesCaixaParado = {}): 
       pico = Math.max(pico, liquidezDoDia(serie[i], nome) ?? 0);
     }
 
-    // R$-dias da janela: liquidez do dia vale até o próximo snapshot.
+    // R$-dias da janela: liquidez do dia vale até o próximo snapshot, mas no
+    // máximo maxIntervalo dias. Sem esse teto um buraco na série multiplicava a
+    // liquidez pelo tamanho do buraco, inflando o número sem nenhuma evidência
+    // de que o dinheiro ficou lá.
+    const diasEntre = (a: string, b: string) => Math.min(diasCorridos(a, b), maxIntervalo);
+
     let rsDias = 0;
     for (let i = 0; i + 1 < janelaSerie.length; i++) {
       const liq = liquidezDoDia(janelaSerie[i], nome) ?? 0;
-      rsDias += liq * diasCorridos(janelaSerie[i].data, janelaSerie[i + 1].data);
+      rsDias += liq * diasEntre(janelaSerie[i].data, janelaSerie[i + 1].data);
     }
 
     // R$-dias da sequência: pares com ambos os extremos dentro da sequência.
     let rsDiasSequencia = 0;
     for (let i = inicioIdx; i + 1 < serie.length; i++) {
       const liq = liquidezDoDia(serie[i], nome) ?? 0;
-      rsDiasSequencia += liq * diasCorridos(serie[i].data, serie[i + 1].data);
+      rsDiasSequencia += liq * diasEntre(serie[i].data, serie[i + 1].data);
     }
 
     if (diasParado < minDias) continue;

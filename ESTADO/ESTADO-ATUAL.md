@@ -11,9 +11,12 @@ aqui, trate este arquivo como suspeito e rode o refresh do fim da página.
 ## Portão de verificação, medido hoje
 
 ```
-352/352 checks OK — todos os checks passaram
-ℹ tests 101   ℹ suites 29   ℹ pass 100   ℹ fail 0   ℹ skipped 1
+387/387 checks OK — todos os checks passaram
+ℹ tests 107   ℹ suites 30   ℹ pass 106   ℹ fail 0   ℹ skipped 1
 ```
+
+Contagem subiu de 352/101 (início do dia) com as correções das Ondas 1 e 2, cada uma trazendo
+o teste que pegaria o próprio defeito. Ver a seção das cinco fases, abaixo.
 
 O único pulado é o de parity, que só roda com `ATLAS_FIXTURES` e `ATLAS_BOOKS` apontando
 para dado de instância. Pular é o comportamento correto no repo do produto.
@@ -183,7 +186,34 @@ ou encerrada a 3% do PL, liquidez parada a 10% do PL com mínimo de 7 dias, jane
 A Fase 4 é deliberadamente só descritiva. A decisão sobre o caixa é do assessor, a tela
 mostra fato, não julgamento. Manter assim.
 
-### Revisão independente, 17 de agosto: NÃO APROVADO
+### Correção em ondas, em andamento desde 17 de agosto
+
+Onda 0 (documentação) e Onda 1 (dado sintético disfarçado de real + achados baratos)
+concluídas e commitadas. **Onda 2 concluída**, quatro correções de número dentro do motor:
+
+- **Volume de vencimento.** Usava a variação do dia (accrual), agora usa o valor do título
+  para `MATURITY_APPROACHING`. Um CDB de R$ 500.000 que rendia R$ 137 no dia da janela saía
+  como volume R$ 137 e score 2, agora sai como R$ 500.137 e score 8.
+- **Severidade da queda de receita.** A materialidade era medida contra o PL, o que tornava
+  qualquer queda "baixa" (perda de 99,9% da receita dava materialidade 0,0004). Agora é medida
+  contra a receita anterior. Achado curioso, o **dado de demonstração já estava certo**, era só
+  o motor que não conseguia produzir o que o demo já mostrava. Corrigido e travado num check
+  que compara os dois lados.
+- **Limiar de posição nova.** Media contra o PL de ontem, contra o que o próprio arquivo de
+  limiares promete ("do plTotal da carteira"). Reproduzido, aporte de R$ 2 mi numa carteira de
+  R$ 1 mi com R$ 40 mil num fundo novo, o fundo saía como evento de 4% "que redefine a
+  carteira" e hoje é 1,33% do PL atual, sem evento. Posição encerrada continua medida contra o
+  PL base de propósito, ela não existe mais hoje.
+- **Continuidade do caixa parado.** A contagem andava para trás na série sem checar se havia
+  snapshot no meio. Dois arquivos a 16 dias de distância viravam "17 dias parado" com chip
+  vermelho. Agora um buraco maior que o intervalo normal entre ingestões (fim de semana e
+  feriado incluídos, teto de 4 dias) interrompe a sequência, e R$-dias não multiplica mais pelo
+  tamanho do buraco.
+
+Cada correção tem teste que reproduz o cenário exato da revisão, e o portão foi rodado antes e
+depois. Onda 3 (contrato de ordenação da fila) é a próxima.
+
+### Revisão independente, 17 de agosto: estado na abertura da correção
 
 Doze defeitos bloqueantes e seis não bloqueantes, todos passando por baixo da suíte, que está
 verde. Esse é o fato mais importante desta seção: **teste verde neste projeto não prova número
@@ -196,32 +226,34 @@ overlay, não o modo de dados, e o produtor do overlay das Fases 2, 3 e 4 nunca 
 não existe comando `oportunidades` no CLI de snapshot. Então na instância o fallback sempre
 dispara, e as telas mostram carteira inventada ao lado das páginas de dado real.
 
-Os doze bloqueantes, resumidos:
+Os doze bloqueantes, resumidos. **Corrigido** marca o que já fechou nas ondas em andamento,
+com o detalhe na seção "Correção em ondas" acima.
 
-1. Dado fictício exibido como real na instância, sem aviso.
-2. Volume de vencimento usa a variação do dia, não o valor do título. Um CDB de R$ 500 mil
-   aparece com R$ 137, e o score cai de 16 para 4.
+1. ~~Dado fictício exibido como real na instância, sem aviso.~~ **Corrigido, Onda 1.**
+2. ~~Volume de vencimento usa a variação do dia, não o valor do título.~~ **Corrigido, Onda 2.**
 3. A ordem da fila na tela não é o score do motor, e inverte a regra aprovada. O score do motor
-   é código morto fora do teste.
+   é código morto fora do teste. **Aberto, Onda 3.**
 4. Um mesmo fato entra até cinco vezes na fila, porque o identificador inclui o tipo de evento.
    Um saque de R$ 950 mil soma R$ 2,8 mi no indicador de volume, que ainda mistura receita
-   mensal com patrimônio.
-5. Severidade da queda de receita é estruturalmente sempre "baixa", inclusive numa perda de
-   99,9%, porque a materialidade é medida contra o patrimônio. O demo entrega severidade que o
-   motor não consegue produzir.
-6. Coluna Assessor mostra o código interno em vez do nome, nas quatro telas e nos quatro CSV,
-   porque leem `D.managers` e o namespace exporta `D.MANAGERS`. O guard mascara o erro.
-7. Os três indicadores da aba Queda de receita ignoram o filtro de assessor.
-8. Botão de criar oportunidade gera duplicata sem limite e nunca vira chip de status.
+   mensal com patrimônio. **Aberto, Onda 4.**
+5. ~~Severidade da queda de receita é estruturalmente sempre "baixa".~~ **Corrigido, Onda 2** —
+   o dado de demonstração já estava certo, era o motor que não conseguia produzir o que o demo
+   mostrava.
+6. ~~Coluna Assessor mostra o código interno em vez do nome.~~ **Corrigido, Onda 1.**
+7. ~~Os três indicadores da aba Queda de receita ignoram o filtro de assessor.~~ **Corrigido,
+   Onda 1.**
+8. Botão de criar oportunidade gera duplicata sem limite e nunca vira chip de status. **Aberto,
+   Onda 4.**
 9. Link de vencimento para oportunidade quebra quando o cruzamento da janela cai em fim de
-   semana ou feriado, dois em cada sete casos.
+   semana ou feriado, dois em cada sete casos. **Aberto, Onda 4.**
 10. Armazenamento local congela as linhas da base, então número corrigido no overlay nunca
     chega na tela, e evento apagado numa reingestão sobrevive como linha órfã contada no
-    indicador.
-11. Limiar de posição nova e encerrada é medido contra o patrimônio de ontem, contra o que o
-    próprio arquivo de limiares promete.
-12. Caixa parado afirma dias de continuidade sem checar se houve snapshot no meio. Uma semana
-    sem ingestão vira "17 dias parado" com chip vermelho.
+    indicador. **Aberto, Onda 4.**
+11. ~~Limiar de posição nova e encerrada é medido contra o patrimônio de ontem.~~ **Corrigido,
+    Onda 2** — posição encerrada continua contra o PL base de propósito, ela não existe mais
+    hoje.
+12. ~~Caixa parado afirma dias de continuidade sem checar se houve snapshot no meio.~~
+    **Corrigido, Onda 2.**
 
 Não bloqueantes: ordem invertida no demo de caixa parado sem sort na tela, "R$ × dias"
 formatado como moeda, motivo com quebra de linha corrompendo o CSV, dia do vencimento não
@@ -336,3 +368,9 @@ e é o que impede a próxima pessoa de repetir.
   ponteiro para `ESTADO/LEIA-PRIMEIRO.md` no topo do `CLAUDE.md` do projeto, com aviso de que
   este arquivo ganha em caso de divergência. Registradas as duas decisões do dono e o resultado
   da revisão das cinco fases, que reprovou com doze defeitos bloqueantes.
+- **2026-08-17, Onda 1.** Fechados os achados 1, 6 e 7, mais os dois não bloqueantes de Caixa
+  parado (ordem e formatação). 352 → 382 checks.
+- **2026-08-17, Onda 2.** Fechados os achados 2, 5, 11 e 12, todos dentro do motor
+  (`audit-engine/src`). 382 → 387 checks, 101 → 107 testes. Achado 5 revelou que o dado de
+  demonstração já estava correto antes da correção, só o motor não conseguia produzir o que o
+  demo mostrava, o que virou um check novo comparando os dois lados.

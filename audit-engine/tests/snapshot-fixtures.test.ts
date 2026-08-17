@@ -128,8 +128,12 @@ describe('fixtures sintéticos — mensal', () => {
     assert.equal(drop.valorAtual, 300);
     assert.equal(drop.delta, -20);
     assert.equal(drop.deltaPct, -0.0625);
+    // 6,25% de queda: "baixa" porque baixaMax é 0,10, agora medido contra a
+    // receita anterior e não contra o PL. As evidências passam a registrar o
+    // plBase para o número seguir auditável.
     assert.equal(drop.severidade, 'baixa');
-    assert.deepEqual(drop.evidencias, { receitaBase: 320, receitaAtual: 300, queda: 20 });
+    assert.equal(drop.materialidade, 0.0625);
+    assert.deepEqual(drop.evidencias, { receitaBase: 320, receitaAtual: 300, queda: 20, plBase: 640_000 });
   });
 });
 

@@ -8,7 +8,7 @@
  * Determinístico: ids e timestamps derivam do período, nunca de Date.now.
  */
 
-import type { SnapshotEvent } from '../snapshot/types.js';
+import type { EventoTipo, SnapshotEvent } from '../snapshot/types.js';
 import type { Oportunidade, RegraOportunidade } from './types.js';
 
 /**
@@ -98,8 +98,25 @@ export function adicionarDias(data: string, dias: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-/** volume em reais: módulo do movimento; sem movimento, o valor atual. */
+/**
+ * Eventos cujo volume é o TAMANHO DA POSIÇÃO, não o movimento do dia.
+ *
+ * MATURITY_APPROACHING é sobre um título que vai vencer: o que está em jogo é o
+ * valor do título, não quanto ele rendeu de um dia para o outro. Antes esta
+ * função caía no `Math.abs(delta)` porque o delta só é zero por acidente, e em
+ * arquivo diário de custódia título de renda fixa se move todo dia por accrual.
+ * Um CDB de R$ 500.000 que rendia R$ 137 no dia em que cruzou a janela de 30
+ * chegava na tela do assessor como volume de R$ 137, e o score caía de 16 para
+ * 4, ou seja, do topo da fila para o fundo.
+ */
+const VOLUME_E_POSICAO: ReadonlySet<EventoTipo> = new Set<EventoTipo>([
+  'MATURITY_APPROACHING',
+]);
+
+/** volume em reais: tamanho da posição quando o evento é sobre a posição;
+ *  caso contrário o módulo do movimento, e sem movimento o valor atual. */
 function volumeDoEvento(e: SnapshotEvent): number {
+  if (VOLUME_E_POSICAO.has(e.tipo)) return e.valorAtual;
   if (e.delta !== 0) return Math.abs(e.delta);
   return e.valorAtual;
 }

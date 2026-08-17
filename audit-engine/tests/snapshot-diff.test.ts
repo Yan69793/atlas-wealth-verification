@@ -80,17 +80,46 @@ describe('diffSnapshots', () => {
     assert.equal(ev2.deltaPct, null); // liquidez base 0
   });
 
-  it('NEW_POSITION no limiar de 3% do PL; abaixo não', () => {
-    const base = mkSnapshot(DATA_D1, [{ nome: 'A', posicoes: [{ ...FIX, valor: 1_000_000 }] }]);
-    const noLimite = mkSnapshot(DATA_D, [{ nome: 'A', posicoes: [{ ...FIX, valor: 1_000_000 }, { ativo: 'LCI Nova', valor: 30_000, classe: 'Renda Fixa' }] }]);
-    const abaixo = mkSnapshot(DATA_D, [{ nome: 'A', posicoes: [{ ...FIX, valor: 1_000_000 }, { ativo: 'LCI Nova', valor: 29_999, classe: 'Renda Fixa' }] }]);
+  // O denominador de NEW_POSITION é o PL ATUAL, não o de D-1: a posição existe
+  // hoje, o peso dela é no patrimônio de hoje. A fixture antiga punha a posição
+  // em 3% do PL base, o que só coincide quando o PL não muda. Aqui 970.000 +
+  // 30.000 dá PL atual de 1.000.000 e a nova posição é exatamente 3% dele,
+  // espelhando o teste de POSITION_CLOSED logo abaixo.
+  it('NEW_POSITION no limiar de 3% do PL atual; abaixo não', () => {
+    const base = mkSnapshot(DATA_D1, [{ nome: 'A', posicoes: [{ ...FIX, valor: 970_000 }] }]);
+    const noLimite = mkSnapshot(DATA_D, [{ nome: 'A', posicoes: [{ ...FIX, valor: 970_000 }, { ativo: 'LCI Nova', valor: 30_000, classe: 'Renda Fixa' }] }]);
+    const abaixo = mkSnapshot(DATA_D, [{ nome: 'A', posicoes: [{ ...FIX, valor: 970_001 }, { ativo: 'LCI Nova', valor: 29_999, classe: 'Renda Fixa' }] }]);
 
     const ev = diffSnapshots(noLimite, base).eventos.find((e) => e.tipo === 'NEW_POSITION')!;
     assert.ok(ev);
     assert.equal(ev.valorAnterior, 0);
     assert.equal(ev.valorAtual, 30_000);
     assert.equal(ev.deltaPct, null);
+    assert.equal(ev.materialidade, 0.03);
     assert.ok(!tipos(diffSnapshots(abaixo, base).eventos).includes('NEW_POSITION'));
+  });
+
+  // Trava do defeito que o denominador antigo produzia. Aporte de R$ 2 mi numa
+  // carteira de R$ 1 mi, R$ 40.000 num fundo novo: contra o PL de ontem isso
+  // dava 4% e o evento anunciava posição "que redefine a carteira"; contra o PL
+  // de hoje são 1,33% e não é evento nenhum.
+  it('NEW_POSITION não dispara por PL de ontem depois de aporte grande', () => {
+    const base = mkSnapshot(DATA_D1, [{ nome: 'A', posicoes: [{ ...FIX, valor: 1_000_000 }] }]);
+    const atual = mkSnapshot(DATA_D, [{
+      nome: 'A',
+      posicoes: [
+        { ...FIX, valor: 1_000_000 },
+        { ativo: 'CDB Aporte', valor: 1_960_000, classe: 'Renda Fixa' },
+        { ativo: 'FUNDO NOVO', valor: 40_000, classe: 'Multimercado' },
+      ],
+    }]);
+    const novas = diffSnapshots(atual, base).eventos.filter((e) => e.tipo === 'NEW_POSITION');
+    const fundo = novas.find((e) => e.ativo === 'FUNDO NOVO');
+    assert.equal(fundo, undefined, '40k em PL de 3 mi é 1,33%, abaixo de 3%');
+    // o aporte de 1,96 mi é 65% do PL de hoje, esse sim é evento
+    const aporte = novas.find((e) => e.ativo === 'CDB Aporte')!;
+    assert.ok(aporte);
+    assert.ok(aporte.materialidade! > 0.6, `materialidade: ${aporte.materialidade}`);
   });
 
   it('POSITION_CLOSED no limiar de 3% do PL; abaixo não', () => {
@@ -209,9 +238,31 @@ describe('diffSnapshots', () => {
       assert.equal(ev!.valorAtual, 380);
       assert.equal(ev!.delta, -20);
       assert.ok(Math.abs(ev!.deltaPct! + 0.05) < 1e-12, `deltaPct: ${ev!.deltaPct}`);
-      assert.equal(ev!.materialidade, 20 / 1_000_000);
+      // A base da materialidade é a RECEITA anterior, não o PL. Com o PL no
+      // denominador isso dava 0,00002 e TODA queda de receita saía como "baixa",
+      // inclusive perda de 99,9%. Agora é a fração da própria receita: 5% de
+      // queda continua "baixa" porque baixaMax é 0,10, mas a escala passa a
+      // funcionar acima disso.
+      assert.equal(ev!.materialidade, 20 / 400);
       assert.equal(ev!.severidade, 'baixa');
-      assert.deepEqual(ev!.evidencias, { receitaBase: 400, receitaAtual: 380, queda: 20 });
+      assert.deepEqual(ev!.evidencias, { receitaBase: 400, receitaAtual: 380, queda: 20, plBase: 1_000_000 });
+    });
+
+    // Trava do defeito: a severidade tem que reagir ao tamanho da queda.
+    it('severidade da queda de receita acompanha a queda, não o PL', () => {
+      const casos: Array<[number, string]> = [
+        [380, 'baixa'],  // -5%
+        [340, 'media'],  // -15%
+        [270, 'alta'],   // -32,5%
+        [1, 'alta'],     // -99,75%: antes saía "baixa"
+      ];
+      for (const [receitaAtual, esperada] of casos) {
+        const base = mkSnapshot('2026-05', [{ nome: 'A', receita: 400, posicoes: [{ ...FIX, valor: 1_000_000 }] }]);
+        const atual = mkSnapshot('2026-06', [{ nome: 'A', receita: receitaAtual, posicoes: [{ ...FIX, valor: 950_000 }] }]);
+        const ev = diffSnapshots(atual, base).eventos.find((e) => e.tipo === 'REVENUE_DROP')!;
+        assert.ok(ev, `emite para receita ${receitaAtual}`);
+        assert.equal(ev.severidade, esperada, `receita 400 -> ${receitaAtual}`);
+      }
     });
 
     it('queda abaixo do limiar (4,99%) não emite', () => {
@@ -263,7 +314,9 @@ describe('diffSnapshots', () => {
 describe('modo mensal (data AAAA-MM)', () => {
   it('diff mês a mês emite os mesmos tipos de evento', () => {
     const base = mkSnapshot('2026-06', [{ nome: 'A', posicoes: [{ ...LIQ, valor: 100_000 }, { ...FIX, valor: 900_000 }] }]);
-    const atual = mkSnapshot('2026-07', [{ nome: 'A', posicoes: [{ ...LIQ, valor: 150_000 }, { ...FIX, valor: 900_000 }, { ativo: 'LCI Nova', classe: 'Renda Fixa', valor: 30_000 }] }]);
+    // LCI de 35.000 em PL atual de 1.085.000 dá 3,23%, acima do limiar. Com
+    // 30.000 daria 2,78% do PL de hoje e não emitiria (o denominador é o atual).
+    const atual = mkSnapshot('2026-07', [{ nome: 'A', posicoes: [{ ...LIQ, valor: 150_000 }, { ...FIX, valor: 900_000 }, { ativo: 'LCI Nova', classe: 'Renda Fixa', valor: 35_000 }] }]);
     const res = diffSnapshots(atual, base);
     assert.equal(res.baseData, '2026-06');
     assert.ok(tipos(res.eventos).includes('CASH_INCREASE'));
