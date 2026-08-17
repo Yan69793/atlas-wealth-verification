@@ -11,11 +11,11 @@ aqui, trate este arquivo como suspeito e rode o refresh do fim da página.
 ## Portão de verificação, medido hoje
 
 ```
-387/387 checks OK — todos os checks passaram
-ℹ tests 107   ℹ suites 30   ℹ pass 106   ℹ fail 0   ℹ skipped 1
+460/460 checks OK — todos os checks passaram
+ℹ tests 131   ℹ suites 35   ℹ pass 130   ℹ fail 0   ℹ skipped 1
 ```
 
-Contagem subiu de 352/101 (início do dia) com as correções das Ondas 1 e 2, cada uma trazendo
+Contagem subiu de 352/101 (início do dia) com as correções das Ondas 1 a 5, cada uma trazendo
 o teste que pegaria o próprio defeito. Ver a seção das cinco fases, abaixo.
 
 O único pulado é o de parity, que só roda com `ATLAS_FIXTURES` e `ATLAS_BOOKS` apontando
@@ -61,7 +61,15 @@ comando aborta com "no submodule mapping found". Para ler o ponteiro use
 2. **A segunda cópia de dado real de cliente vai ser movida** para a área de instância, não
    apagada. Decidido. Ainda **não executado**, ver a seção de LGPD abaixo.
 
-3. **Servidor morto: aberto.** O dono perguntou se dá para fazê-lo rodar com dado fictício.
+3. **Teto de `diasParado` no caixa parado: aberto, apareceu na Onda 5.** A leitura da série de
+   snapshots foi limitada ao que pode mudar o resultado, mas o corte é conservador porque a
+   sequência de "parado" não é truncada pela janela de 90 dias. Consequência: num root com
+   ingestão diária sem buraco nenhum, o corte não corta. Para sempre limitar a leitura à
+   janela seria preciso decidir que "parado há 90 dias ou mais" basta, o que muda um número
+   que a tela mostra hoje. Custo de continuar como está é leitura maior em root muito antigo,
+   não número errado. Aguardando o dono.
+
+4. **Servidor morto: aberto.** O dono perguntou se dá para fazê-lo rodar com dado fictício.
    Resposta: tecnicamente sim, pouco trabalho, corrigir o casamento da rota e apontar para os
    fixtures sintéticos. Recomendação registrada é **não fazer**, porque a decisão 1 fechou o
    caminho em que ele serviria, porque rodar não fecha nenhum dos sete buracos nem cria rota de
@@ -210,8 +218,61 @@ concluídas e commitadas. **Onda 2 concluída**, quatro correções de número d
   feriado incluídos, teto de 4 dias) interrompe a sequência, e R$-dias não multiplica mais pelo
   tamanho do buraco.
 
+**Onda 3 concluída**, contrato de ordenação da fila. A tela ordenava por prioridade primeiro,
+com peso local próprio, e invertia a regra aprovada. O score do motor (prioridade × volume ×
+prazo) era código morto fora do teste. Decisão do plano: o score do motor ganha. A tela passou
+a consumi-lo e mostra a coluna Score, com a conta no title. Caso reproduzido, hoje 13/ago:
+quatro oportunidades com scores 48, 24, 16 e 6; o motor entrega `b, d, a, c` e a tela entregava
+`b, d, c, a`, ou seja, uma P1 de R$ 10 mil sem prazo (score 6) na frente de uma P3 de R$ 1
+milhão vencendo em 7 dias (score 16).
+
+**Onda 4 concluída**, quatro correções de integridade da fila:
+
+- **Um fato, uma linha.** O id inclui o tipo do evento, então um saque único entrava como
+  saque, queda de caixa, posição encerrada, concentração e queda de receita. Agora existe
+  `PRECEDENCIA_CAUSA_RAIZ`: dentro da mesma carteira e período, os eventos dessa família
+  descrevem um fato só, sobra o de maior poder explicativo e os outros viram `consequencias`
+  dele, citadas no motivo. Vencimento fica de fora de propósito. Saque de R$ 950 mil na BETA:
+  4 linhas e "Volume na fila" de R$ 3.850.000 viraram 1 linha e R$ 950.000. No mensal, com a
+  queda de receita junto, eram 3 linhas somando R$ 1.903.800, que misturava R$ 3.800 de receita
+  mensal com R$ 950.000 de patrimônio. O campo `volumeEspecie` separa as duas unidades e a
+  receita saiu da mesma célula.
+- **Botão de criar oportunidade.** Montava id fora da convenção e procurava status só na base
+  estática. O link passa a levar o id canônico do motor, e `idle-cash.ts` grava
+  `oportunidadeId` em cada item, como `maturities.ts` já fazia. Dois cliques no mesmo
+  vencimento davam 2 linhas e nenhum chip; agora dão 1 linha e o chip aparece. Caixa parado
+  ganhou o chip que nunca teve.
+- **Link de vencimento em fim de semana.** O id usava a data teórica do cruzamento da janela.
+  Caindo em dia sem arquivo do custodiante, o evento nasce no próximo dia útil e o id não
+  batia. LCI vencendo 21/set com janela 30 e cruzamento no sábado 22/ago: a fila tem
+  `2026-08-24`, a tela procurava `2026-08-22`, agora procura `2026-08-24`.
+- **Reconciliação do armazenamento local.** A mesclagem trocava a linha inteira pela versão
+  salva. Agora fato vem da base e acompanhamento do assessor sobrevive: volume corrigido de
+  R$ 137 para R$ 500.137 chega na tela sem perder o status Contatar. Evento removido numa
+  reingestão vira órfã marcada, fora da fila e dos indicadores, em vez de somar R$ 120.000
+  apontando para evento que não existe.
+
+**Onda 5 concluída**, os quatro não bloqueantes mais um resto da Onda 1:
+
+- **CSV com quebra de linha.** O export não escapava nada. Motivo com quebra de linha partia o
+  registro em dois: 3 linhas viravam 4 registros e o volume caía na coluna do motivo. Agora é
+  RFC 4180, com aspas e CRLF.
+- **Dia exato do vencimento.** `janelaPara` juntava dias 0 com vencido, então o título sumia da
+  tela justamente no dia da decisão de reinvestimento. Agora fica, marcado "vence hoje", com o
+  mesmo id de oportunidade que tinha desde D-7.
+- **Endereço malformado.** `decodeURIComponent` sem proteção derrubava a aplicação em tela
+  branca com `%`, `%zz` ou `%E0%A4%A`. Agora o pedaço malformado fica como veio.
+- **Leitura da série de snapshots.** O corte da janela passou a sair do nome do diretório, sem
+  abrir arquivo. Num root com 240 dias, 4 mensais e um mês sem ingestão, caiu de 244 arquivos
+  lidos por execução para 43, com resultado idêntico. **Limite honesto:** com série diária sem
+  buraco nenhum o corte não corta, porque a sequência de "parado" não é truncada pela janela e
+  "parado há 400 dias" é afirmação que a série inteira sustenta. Truncar em 90 dias mudaria
+  `diasParado`, e isso é decisão do dono, não de código. Ver a pendência aberta abaixo.
+- **Resto da Onda 1.** O CSV de oportunidades ainda exportava o código interno do gestor
+  enquanto a tela já mostrava o nome.
+
 Cada correção tem teste que reproduz o cenário exato da revisão, e o portão foi rodado antes e
-depois. Onda 3 (contrato de ordenação da fila) é a próxima.
+depois de cada onda. Um commit isolado por onda.
 
 ### Revisão independente, 17 de agosto: estado na abertura da correção
 
@@ -231,34 +292,31 @@ com o detalhe na seção "Correção em ondas" acima.
 
 1. ~~Dado fictício exibido como real na instância, sem aviso.~~ **Corrigido, Onda 1.**
 2. ~~Volume de vencimento usa a variação do dia, não o valor do título.~~ **Corrigido, Onda 2.**
-3. A ordem da fila na tela não é o score do motor, e inverte a regra aprovada. O score do motor
-   é código morto fora do teste. **Aberto, Onda 3.**
-4. Um mesmo fato entra até cinco vezes na fila, porque o identificador inclui o tipo de evento.
-   Um saque de R$ 950 mil soma R$ 2,8 mi no indicador de volume, que ainda mistura receita
-   mensal com patrimônio. **Aberto, Onda 4.**
+3. ~~A ordem da fila na tela não é o score do motor, e inverte a regra aprovada.~~
+   **Corrigido, Onda 3** — o score do motor ganhou e virou coluna na tela.
+4. ~~Um mesmo fato entra até cinco vezes na fila, porque o identificador inclui o tipo de
+   evento.~~ **Corrigido, Onda 4** — supressão por causa raiz, e a receita mensal saiu da mesma
+   célula do patrimônio no indicador de volume.
 5. ~~Severidade da queda de receita é estruturalmente sempre "baixa".~~ **Corrigido, Onda 2** —
    o dado de demonstração já estava certo, era o motor que não conseguia produzir o que o demo
    mostrava.
 6. ~~Coluna Assessor mostra o código interno em vez do nome.~~ **Corrigido, Onda 1.**
 7. ~~Os três indicadores da aba Queda de receita ignoram o filtro de assessor.~~ **Corrigido,
    Onda 1.**
-8. Botão de criar oportunidade gera duplicata sem limite e nunca vira chip de status. **Aberto,
-   Onda 4.**
-9. Link de vencimento para oportunidade quebra quando o cruzamento da janela cai em fim de
-   semana ou feriado, dois em cada sete casos. **Aberto, Onda 4.**
-10. Armazenamento local congela as linhas da base, então número corrigido no overlay nunca
-    chega na tela, e evento apagado numa reingestão sobrevive como linha órfã contada no
-    indicador. **Aberto, Onda 4.**
+8. ~~Botão de criar oportunidade gera duplicata sem limite e nunca vira chip de status.~~
+   **Corrigido, Onda 4.**
+9. ~~Link de vencimento para oportunidade quebra quando o cruzamento da janela cai em fim de
+   semana ou feriado.~~ **Corrigido, Onda 4.**
+10. ~~Armazenamento local congela as linhas da base.~~ **Corrigido, Onda 4** — reconciliação com
+    marcação de órfã.
 11. ~~Limiar de posição nova e encerrada é medido contra o patrimônio de ontem.~~ **Corrigido,
     Onda 2** — posição encerrada continua contra o PL base de propósito, ela não existe mais
     hoje.
 12. ~~Caixa parado afirma dias de continuidade sem checar se houve snapshot no meio.~~
     **Corrigido, Onda 2.**
 
-Não bloqueantes: ordem invertida no demo de caixa parado sem sort na tela, "R$ × dias"
-formatado como moeda, motivo com quebra de linha corrompendo o CSV, dia do vencimento não
-produzindo evento nenhum, endereço malformado derrubando o app, leitura da série inteira sem
-janela.
+Os doze bloqueantes estão fechados. Os seis não bloqueantes também: ordem invertida no demo de
+caixa parado e "R$ × dias" como moeda na Onda 1, e os outros quatro na Onda 5.
 
 O que a revisão verificou e está limpo: LGPD sem vazamento nas cinco fases, contrato de build
 intacto (nenhum overlay importado como módulo, ordem de `src/main.jsx` respeitada), nenhuma
@@ -276,9 +334,10 @@ saída colada, caso concreto reproduzido mostrando número antes e depois, e um 
    arquivo no lugar certo à mão. O backend existente não encurta esse caminho, ver a seção
    acima, ele é esqueleto sem rota de leitura e sem noção de cliente. A decisão que trava
    tudo é de arquitetura e é do dono. Enquanto ela não sai, construir aqui é aposta.
-2. **Corrigir as cinco fases de agosto.** A revisão foi feita em 17/ago e reprovou, doze
-   defeitos bloqueantes. Virou a prioridade prática da vez, porque número errado na tela do
-   assessor contradiz o argumento de venda do produto. Ver a seção das fases acima.
+2. ~~**Corrigir as cinco fases de agosto.**~~ **Fechada em 17/ago.** Os doze defeitos
+   bloqueantes e os seis não bloqueantes foram corrigidos nas Ondas 0 a 5, cada um com o teste
+   que pegaria o defeito de volta. Sobrou uma decisão do dono, o teto de `diasParado`, na
+   seção de decisões acima. Ver a seção das fases.
 3. **Integração oficial com a B3.** O time chama de "pagar a dívida da ingestão manual",
    catalogada como 6 a 18 meses. O que existe hoje é adaptador para arquivo de posição
    diária no espírito do layout B3 802, ainda arquivo colocado à mão, não feed autenticado.
@@ -374,3 +433,18 @@ e é o que impede a próxima pessoa de repetir.
   (`audit-engine/src`). 382 → 387 checks, 101 → 107 testes. Achado 5 revelou que o dado de
   demonstração já estava correto antes da correção, só o motor não conseguia produzir o que o
   demo mostrava, o que virou um check novo comparando os dois lados.
+- **2026-08-17, Onda 3.** Fechado o achado 3. A tela de oportunidades passou a consumir o score
+  do motor em vez de reordenar por conta própria. 387 → 400 checks, 107 testes.
+- **2026-08-17, Onda 4.** Fechados os achados 4, 8, 9 e 10. 400 → 436 checks, 107 → 120 testes.
+  A leitura, a mesclagem e a gravação da fila saíram das três telas e viraram uma coisa só em
+  `AtlasUtils`: três leituras diferentes da mesma fila foi o que deixou o botão de criar
+  oportunidade nunca virar chip.
+- **2026-08-17, Onda 5.** Fechados os quatro não bloqueantes restantes, mais um resto da Onda 1
+  no CSV de oportunidades. 436 → 460 checks, 120 → 131 testes. Registrada pendência nova de
+  decisão do dono, o teto de `diasParado`. O plano de cinco ondas está cumprido.
+- **2026-08-17, correção de premissa.** A revisão afirmou que "só a janela de 90 dias importa"
+  na leitura da série do caixa parado. Não é verdade: `diasParado`, `pico`, `rsDiasSequencia` e
+  `inicioSequencia` saem da caminhada sobre a série completa, que a janela não trunca. Cortar
+  em 90 dias teria mudado número, então o corte implementado é conservador e a decisão de
+  encurtar ficou registrada como pendência do dono, em vez de ser tomada em silêncio dentro de
+  uma tarefa de eficiência.
