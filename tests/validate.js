@@ -1583,6 +1583,96 @@ ok('R$ × dias não é formatado como moeda',
     && !oportPage.includes("const STORAGE_KEY = 'atlas_oportunidades_v1'"));
 }
 
+// ─── 29. Onda 5 — não bloqueantes ───────────────────────────────────────────
+//
+// CSV corrompido por quebra de linha, dia do vencimento sumindo, endereço
+// malformado derrubando o app, leitura da série sem janela, e o resto da
+// Onda 1 no CSV de oportunidades.
+
+{
+  const utilsSrc = fs.readFileSync(path.join(ROOT, 'platform-utils.jsx'), 'utf8');
+
+  // 29a. O motivo da oportunidade e a observação do contato saem de textarea:
+  // uma quebra de linha partia a linha do CSV em duas e desalinhava todas as
+  // colunas dali para baixo. Nada era escapado.
+  const iCsv = utilsSrc.indexOf('function csvCampo(');
+  ok('platform-utils.jsx tem escape de campo CSV', iCsv > 0);
+  let csvCampo = null;
+  if (iCsv > 0) {
+    const fim = utilsSrc.indexOf('function downloadCSV(');
+    try {
+      csvCampo = new Function(utilsSrc.slice(iCsv, fim) + '\n return csvCampo;')();
+    } catch (e) {
+      ok('csvCampo é avaliável', false, e.message);
+    }
+  }
+  if (csvCampo) {
+    ok('quebra de linha no motivo vira campo entre aspas',
+      csvCampo('linha 1\nlinha 2') === '"linha 1\nlinha 2"', JSON.stringify(csvCampo('linha 1\nlinha 2')));
+    ok('aspas dentro do texto são dobradas',
+      csvCampo('ele disse "sim"') === '"ele disse ""sim"""', csvCampo('ele disse "sim"'));
+    ok('ponto e vírgula é protegido em vez de trocado por vírgula',
+      csvCampo('a;b') === '"a;b"', csvCampo('a;b'));
+    ok('texto comum não ganha aspas', csvCampo('renovacao de LCI') === 'renovacao de LCI');
+    ok('vazio e nulo continuam vazios', csvCampo(null) === '' && csvCampo(undefined) === '');
+  }
+  ok('downloadCSV escapa header e célula', /headers\.map\(csvCampo\)/.test(utilsSrc)
+    && /return csvCampo\(row\[h\]\); \}\)/.test(utilsSrc));
+  ok('registros do CSV são separados por CRLF (RFC 4180)', /lines\.join\('\\r\\n'\)/.test(utilsSrc));
+  ok('downloadCSV não troca mais ponto e vírgula por vírgula na marra',
+    !/String\(v\)\.replace\(\/;\/g, ','\)/.test(utilsSrc));
+
+  // 29b. Endereço malformado ('#/x?a=%') derrubava o app inteiro em tela
+  // branca: decodeURIComponent lança URIError e a exceção subia do render.
+  const iDec = utilsSrc.indexOf('function decodificarSeguro(');
+  ok('platform-utils.jsx protege a leitura do endereço', iDec > 0);
+  if (iDec > 0) {
+    const dec = new Function(utilsSrc.slice(iDec, utilsSrc.indexOf('function parseHash(')) + '\n return decodificarSeguro;')();
+    let sobreviveu = true;
+    let valor = null;
+    try { valor = dec('%'); } catch (e) { sobreviveu = false; }
+    ok('sequência percentual malformada não derruba a leitura', sobreviveu);
+    ok('pedaço malformado é preservado como veio', valor === '%');
+    ok('endereço válido continua sendo decodificado', dec('a%20b') === 'a b');
+  }
+  ok('parseHash usa a leitura protegida',
+    /params\[decodificarSeguro\(k\)\] = decodificarSeguro\(v \|\| ''\)/.test(utilsSrc));
+  ok('parseHash não chama decodeURIComponent cru',
+    !/params\[decodeURIComponent\(k\)\]/.test(utilsSrc));
+
+  // 29c. O dia do vencimento (dias === 0) caía no null junto com o vencido,
+  // então o título sumia da tela justamente no dia da decisão de
+  // reinvestimento, sem evento e sem aviso.
+  const diffSrc = fs.readFileSync(path.join(ROOT, 'audit-engine/src/snapshot/diff.ts'), 'utf8');
+  ok('janelaPara exclui só o vencido de verdade, não o dia do vencimento',
+    /if \(dias < 0 \|\| dias > 90\) return null;/.test(diffSrc));
+  ok('janelaPara não descarta mais dias === 0', !/if \(dias <= 0 \|\| dias > 90\)/.test(diffSrc));
+  ok('tela de vencimentos avisa quando vence hoje',
+    /v\.diasRestantes === 0/.test(vencPage) && vencPage.includes('vence hoje'));
+
+  // 29d. A série inteira era lida e parseada a cada execução. O corte sai do
+  // nome do diretório, sem carregar snapshot, e é conservador: a sequência de
+  // "parado" não é truncada pela janela.
+  const idleSrc = fs.readFileSync(path.join(ROOT, 'audit-engine/src/intel/idle-cash.ts'), 'utf8');
+  const seriesSrc2 = fs.readFileSync(path.join(ROOT, 'audit-engine/src/snapshot/series.ts'), 'utf8');
+  const cliSrc2 = fs.readFileSync(path.join(ROOT, 'audit-engine/src/snapshot/cli-snapshot.ts'), 'utf8');
+  ok('idle-cash calcula o início relevante da leitura', /export function inicioRelevante/.test(idleSrc));
+  ok('série aceita corte por data mínima antes de qualquer parse', /desde\?:\s*string/.test(seriesSrc2)
+    && /nome <= ate && \(desde === undefined \|\| nome >= desde\)/.test(seriesSrc2));
+  ok('série ignora diretório que não é dia (o mensal era lido e descartado)',
+    /const DIA = \/\^\\d\{4\}-\\d\{2\}-\\d\{2\}\$\//.test(seriesSrc2));
+  ok('CLI de caixa parado passa o corte',
+    /const desde = inicioRelevante\(listarDatasDiarias\(root, data\), data\)/.test(cliSrc2)
+    && /listarSnapshotsDiarios\(root, data, \{ desde \}\)/.test(cliSrc2));
+
+  // 29e. Resto da Onda 1: a tela já resolvia o nome do gestor, o CSV de
+  // oportunidades continuava exportando o código interno.
+  ok('CSV de oportunidades exporta o nome do assessor, não o código',
+    /Assessor: nomeAssessor\(o\.assessor\)/.test(oportPage));
+  ok('nenhum CSV das quatro telas exporta código de gestor cru',
+    !/Assessor: o\.assessor\b/.test(oportPage));
+}
+
 // ─── Resultado ──────────────────────────────────────────────────────────────
 
 const total = pass + fail;

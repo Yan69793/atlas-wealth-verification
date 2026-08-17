@@ -8,7 +8,7 @@
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { caixaParado, TIPO_OPORTUNIDADE_CAIXA_PARADO } from '../src/intel/idle-cash.js';
+import { caixaParado, inicioRelevante, TIPO_OPORTUNIDADE_CAIXA_PARADO } from '../src/intel/idle-cash.js';
 import type { Snapshot } from '../src/snapshot/types.js';
 
 type Pos = { carteira: string; ativo: string; valor: number; classe?: string | null };
@@ -269,5 +269,80 @@ describe('caixa parado', () => {
     assert.equal(item.oportunidadeId.split('|').length, 4, 'convencao periodo|carteira|tipo|ativo');
     // duas execucoes, mesmo id: o botao consegue reconhecer a oportunidade
     assert.equal(caixaParado(serie, { minDias: 1 })[0].oportunidadeId, item.oportunidadeId);
+  });
+});
+
+describe('janela de leitura da serie (so o que pode mudar o resultado)', () => {
+  // O CLI carregava e fazia parse da serie inteira do root a cada execucao,
+  // mesmo com a janela de 90 dias. Nao e erro de numero, e desperdicio que
+  // cresce para sempre. O corte tem que ser conservador porque a sequencia de
+  // "parado" nao e truncada pela janela.
+  const opcoes = { janelaDias: 90, maxIntervaloDias: 4 };
+
+  it('serie continua alem da janela: le desde o inicio da cadeia, nao so 90 dias', () => {
+    const datas: string[] = [];
+    for (let d = new Date(Date.UTC(2026, 0, 1)); d <= new Date(Date.UTC(2026, 7, 14)); d.setUTCDate(d.getUTCDate() + 1)) {
+      datas.push(d.toISOString().slice(0, 10));
+    }
+    // cadeia sem buraco desde janeiro: a sequencia pode alcancar 01/jan
+    assert.equal(inicioRelevante(datas, '2026-08-14', opcoes), '2026-01-01');
+  });
+
+  it('buraco maior que maxIntervalo corta a leitura ali', () => {
+    const datas = ['2026-01-05', '2026-01-06', '2026-07-20', '2026-07-21', '2026-07-22', '2026-08-14'];
+    // 2026-07-22 -> 2026-08-14 sao 23 dias, entao a cadeia ja se rompe no fim;
+    // o corte cai no inicio da janela de 90 dias, que e mais antigo
+    assert.equal(inicioRelevante(datas, '2026-08-14', opcoes), '2026-05-17');
+  });
+
+  it('cadeia curta e recente: nunca le menos que a janela de 90 dias', () => {
+    const datas = ['2026-08-12', '2026-08-13', '2026-08-14'];
+    assert.equal(inicioRelevante(datas, '2026-08-14', opcoes), '2026-05-17');
+  });
+
+  it('sem datas, devolve o inicio da janela', () => {
+    assert.equal(inicioRelevante([], '2026-08-14', opcoes), '2026-05-17');
+  });
+
+  it('cadeia diaria ininterrupta NAO e cortada: a sequencia alcanca o comeco', () => {
+    // Limite honesto do corte: com dia util todo dia, "parado ha 400 dias" e
+    // afirmacao que a serie inteira sustenta, e truncar mudaria diasParado.
+    // Cortar em 90 dias aqui seria trocar ineficiencia por numero errado.
+    const datas: string[] = [];
+    for (let d = new Date(Date.UTC(2025, 7, 14)); d <= new Date(Date.UTC(2026, 7, 14)); d.setUTCDate(d.getUTCDate() + 1)) {
+      const dow = d.getUTCDay();
+      if (dow === 0 || dow === 6) continue; // fim de semana sem arquivo
+      datas.push(d.toISOString().slice(0, 10));
+    }
+    assert.equal(inicioRelevante(datas, '2026-08-14', opcoes), datas[0]);
+  });
+
+  it('com buraco na serie o corte acontece, e o numero nao muda', () => {
+    // Um ano de dias uteis, com um mes sem ingestao no meio (ferias do
+    // operador). Tudo antes do buraco e inalcancavel pela sequencia e esta
+    // fora da janela: nao precisa nem ser lido do disco.
+    const serie: Snapshot[] = [];
+    const datas: string[] = [];
+    for (let d = new Date(Date.UTC(2025, 7, 14)); d <= new Date(Date.UTC(2026, 7, 14)); d.setUTCDate(d.getUTCDate() + 1)) {
+      const dow = d.getUTCDay();
+      if (dow === 0 || dow === 6) continue;
+      const data = d.toISOString().slice(0, 10);
+      if (data >= '2026-06-01' && data <= '2026-06-30') continue; // buraco
+      datas.push(data);
+      serie.push(mkSnapshot(data, [
+        { carteira: 'A', ativo: 'Caixa', valor: 200_000, classe: 'liquidez' },
+        { carteira: 'A', ativo: 'CDB', valor: 800_000, classe: 'Renda Fixa' },
+      ]));
+    }
+    const desde = inicioRelevante(datas, '2026-08-14', opcoes);
+    const limitada = serie.filter((s) => s.data >= desde);
+    assert.ok(limitada.length < serie.length, `limitou: ${limitada.length} de ${serie.length}`);
+    assert.deepEqual(caixaParado(limitada), caixaParado(serie), 'mesmo resultado com menos leitura');
+  });
+
+  it('dia depois da referencia nunca entra, mesmo existindo no disco', () => {
+    const datas = ['2026-08-13', '2026-08-14', '2026-08-15', '2026-09-30'];
+    const desde = inicioRelevante(datas, '2026-08-14', opcoes);
+    assert.ok(desde <= '2026-08-13');
   });
 });

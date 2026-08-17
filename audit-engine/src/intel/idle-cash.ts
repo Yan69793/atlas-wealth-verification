@@ -111,6 +111,37 @@ function qualifica(snap: Snapshot, nome: string, minPct: number): boolean {
 }
 
 /**
+ * Data mais antiga que ainda pode mudar o resultado, calculada SÓ com nomes de
+ * data, sem ler snapshot nenhum.
+ *
+ * Antes o CLI carregava e fazia parse da série inteira do root a cada execução,
+ * mesmo com a janela sendo de 90 dias. Não era erro de número, era desperdício
+ * que cresce para sempre: um ano de ingestão diária custa 250 arquivos lidos
+ * para responder sobre um trimestre.
+ *
+ * O corte tem que ser conservador porque a SEQUÊNCIA de "parado" não é truncada
+ * pela janela: ela anda para trás enquanto houver snapshot a no máximo
+ * maxIntervalo de distância do seguinte. Então o limite é o mais antigo entre
+ * o início da janela e o ponto onde a cadeia de datas se rompe. Dia que o parse
+ * descarta só aumenta o buraco, nunca diminui, então o conjunto calculado por
+ * nome contém tudo que a caminhada real conseguiria alcançar.
+ */
+export function inicioRelevante(datas: string[], ate: string, opcoes: OpcoesCaixaParado = {}): string {
+  const janelaDias = opcoes.janelaDias ?? THRESHOLDS.caixaParadoJanelaDias;
+  const maxIntervalo = opcoes.maxIntervaloDias ?? THRESHOLDS.caixaParadoMaxIntervaloDias;
+  const inicioJanela = adicionarDias(ate, -(janelaDias - 1));
+
+  const ordenadas = datas.filter((d) => d <= ate).sort((a, b) => a.localeCompare(b));
+  if (!ordenadas.length) return inicioJanela;
+
+  let i = ordenadas.length - 1;
+  while (i > 0 && diasCorridos(ordenadas[i - 1], ordenadas[i]) <= maxIntervalo) i--;
+  const alcancavel = ordenadas[i];
+
+  return alcancavel < inicioJanela ? alcancavel : inicioJanela;
+}
+
+/**
  * serie: snapshots diários ASCENDENTES; o último é a referência. Pura e
  * determinística. Sem série, devolve [] (o corte de série curta é do CLI).
  */

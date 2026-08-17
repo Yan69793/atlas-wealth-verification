@@ -352,7 +352,9 @@ import React from 'react';
       const csvSeguro = (t) => (String(t).charAt(0) === '=' ? "'" + t : t);
       const rows = ordenadas.map((o) => ({
         Carteira: o.cliente,
-        Assessor: o.assessor,
+        // resto da Onda 1: a tela ja resolvia o nome, o CSV continuava
+        // exportando o codigo interno do gestor (AXIOM_AM)
+        Assessor: nomeAssessor(o.assessor),
         Motivo: csvSeguro(o.motivo),
         Volume: o.volume,
         Prioridade: o.prioridade,

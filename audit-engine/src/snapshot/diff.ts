@@ -41,9 +41,18 @@ function diaParaMs(data: string): number {
   return new Date(data + 'T00:00:00Z').getTime();
 }
 
-/** Menor janela >= diasRestantes; null quando > 90 ou <= 0. */
+/**
+ * Menor janela >= diasRestantes; null quando > 90 ou já vencido (< 0).
+ *
+ * O DIA do vencimento (dias === 0) fica dentro da menor janela de propósito.
+ * Antes ele caía no null junto com o vencido, então o título sumia da tela de
+ * vencimentos exatamente no dia da decisão de reinvestimento, sem gerar evento
+ * nenhum e sem aviso. Como a janela não muda de D-7 para D-0, o diff continua
+ * não emitindo evento novo (nada mudou), mas o item permanece visível com
+ * diasRestantes 0 e o mesmo id de oportunidade que já tinha.
+ */
 export function janelaPara(dias: number): number | null {
-  if (dias <= 0 || dias > 90) return null;
+  if (dias < 0 || dias > 90) return null;
   for (const janela of [...THRESHOLDS.maturidadeJanelas].sort((a, b) => a - b)) {
     if (dias <= janela) return janela;
   }

@@ -18,9 +18,17 @@ import type { Snapshot } from './types.js';
  * A comparação por string é segura: AAAA-MM-DD ordena lexicograficamente
  * igual a cronologicamente.
  */
-export function listarSnapshotsDiarios(root: string, ate: string): Snapshot[] {
+export interface OpcoesSerie {
+  /**
+   * Data mínima (AAAA-MM-DD). Dia anterior a ela nem chega a ser lido do
+   * disco: o corte é pelo NOME do diretório, antes de qualquer parse.
+   */
+  desde?: string;
+}
+
+export function listarSnapshotsDiarios(root: string, ate: string, opcoes: OpcoesSerie = {}): Snapshot[] {
   const out: Snapshot[] = [];
-  for (const nome of nomesDeDiretorioDiario(root, ate)) {
+  for (const nome of nomesDeDiretorioDiario(root, ate, opcoes.desde)) {
     const snap = carregarSnapshotDoDisco(root, nome);
     if (snap && snap.periodo === 'diario' && snap.data <= ate) out.push(snap);
   }
@@ -44,11 +52,11 @@ export function listarDatasDiarias(root: string, ate: string): string[] {
 
 const DIA = /^\d{4}-\d{2}-\d{2}$/;
 
-function nomesDeDiretorioDiario(root: string, ate: string): string[] {
+function nomesDeDiretorioDiario(root: string, ate: string, desde?: string): string[] {
   try {
     return fs
       .readdirSync(path.join(root, 'audits'))
-      .filter((nome) => DIA.test(nome) && nome <= ate);
+      .filter((nome) => DIA.test(nome) && nome <= ate && (desde === undefined || nome >= desde));
   } catch {
     return []; // root sem audits/ ainda: série vazia
   }

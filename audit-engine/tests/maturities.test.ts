@@ -114,6 +114,51 @@ describe('vencimentos próximos', () => {
   });
 });
 
+describe('o dia do vencimento nao desaparece em silencio', () => {
+  // Trava do defeito: janelaPara devolvia null para dias <= 0, entao o titulo
+  // sumia da tela EXATAMENTE no dia em que vence, que e o dia da decisao de
+  // reinvestimento. Nenhum evento, nenhum aviso, a linha simplesmente sumia.
+  it('vencimento hoje continua na lista, com diasRestantes 0 e janela 7', () => {
+    const snap = mkSnapshot(HOJE, [
+      { carteira: 'A', ativo: 'LCI VENCE HOJE', valor: 50_000, vencimento: HOJE },
+    ]);
+    const lista = vencimentosProximos(snap, { dataReferencia: HOJE });
+    assert.equal(lista.length, 1, 'o titulo nao some no dia do vencimento');
+    assert.equal(lista[0].diasRestantes, 0);
+    assert.equal(lista[0].janelaDias, 7);
+  });
+
+  it('o id no dia do vencimento e o mesmo de D-7: o link para a fila nao muda', () => {
+    const snapD7 = mkSnapshot('2026-08-07', [
+      { carteira: 'A', ativo: 'LCI', valor: 50_000, vencimento: HOJE },
+    ]);
+    const snapD0 = mkSnapshot(HOJE, [
+      { carteira: 'A', ativo: 'LCI', valor: 50_000, vencimento: HOJE },
+    ]);
+    const idD7 = vencimentosProximos(snapD7, { dataReferencia: '2026-08-07' })[0].oportunidadeId;
+    const idD0 = vencimentosProximos(snapD0, { dataReferencia: HOJE })[0].oportunidadeId;
+    assert.equal(idD0, idD7);
+  });
+
+  it('vencido de verdade (D+1 em diante) continua fora', () => {
+    const snap = mkSnapshot(HOJE, [
+      { carteira: 'A', ativo: 'LCI ONTEM', valor: 50_000, vencimento: '2026-08-13' },
+    ]);
+    assert.equal(vencimentosProximos(snap, { dataReferencia: HOJE }).length, 0);
+  });
+
+  it('a janela nao muda de D-1 para D-0, entao o diff nao inventa evento novo', () => {
+    const ontem = mkSnapshot('2026-08-13', [
+      { carteira: 'A', ativo: 'LCI', valor: 50_000, vencimento: HOJE },
+    ]);
+    const hoje = mkSnapshot(HOJE, [
+      { carteira: 'A', ativo: 'LCI', valor: 50_000, vencimento: HOJE },
+    ]);
+    const eventos = diffSnapshots(hoje, ontem).eventos.filter((e) => e.tipo === 'MATURITY_APPROACHING');
+    assert.equal(eventos.length, 0, 'nada mudou de janela, nada a emitir');
+  });
+});
+
 describe('cruzamento da janela em dia sem snapshot (fim de semana e feriado)', () => {
   // Trava do defeito: o id da oportunidade usava a data TEORICA do cruzamento
   // (vencimento - janela). Quando essa data cai em sabado, domingo ou feriado

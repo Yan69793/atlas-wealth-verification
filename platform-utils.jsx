@@ -223,6 +223,19 @@ import React from 'react';
      HASH ROUTER
   =========================================================== */
 
+  /* decodeURIComponent lanca URIError em sequencia percentual malformada
+     ('%', '%zz', '%E0%A4%A'). O endereco vem do usuario: link colado errado,
+     copia truncada, teclado. Sem protecao a excecao subia do render e derrubava
+     a aplicacao inteira em tela branca, sem nem o menu. Aqui o pedaco
+     malformado fica como veio, que e informacao a mais, nunca a menos. */
+  function decodificarSeguro(s) {
+    try {
+      return decodeURIComponent(s);
+    } catch (e) {
+      return s;
+    }
+  }
+
   function parseHash() {
     const hash = window.location.hash.replace(/^#/, '') || '/dashboard';
     const [pathPart, searchPart] = hash.split('?');
@@ -231,7 +244,7 @@ import React from 'react';
     if (searchPart) {
       searchPart.split('&').forEach(pair => {
         const [k, v] = pair.split('=');
-        if (k) params[decodeURIComponent(k)] = decodeURIComponent(v || '');
+        if (k) params[decodificarSeguro(k)] = decodificarSeguro(v || '');
       });
     }
     return { path: '/' + segments.join('/'), segments, params };
@@ -723,21 +736,31 @@ import React from 'react';
      Gera arquivo e dispara download via Blob URL, sem dependência externa.
   =========================================================== */
 
+  /* Campo CSV no padrao RFC 4180, com ';' de separador.
+     O motivo da oportunidade e a observacao do contato saem de textarea, entao
+     podem ter quebra de linha, e o export nao escapava nada: uma quebra de
+     linha no meio do motivo partia a linha em duas e desalinhava todas as
+     colunas dali para baixo. Aspas dobram, e campo com ';', aspas ou quebra de
+     linha vai entre aspas. Antes o ';' era trocado por ',' na marra, o que
+     tambem alterava o texto exportado sem avisar. */
+  function csvCampo(v) {
+    if (v === null || v === undefined) return '';
+    var s = String(v);
+    if (/[";\r\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+    return s;
+  }
+
   function downloadCSV(rows, filename) {
     if (!rows || !rows.length) return;
     // Pega headers da primeira linha
     var headers = Object.keys(rows[0]);
-    var lines = [headers.join(';')];
+    var lines = [headers.map(csvCampo).join(';')];
     rows.forEach(function(row) {
-      var vals = headers.map(function(h) {
-        var v = row[h];
-        if (v == null) return '';
-        var s = String(v).replace(/;/g, ',');
-        return s;
-      });
-      lines.push(vals.join(';'));
+      lines.push(headers.map(function(h) { return csvCampo(row[h]); }).join(';'));
     });
-    var blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+    // CRLF entre registros, como manda o RFC: e o que faz a quebra de linha
+    // dentro do campo entre aspas ser lida como conteudo, nao como registro novo
+    var blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
     a.href = url;
@@ -767,7 +790,7 @@ import React from 'react';
   window.AtlasUtils = {
     fmt, fmtBRL, fmtCompactBRL, fmtPct, fmtPctRaw, fmtMonthLabel,
     signClass, computeDrawdown, storage, navigate, useRouter,
-    getBlockingExceptions, downloadCSV, downloadJSON,
+    getBlockingExceptions, downloadCSV, downloadJSON, csvCampo,
     STORAGE_OPORTUNIDADES, oportunidadesBase, oportunidadesSalvas, salvarOportunidades,
     mesclarOportunidades, oportunidadesAtuais, statusOportunidade, especieDoVolume,
     criadaNaTela,

@@ -168,7 +168,13 @@ import React from 'react';
                     <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>{fmtPct(v.pctPl, 1)}</td>
                     <td style={{ whiteSpace: 'nowrap' }}>
                       {v.vencimento}
-                      <span style={{ fontSize: '0.714rem', color: 'var(--muted)' }}> · +{v.diasRestantes}d</span>
+                      {/* O dia do vencimento e o dia da decisao de reinvestimento.
+                          Antes o titulo sumia da lista justamente nesse dia. */}
+                      {v.diasRestantes === 0 ? (
+                        <span style={{ fontSize: '0.714rem', color: 'var(--red)', fontWeight: 600 }}> · vence hoje</span>
+                      ) : (
+                        <span style={{ fontSize: '0.714rem', color: 'var(--muted)' }}> · +{v.diasRestantes}d</span>
+                      )}
                     </td>
                     <td>
                       <span style={{
