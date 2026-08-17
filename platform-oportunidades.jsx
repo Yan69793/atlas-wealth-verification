@@ -30,7 +30,52 @@ import React from 'react';
     'Descartada': [],
   };
 
-  const PESO_PRIORIDADE = { P1: 0, P2: 1, P3: 2 };
+  /* Espelho do score do motor
+     (audit-engine/src/opportunities/prioritize.ts). Fonte unica da regra de
+     ordem da fila e o motor; aqui e copia literal, e tests/validate.js roda os
+     mesmos casos do teste do motor sobre este bloco para travar a coincidencia.
+
+     Antes a tela ordenava por prioridade primeiro, com PESO_PRIORIDADE local
+     { P1: 0, P2: 1, P3: 2 }, e invertia a decisao aprovada: uma oportunidade
+     P3 de R$ 1 mi vencendo em 7 dias (score 16) caia ATRAS de uma P1 de
+     R$ 10 mil sem prazo (score 6). O score do motor era codigo morto, nenhuma
+     tela o consumia. Agora a tela consome o score e mostra a coluna. */
+  // ATLAS_SCORE_INICIO
+  const PESO_PRIORIDADE = { P1: 3, P2: 2, P3: 1 };
+
+  function fatorVolume(volume) {
+    if (volume >= 500000) return 4;
+    if (volume >= 100000) return 3;
+    if (volume >= 5000) return 2;
+    return 1;
+  }
+
+  function fatorPrazo(prazo, hoje) {
+    const ms = Date.parse(prazo) - Date.parse(hoje);
+    if (!Number.isFinite(ms)) return 1;
+    const dias = Math.ceil(ms / 86400000);
+    if (dias <= 7) return 4; // inclui vencido: urgencia maxima
+    if (dias <= 15) return 3;
+    if (dias <= 30) return 2;
+    return 1;
+  }
+
+  function pontuarOportunidade(op, hoje) {
+    return (PESO_PRIORIDADE[op.prioridade] || 0) * fatorVolume(op.volume) * fatorPrazo(op.prazo, hoje);
+  }
+
+  /* Score decrescente; empate: prazo mais proximo, depois id (ordem total). */
+  function priorizarOportunidades(ops, hoje) {
+    return [...ops].sort((a, b) => {
+      const sa = pontuarOportunidade(a, hoje);
+      const sb = pontuarOportunidade(b, hoje);
+      if (sa !== sb) return sb - sa;
+      if (a.prazo !== b.prazo) return a.prazo < b.prazo ? -1 : 1;
+      return a.id.localeCompare(b.id);
+    });
+  }
+  // ATLAS_SCORE_FIM
+
   const STATUS_ATIVOS = ['Nova', 'Contatar', 'Em andamento'];
 
   const COR_STATUS = {
@@ -231,16 +276,7 @@ import React from 'react';
 
     const hoje = hojeISO();
 
-    const ordenadas = useMemo(() => {
-      return [...lista].sort((a, b) => {
-        const pa = PESO_PRIORIDADE[a.prioridade] ?? 9;
-        const pb = PESO_PRIORIDADE[b.prioridade] ?? 9;
-        if (pa !== pb) return pa - pb;
-        if (a.prazo !== b.prazo) return a.prazo < b.prazo ? -1 : 1;
-        if (a.volume !== b.volume) return b.volume - a.volume;
-        return a.id.localeCompare(b.id);
-      });
-    }, [lista]);
+    const ordenadas = useMemo(() => priorizarOportunidades(lista, hoje), [lista, hoje]);
 
     const fila = ordenadas.filter((o) => STATUS_ATIVOS.indexOf(o.status) >= 0);
 
@@ -302,6 +338,7 @@ import React from 'react';
         Motivo: csvSeguro(o.motivo),
         Volume: o.volume,
         Prioridade: o.prioridade,
+        Score: pontuarOportunidade(o, hoje),
         Prazo: o.prazo,
         Status: o.status,
         'Ultimo contato': o.ultimoContato ? o.ultimoContato.data : '',
@@ -373,6 +410,7 @@ import React from 'react';
                 <th>Ação comercial</th>
                 <th style={{ textAlign: 'right' }}>Volume</th>
                 <th>Prior.</th>
+                <th style={{ textAlign: 'right' }} title="Prioridade x volume x prazo, a mesma conta do motor">Score</th>
                 <th>Prazo</th>
                 <th>Status</th>
                 <th>Último contato</th>
@@ -393,6 +431,16 @@ import React from 'react';
                     <td className="cell-prose" style={{ fontSize: '0.857rem', maxWidth: 420 }}>{o.motivo}</td>
                     <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>{fmtCompactBRL(o.volume)}</td>
                     <td>{chip(o.prioridade, COR_PRIORIDADE[o.prioridade])}</td>
+                    <td
+                      style={{ textAlign: 'right', whiteSpace: 'nowrap', fontWeight: 600 }}
+                      title={
+                        'prioridade ' + (PESO_PRIORIDADE[o.prioridade] || 0) +
+                        ' x volume ' + fatorVolume(o.volume) +
+                        ' x prazo ' + fatorPrazo(o.prazo, hoje)
+                      }
+                    >
+                      {pontuarOportunidade(o, hoje)}
+                    </td>
                     <td style={{ whiteSpace: 'nowrap', color: vencido ? 'var(--red)' : undefined, fontWeight: vencido ? 600 : undefined }}>
                       {o.prazo}{vencido ? ' · vencido' : ''}
                     </td>

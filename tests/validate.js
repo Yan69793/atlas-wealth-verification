@@ -1337,6 +1337,95 @@ ok('R$ × dias não é formatado como moeda',
     severidadeDoMotor(0.999) === 'alta');
 }
 
+// ─── 27. Onda 3 — a fila da tela obedece o score do motor ───────────────────
+//
+// A tela ordenava por prioridade primeiro (PESO_PRIORIDADE local
+// { P1: 0, P2: 1, P3: 2 }) e invertia a decisão aprovada: uma P3 de R$ 1 mi
+// vencendo em 7 dias (score 16) caía ATRÁS de uma P1 de R$ 10 mil sem prazo
+// (score 6). O score do motor era código morto, nenhuma tela o consumia.
+//
+// Este bloco extrai o espelho do score de platform-oportunidades.jsx e roda
+// sobre ele os MESMOS casos do teste do motor
+// (audit-engine/tests/opportunities.test.ts). Se a tela voltar a ter regra
+// própria de ordem, os números divergem aqui.
+
+{
+  const INI = '// ATLAS_SCORE_INICIO';
+  const FIM = '// ATLAS_SCORE_FIM';
+  const i = oportPage.indexOf(INI);
+  const f = oportPage.indexOf(FIM);
+  ok('platform-oportunidades.jsx delimita o espelho do score do motor', i > 0 && f > i);
+
+  let espelho = null;
+  if (i > 0 && f > i) {
+    const corpo = oportPage.slice(i + INI.length, f);
+    try {
+      espelho = new Function(
+        corpo + '\n return { PESO_PRIORIDADE, fatorVolume, fatorPrazo, pontuarOportunidade, priorizarOportunidades };'
+      )();
+    } catch (e) {
+      ok('espelho do score é avaliável', false, e.message);
+    }
+  }
+
+  ok('espelho do score exporta as quatro peças', !!espelho
+    && typeof espelho.fatorVolume === 'function'
+    && typeof espelho.fatorPrazo === 'function'
+    && typeof espelho.pontuarOportunidade === 'function'
+    && typeof espelho.priorizarOportunidades === 'function');
+
+  // O peso de prioridade da tela tem que ser o do motor (P1=3, P2=2, P3=1). O
+  // { P1: 0, ... } antigo zerava o score de TODA oportunidade P1.
+  const prioritizeSrc = fs.existsSync(path.join(ROOT, 'audit-engine/src/opportunities/prioritize.ts'))
+    ? fs.readFileSync(path.join(ROOT, 'audit-engine/src/opportunities/prioritize.ts'), 'utf8') : '';
+  ok('motor continua com PESO_PRIORIDADE P1=3, P2=2, P3=1',
+    /PESO_PRIORIDADE[^=]*=\s*\{\s*P1:\s*3\s*,\s*P2:\s*2\s*,\s*P3:\s*1\s*\}/.test(prioritizeSrc));
+  ok('tela espelha o peso de prioridade do motor', !!espelho
+    && espelho.PESO_PRIORIDADE.P1 === 3
+    && espelho.PESO_PRIORIDADE.P2 === 2
+    && espelho.PESO_PRIORIDADE.P3 === 1);
+
+  if (espelho) {
+    // faixas exatas, mesmos pontos do teste do motor
+    ok('faixas de volume da tela batem com o motor',
+      espelho.fatorVolume(4_999) === 1 && espelho.fatorVolume(5_000) === 2 &&
+      espelho.fatorVolume(99_999) === 2 && espelho.fatorVolume(100_000) === 3 &&
+      espelho.fatorVolume(500_000) === 4);
+    ok('faixas de prazo da tela batem com o motor',
+      espelho.fatorPrazo('2026-08-20', '2026-08-13') === 4 &&
+      espelho.fatorPrazo('2026-08-28', '2026-08-13') === 3 &&
+      espelho.fatorPrazo('2026-08-29', '2026-08-13') === 2 &&
+      espelho.fatorPrazo('2026-09-12', '2026-08-13') === 2);
+
+    const op = (id, prioridade, volume, prazo) => ({ id, prioridade, volume, prazo });
+    const casos = [
+      op('a', 'P3', 1_000_000, '2026-08-20'),
+      op('b', 'P1', 1_000_000, '2026-08-20'),
+      op('c', 'P1', 10_000, '2026-12-31'),
+      op('d', 'P1', 10_000, '2026-08-20'),
+    ];
+    const hojeCaso = '2026-08-13';
+    const scores = Object.fromEntries(casos.map((o) => [o.id, espelho.pontuarOportunidade(o, hojeCaso)]));
+    ok('score da tela reproduz os números do motor (b=48, d=24, a=16, c=6)',
+      scores.a === 16 && scores.b === 48 && scores.c === 6 && scores.d === 24,
+      JSON.stringify(scores));
+
+    const ordem = espelho.priorizarOportunidades(casos, hojeCaso).map((o) => o.id).join(',');
+    ok('fila da tela sai na ordem do motor: b,d,a,c', ordem === 'b,d,a,c', `ordem: ${ordem}`);
+    // A inversão que existia: 'c' (score 6) vinha antes de 'a' (score 16).
+    ok('P3 de R$ 1 mi a 7 dias vence P1 de R$ 10 mil sem prazo',
+      ordem.indexOf('a') < ordem.indexOf('c'));
+  }
+
+  // A tela consome o score em vez de ter ordem própria, e mostra a coluna.
+  ok('platform-oportunidades.jsx ordena por priorizarOportunidades',
+    /const ordenadas = useMemo\(\(\) => priorizarOportunidades\(/.test(oportPage));
+  ok('platform-oportunidades.jsx não reordena por prioridade antes do score',
+    !/PESO_PRIORIDADE\[a\.prioridade\]/.test(oportPage));
+  ok('tela mostra a coluna Score', />Score<\/th>/.test(oportPage));
+  ok('CSV de oportunidades exporta o Score', /Score:\s*pontuarOportunidade\(/.test(oportPage));
+}
+
 // ─── Resultado ──────────────────────────────────────────────────────────────
 
 const total = pass + fail;
