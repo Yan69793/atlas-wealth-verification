@@ -185,6 +185,35 @@ import ReactDOM from 'react-dom/client';
     { id:'usuarios',    label:'Usuários',              icon:'users',     path:'#/usuarios'  },
   ];
 
+  /* ------------------------------------------------------------
+     FASES 2 A 4: disponibilidade da tela depende da confianca no dado
+
+     Estas tres telas leem overlay proprio (ATLAS_*_DATA). Em demo o payload
+     sintetico e legitimo e a faixa avisa o usuario. Fora de demo, sintetico
+     nao pode aparecer: seria carteira inventada ao lado de dado real de
+     cliente, sem aviso, num produto que se vende por "prove o numero".
+
+     O produtor do overlay real destas fases ainda nao existe (nao ha comando
+     `oportunidades` no cli-snapshot), entao hoje elas simplesmente saem do
+     menu na instancia. No dia que o overlay real chegar ele nao tera a marca
+     `sintetico` e a tela volta sozinha, sem mexer aqui.
+  ------------------------------------------------------------ */
+  const FASE_DATA_GLOBAL = {
+    oportunidades: 'ATLAS_OPORTUNIDADES_DATA',
+    vencimentos: 'ATLAS_VENCIMENTOS_DATA',
+    'caixa-parado': 'ATLAS_CAIXA_PARADO_DATA',
+  };
+
+  function faseDisponivel(id) {
+    const nomeGlobal = FASE_DATA_GLOBAL[id];
+    if (!nomeGlobal) return true;
+    const payload = window[nomeGlobal];
+    if (!payload) return false;
+    const D = window.AtlasData;
+    const mode = (D && D.getDataMode && D.getDataMode()) || 'demo';
+    return mode === 'demo' || !payload.sintetico;
+  }
+
   function Sidebar({ currentPage, onNavigate, open, onClose }) {
     const { Icon } = window.AtlasIcons;
 
@@ -215,7 +244,8 @@ import ReactDOM from 'react-dom/client';
 
           <div className="sidebar-section">
             <div className="sidebar-section-label">Painel</div>
-            {NAV_PAINEL.map(item => <NavItem key={item.id} item={item} />)}
+            {NAV_PAINEL.filter(item => faseDisponivel(item.id))
+              .map(item => <NavItem key={item.id} item={item} />)}
           </div>
 
           <div className="sidebar-section">
@@ -335,6 +365,26 @@ import ReactDOM from 'react-dom/client';
         </div>
         <div className="page-placeholder">
           {title} — Etapa {etapa}
+        </div>
+      </div>
+    );
+  }
+
+  /* Tela de fase alcancada por link direto sem dado confiavel. Diz o motivo em
+     vez de mostrar tabela vazia, que o usuario leria como defeito. Nunca cai
+     para o payload sintetico: e exatamente isso que se esta evitando. */
+  function FaseSemDado({ title }) {
+    return (
+      <div>
+        <div className="page-header">
+          <div className="page-eyebrow">Sem dado para este ambiente</div>
+          <h1 className="page-title">{title}</h1>
+        </div>
+        <div className="page-placeholder">
+          Esta tela precisa do arquivo de {title.toLowerCase()} gerado a partir das
+          posições do custodiante. Ele ainda não é produzido para este ambiente.
+          Enquanto não for, a tela fica fora do menu, em vez de exibir dado de
+          demonstração ao lado das suas carteiras.
         </div>
       </div>
     );
@@ -502,17 +552,22 @@ import ReactDOM from 'react-dom/client';
           ? React.createElement(pages.Achados)
           : <PlaceholderPage title="Achados & Exceções" etapa={5} />;
 
+      /* As tres proximas passam por faseDisponivel: link salvo no favorito nao
+         pode contornar o filtro do menu e mostrar sintetico como dado real. */
       case 'oportunidades':
+        if (!faseDisponivel('oportunidades')) return <FaseSemDado title="Oportunidades" />;
         return pages.Oportunidades
           ? React.createElement(pages.Oportunidades, { location })
           : <PlaceholderPage title="Oportunidades" etapa={5} />;
 
       case 'vencimentos':
+        if (!faseDisponivel('vencimentos')) return <FaseSemDado title="Vencimentos" />;
         return pages.Vencimentos
           ? React.createElement(pages.Vencimentos)
           : <PlaceholderPage title="Vencimentos" etapa={5} />;
 
       case 'caixa-parado':
+        if (!faseDisponivel('caixa-parado')) return <FaseSemDado title="Caixa parado" />;
         return pages.CaixaParado
           ? React.createElement(pages.CaixaParado)
           : <PlaceholderPage title="Caixa parado" etapa={5} />;

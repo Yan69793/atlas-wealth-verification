@@ -23,8 +23,10 @@ import React from 'react';
   };
 
   function nomeAssessor(id) {
-    if (!D || !D.managers) return id || '';
-    const m = D.managers.find((x) => x.id === id);
+    /* MANAGERS em caixa alta: com `managers` o guard caia sempre e a coluna
+       Assessor mostrava o codigo interno em vez do nome. */
+    if (!D || !D.MANAGERS) return id || '';
+    const m = D.MANAGERS.find((x) => x.id === id);
     return m ? m.name : (id || '');
   }
 

@@ -13,8 +13,17 @@
 (function () {
   'use strict';
   if (window.ATLAS_OPORTUNIDADES_DATA) return;
+  /* Instancia com dado real de cliente: nao popular sintetico. O overlay real
+     desta fase ainda nao tem produtor (nao existe comando `oportunidades` no
+     cli-snapshot), entao aqui fica sem dado e a tela sai do menu, em vez de
+     exibir carteira inventada ao lado de dado real. Ver ESTADO/ESTADO-ATUAL.md. */
+  if (window._AtlasRealData) return;
 
   window.ATLAS_OPORTUNIDADES_DATA = {
+    /* Marca o payload como sintetico. A tela e o menu recusam sintetico fora do
+       modo demo, o que tambem cobre o modo `imported` (importacao acontece depois
+       deste script rodar). Overlay real nao traz esta marca. */
+    sintetico: true,
     oportunidades: [
       {
         id: '2026-08-12|ALPHA_01|MATURITY_APPROACHING|LCI BANCO W',

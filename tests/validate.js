@@ -1204,6 +1204,91 @@ ok('AppShell fecha drawer ao girar (matchMedia)', appContent.includes('matchMedi
 ok('AppShell trava scroll do body com drawer aberto', appContent.includes('document.body.style.overflow'));
 ok('viewport tem viewport-fit=cover (safe-area)', indexHtml.includes('viewport-fit=cover'));
 
+// ─── 25. Onda 1 — dado sintético não se disfarça de real ────────────────────
+//
+// A revisão independente de 2026-08-17 reprovou as cinco fases com doze
+// defeitos, todos passando por baixo desta suíte quando ela estava verde. Os
+// checks abaixo são a trava de cada correção da Onda 1: eles falham se o
+// defeito voltar. Ver ESTADO/ESTADO-ATUAL.md.
+
+const receitaDropDemoPath = path.join(ROOT, 'platform-receita-drop-demo.js');
+const receitaDropDemo = fs.existsSync(receitaDropDemoPath)
+  ? fs.readFileSync(receitaDropDemoPath, 'utf8') : '';
+
+// 25a. O pior achado: na instância com dado real de cliente, os quatro fallbacks
+// populavam carteira fictícia porque só checavam ausência do próprio overlay. O
+// produtor do overlay real das fases 2/3/4 não existe, então o fallback SEMPRE
+// disparava e a tela mostrava carteira inventada ao lado de dado real, sem faixa
+// de aviso. Cada fallback agora desiste quando window._AtlasRealData existe.
+const FALLBACKS = [
+  ['oportunidades', oportDemo],
+  ['vencimentos', vencDemo],
+  ['caixa parado', caixaDemo],
+  ['queda de receita', receitaDropDemo],
+];
+for (const [nome, src] of FALLBACKS) {
+  ok(`fallback de ${nome} desiste quando há dado real (_AtlasRealData)`,
+    /if\s*\(\s*window\._AtlasRealData\s*\)\s*return/.test(src));
+  ok(`payload de ${nome} se declara sintético`,
+    /sintetico:\s*true/.test(src));
+}
+
+// 25b. O modo `imported` não é coberto pelo check acima: a importação acontece
+// depois do fallback rodar. Por isso a disponibilidade da tela é decidida em
+// tempo de render, cruzando o modo de dados com a marca `sintetico`.
+ok('platform-app.jsx define faseDisponivel',
+  appContent.includes('function faseDisponivel'));
+ok('faseDisponivel consulta o modo de dados',
+  /function faseDisponivel[\s\S]{0,600}getDataMode/.test(appContent));
+ok('faseDisponivel recusa payload sintético fora do modo demo',
+  /function faseDisponivel[\s\S]{0,600}mode === 'demo'[\s\S]{0,120}sintetico/.test(appContent));
+ok('menu do painel filtra por faseDisponivel',
+  /NAV_PAINEL\s*\.?\s*[\s\S]{0,80}filter\([\s\S]{0,60}faseDisponivel/.test(appContent));
+for (const rota of ['oportunidades', 'vencimentos', 'caixa-parado']) {
+  ok(`rota ${rota} não pode ser alcançada por link direto sem dado confiável`,
+    new RegExp(`faseDisponivel\\('${rota}'\\)`).test(appContent));
+}
+ok('existe tela própria para fase sem dado (não cai em tabela vazia)',
+  appContent.includes('function FaseSemDado'));
+
+// 25c. As quatro telas liam D.managers, e o namespace exporta MANAGERS em caixa
+// alta. O guard mascarava o erro devolvendo o código interno do gestor, então a
+// coluna Assessor e todo CSV mostravam AXIOM_AM em vez do nome. Trava global: se
+// qualquer página voltar a usar a grafia minúscula, este check falha.
+const PAGINAS_ASSESSOR = [
+  ['platform-oportunidades.jsx', oportPage],
+  ['platform-vencimentos.jsx', vencPage],
+  ['platform-caixa-parado.jsx', caixaPage],
+  ['platform-receitas.jsx', receitasPage],
+];
+for (const [nome, src] of PAGINAS_ASSESSOR) {
+  ok(`${nome} resolve nome de gestor por D.MANAGERS`,
+    src.includes('D.MANAGERS'));
+  ok(`${nome} não usa a grafia minúscula D.managers`,
+    !/\bD\.managers\b/.test(src));
+}
+
+// 25d. Os três KPI da aba Queda de receita somavam a casa inteira enquanto a
+// tabela respeitava o filtro de assessor, e "Maior queda" podia nomear carteira
+// fora da tabela.
+ok('KPI de queda de receita soma sobre as linhas filtradas',
+  /const totalQueda = visiveis\.reduce/.test(receitasPage)
+  && /const maior = visiveis\.reduce/.test(receitasPage));
+ok('contador de carteiras com queda respeita o filtro',
+  /value=\{visiveis\.length\}/.test(receitasPage));
+ok('aba de queda de receita não soma sobre itens não filtrados',
+  !/const totalQueda = itens\.reduce/.test(receitasPage));
+
+// 25e. Caixa parado confiava na ordem do arquivo, que vinha crescente, então o
+// pior caso caía na última linha. E formatava R$ × dias como moeda, pondo "R$"
+// num número que não é saldo, na mesma grade do total parado, que é saldo.
+ok('caixa parado ordena por R$ × dias decrescente na própria tela',
+  /sort\(\([^)]*\)\s*=>\s*\(b\.rsDias[^)]*\)\s*-\s*\(a\.rsDias/.test(caixaPage));
+ok('caixa parado tem formatador próprio para R$ × dias',
+  caixaPage.includes('function fmtCompactRsDias'));
+ok('R$ × dias não é formatado como moeda',
+  !/fmtCompactBRL\(\s*(totalRsDias|v\.rsDias|v\.rsDiasSequencia)\s*\)/.test(caixaPage));
+
 // ─── Resultado ──────────────────────────────────────────────────────────────
 
 const total = pass + fail;

@@ -546,8 +546,11 @@ import React from 'react';
   }
 
   function nomeAssessor(id) {
-    if (!D || !D.managers) return id || '';
-    const m = D.managers.find((x) => x.id === id);
+    /* MANAGERS em caixa alta: com `managers` o guard caia sempre e a coluna
+       Assessor mostrava o codigo interno em vez do nome. O mesmo arquivo ja
+       usava D.MANAGERS corretamente na aba anterior. */
+    if (!D || !D.MANAGERS) return id || '';
+    const m = D.MANAGERS.find((x) => x.id === id);
     return m ? m.name : (id || '');
   }
 
@@ -583,8 +586,13 @@ import React from 'react';
       );
     }
 
-    const totalQueda = itens.reduce((s, v) => s + v.queda, 0);
-    const maior = itens.reduce((m, v) => (m === null || v.queda > m.queda ? v : m), null);
+    /* Os tres KPI somam sobre `visiveis`, nao sobre `itens`: com o filtro de
+       assessor ativo, a tabela reduzia para as carteiras dele e os KPI seguiam
+       mostrando a casa inteira, inclusive nomeando em "Maior queda" uma carteira
+       que nao estava na tabela. A aba anterior deste mesmo arquivo ja calcula o
+       summary sobre as linhas filtradas, que era a intencao. */
+    const totalQueda = visiveis.reduce((s, v) => s + v.queda, 0);
+    const maior = visiveis.reduce((m, v) => (m === null || v.queda > m.queda ? v : m), null);
 
     function criarOportunidade(v) {
       const motivo = 'Receita da casa caiu ' + fmtPct(v.quedaPct, 1) + ' no mes: avaliar causas';
@@ -613,7 +621,7 @@ import React from 'react';
       <div>
         <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: 16 }}>
           <KPITile label="Queda total no mês" value={fmtCompactBRL(totalQueda)} sub="Soma da receita perdida" variant="red" />
-          <KPITile label="Carteiras com queda" value={itens.length} sub="Queda de 5% ou mais" variant="amber" />
+          <KPITile label="Carteiras com queda" value={visiveis.length} sub="Queda de 5% ou mais" variant="amber" />
           <KPITile label="Maior queda" value={maior ? fmtCompactBRL(maior.queda) : '—'} sub={maior ? nomeCarteira(maior.carteira) : ''} variant="navy" />
         </div>
 

@@ -10,8 +10,11 @@
 (function () {
   'use strict';
   if (window.ATLAS_VENCIMENTOS_DATA) return;
+  /* Instancia com dado real: nao popular sintetico. Ver ESTADO/ESTADO-ATUAL.md. */
+  if (window._AtlasRealData) return;
 
   window.ATLAS_VENCIMENTOS_DATA = {
+    sintetico: true,
     vencimentos: [
       {
         carteira: 'ALPHA_01',

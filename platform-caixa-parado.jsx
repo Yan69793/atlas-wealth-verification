@@ -24,8 +24,10 @@ import React from 'react';
   }
 
   function nomeAssessor(id) {
-    if (!D || !D.managers) return id || '';
-    const m = D.managers.find((x) => x.id === id);
+    /* MANAGERS em caixa alta: com `managers` o guard caia sempre e a coluna
+       Assessor mostrava o codigo interno em vez do nome. */
+    if (!D || !D.MANAGERS) return id || '';
+    const m = D.MANAGERS.find((x) => x.id === id);
     return m ? m.name : (id || '');
   }
 
@@ -41,9 +43,29 @@ import React from 'react';
     return p ? p.name : code;
   }
 
+  /* "R$ x dias" e reais multiplicado por dias, nao um saldo. Formatar com
+     fmtCompactBRL colocava "R$" num numero que nao e dinheiro, na mesma grade do
+     "Total parado hoje", que e dinheiro de verdade. Aqui vai so a magnitude e a
+     unidade fica no rotulo. O CSV continua exportando o numero cru. */
+  function fmtCompactRsDias(v) {
+    if (v === null || v === undefined || isNaN(v)) return '—';
+    const abs = Math.abs(v);
+    const sign = v < 0 ? '-' : '';
+    if (abs >= 1e9) return sign + (abs / 1e9).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' bi';
+    if (abs >= 1e6) return sign + (abs / 1e6).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' mi';
+    if (abs >= 1e3) return sign + (abs / 1e3).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' mil';
+    return sign + abs.toLocaleString('pt-BR', { maximumFractionDigits: 0 });
+  }
+
   function CaixaParado() {
     const DATA = window.ATLAS_CAIXA_PARADO_DATA;
-    const base = useMemo(() => (DATA && DATA.itens ? DATA.itens : []), []);
+    /* Ordena por R$ x dias decrescente, como o motor faz em idle-cash. Nao
+       confiar na ordem do arquivo: o payload vinha crescente, entao o pior caso
+       da lista caia na ultima linha da tabela. */
+    const base = useMemo(() => {
+      const itens = DATA && DATA.itens ? DATA.itens.slice() : [];
+      return itens.sort((a, b) => (b.rsDias || 0) - (a.rsDias || 0));
+    }, []);
     const janelaDias = DATA && DATA.janelaDias ? DATA.janelaDias : 90;
     const motivo = DATA ? DATA.motivo : null;
 
@@ -112,7 +134,7 @@ import React from 'react';
 
         <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
           <KPITile label="Total parado hoje" value={fmtCompactBRL(totalParadoHoje)} sub="Soma da liquidez das carteiras" variant="navy" />
-          <KPITile label="R$ × dias (janela)" value={fmtCompactBRL(totalRsDias)} sub="Valor × tempo em caixa" variant="navy" />
+          <KPITile label="R$ × dias (janela)" value={fmtCompactRsDias(totalRsDias)} sub="Valor × tempo em caixa" variant="navy" />
           <KPITile label="Carteiras na lista" value={base.length} sub="Paradas há 7 dias ou mais" />
         </div>
 
@@ -151,8 +173,8 @@ import React from 'react';
                     <span style={{ fontSize: '0.714rem', color: 'var(--muted)' }}> · desde {v.inicioSequencia}</span>
                   </td>
                   <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                    {fmtCompactBRL(v.rsDias)}
-                    <div style={{ fontSize: '0.714rem', color: 'var(--muted)' }}>sequência {fmtCompactBRL(v.rsDiasSequencia)}</div>
+                    {fmtCompactRsDias(v.rsDias)}
+                    <div style={{ fontSize: '0.714rem', color: 'var(--muted)' }}>sequência {fmtCompactRsDias(v.rsDiasSequencia)}</div>
                   </td>
                   <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>{fmtCompactBRL(v.pico)}</td>
                   <td>

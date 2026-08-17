@@ -9,8 +9,11 @@
 (function () {
   'use strict';
   if (window.ATLAS_CAIXA_PARADO_DATA) return;
+  /* Instancia com dado real: nao popular sintetico. Ver ESTADO/ESTADO-ATUAL.md. */
+  if (window._AtlasRealData) return;
 
   window.ATLAS_CAIXA_PARADO_DATA = {
+    sintetico: true,
     data: '2026-08-14',
     janelaDias: 90,
     limiares: { caixaParadoMinPct: 0.10, caixaParadoMinDias: 7 },

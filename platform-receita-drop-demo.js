@@ -11,8 +11,11 @@
 (function () {
   'use strict';
   if (window.ATLAS_RECEITA_DROP_DATA) return;
+  /* Instancia com dado real: nao popular sintetico. Ver ESTADO/ESTADO-ATUAL.md. */
+  if (window._AtlasRealData) return;
 
   window.ATLAS_RECEITA_DROP_DATA = {
+    sintetico: true,
     data: '2026-06',
     baseData: '2026-05',
     itens: [
