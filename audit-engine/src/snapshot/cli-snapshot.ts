@@ -12,7 +12,7 @@ import path from 'node:path';
 import { helpTexto, parseArgs, protegerRoot, tipoPeriodo, validarData } from './args.js';
 import { THRESHOLDS } from './thresholds.js';
 import { diffSnapshots, encontrarPeriodoAnterior, salvarEventsFile } from './diff.js';
-import { caixaParado, inicioRelevante, type CaixaParadoFile } from '../intel/idle-cash.js';
+import { caixaParado, inicioDaJanela, type CaixaParadoFile } from '../intel/idle-cash.js';
 import { vencimentosProximos, type VencimentosFile } from '../intel/maturities.js';
 import { ingestSnapshot } from './ingest.js';
 import { listarDatasDiarias, listarSnapshotsDiarios } from './series.js';
@@ -133,11 +133,9 @@ async function main(): Promise<void> {
     let serie: Snapshot[] = [];
     let motivoFinal: 'serie-curta' | 'periodo-mensal' | null = motivo;
     if (motivo === null) {
-      // Só lê o que pode mudar o resultado. O corte sai dos NOMES dos
-      // diretórios, sem carregar snapshot, e é conservador de propósito: a
-      // sequência de "parado" não é truncada pela janela de 90 dias.
-      const desde = inicioRelevante(listarDatasDiarias(root, data), data);
-      serie = listarSnapshotsDiarios(root, data, { desde });
+      // Só a janela importa, então só a janela é lida do disco. Dia anterior a
+      // ela nem chega a ser aberto: o corte é pelo nome do diretório.
+      serie = listarSnapshotsDiarios(root, data, { desde: inicioDaJanela(data) });
       if (serie.length < 2) motivoFinal = 'serie-curta';
     }
     const itens = motivoFinal === null ? caixaParado(serie) : [];

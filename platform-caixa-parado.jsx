@@ -114,6 +114,7 @@ import React from 'react';
         'Liquidez hoje': v.liquidezAtual,
         '% do PL': Math.round(v.pctPlAtual * 1000) / 10,
         'Dias parado': v.diasParado,
+        'Dias parado e um piso': v.sequenciaTruncada ? 'sim' : 'nao',
         'R$ x dias (janela)': v.rsDias,
         'R$ x dias (sequencia)': v.rsDiasSequencia,
         Pico: v.pico,
@@ -172,9 +173,16 @@ import React from 'react';
                       fontSize: '0.714rem', fontWeight: 600, color: corDias(v.diasParado),
                       border: '1px solid ' + corDias(v.diasParado), whiteSpace: 'nowrap',
                     }}>
-                      {v.diasParado}d
+                      {v.diasParado}d{v.sequenciaTruncada ? '+' : ''}
                     </span>
-                    <span style={{ fontSize: '0.714rem', color: 'var(--muted)' }}> · desde {v.inicioSequencia}</span>
+                    <span style={{ fontSize: '0.714rem', color: 'var(--muted)' }}>
+                      {/* Truncada: a sequencia preencheu a janela inteira e o
+                          motor nao olhou mais para tras. "ou mais" e o que foi
+                          medido, afirmar um numero exato seria inventar. */}
+                      {v.sequenciaTruncada
+                        ? ' · pelo menos desde ' + v.inicioSequencia
+                        : ' · desde ' + v.inicioSequencia}
+                    </span>
                   </td>
                   <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                     {fmtCompactRsDias(v.rsDias)}

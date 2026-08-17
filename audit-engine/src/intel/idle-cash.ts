@@ -13,10 +13,13 @@
  * - Um dia "qualifica" quando liquidez >= caixaParadoMinPct × PL do dia (EPS
  *   1e-9, mesma semântica do atingiu() do diff, que não é exportado; espelho
  *   local de propósito).
- * - Sequência ("dias parado"): anda de trás para frente na série COMPLETA
+ * - Sequência ("dias parado"): anda de trás para frente DENTRO DA JANELA
  *   enquanto o dia qualifica; diasParado = dias corridos do primeiro dia da
- *   sequência até a referência, inclusive. A sequência não é truncada pela
- *   janela. Carteira ausente num dia = liquidez 0 e quebra a sequência.
+ *   sequência até a referência, inclusive. Carteira ausente num dia = liquidez
+ *   0 e quebra a sequência. A sequência é truncada pela janela por decisão do
+ *   dono (2026-08-17): "parado há 90 dias ou mais" basta, e quando a sequência
+ *   preenche a janela inteira o item vem com `sequenciaTruncada`, para a tela
+ *   dizer "90d+" em vez de afirmar um número exato que não foi medido.
  * - R$-dias (janela): Σ liquidez(d_i) × dias corridos até o snapshot seguinte,
  *   sobre a sub-série dentro de [ref − (janelaDias − 1), ref]. O último
  *   snapshot contribui 0 (vale até o próximo, que não existe). O par que
@@ -55,6 +58,8 @@ export interface CaixaParadoItem {
   rsDiasSequencia: number; // R$-dias só dos pares dentro da sequência
   pico: number; // maior liquidez entre os dias da sequência
   inicioSequencia: string; // data do primeiro dia da sequência
+  /** a sequência preencheu a janela inteira: leia diasParado como "ou mais" */
+  sequenciaTruncada: boolean;
   /** id estável da oportunidade associada, mesma convenção do motor */
   oportunidadeId: string;
 }
@@ -111,34 +116,18 @@ function qualifica(snap: Snapshot, nome: string, minPct: number): boolean {
 }
 
 /**
- * Data mais antiga que ainda pode mudar o resultado, calculada SÓ com nomes de
- * data, sem ler snapshot nenhum.
+ * Primeiro dia da janela de análise. É também o corte de leitura do disco: dia
+ * anterior a esta data não muda nenhum número, então não precisa ser aberto.
  *
- * Antes o CLI carregava e fazia parse da série inteira do root a cada execução,
- * mesmo com a janela sendo de 90 dias. Não era erro de número, era desperdício
- * que cresce para sempre: um ano de ingestão diária custa 250 arquivos lidos
- * para responder sobre um trimestre.
- *
- * O corte tem que ser conservador porque a SEQUÊNCIA de "parado" não é truncada
- * pela janela: ela anda para trás enquanto houver snapshot a no máximo
- * maxIntervalo de distância do seguinte. Então o limite é o mais antigo entre
- * o início da janela e o ponto onde a cadeia de datas se rompe. Dia que o parse
- * descarta só aumenta o buraco, nunca diminui, então o conjunto calculado por
- * nome contém tudo que a caminhada real conseguiria alcançar.
+ * Antes o CLI carregava e fazia parse da série inteira do root a cada execução.
+ * Um ano de ingestão diária custava 250 arquivos lidos para responder sobre um
+ * trimestre. O corte só ficou possível depois da decisão do dono de truncar a
+ * sequência de "parado" na janela: enquanto ela podia andar para trás sem
+ * limite, qualquer corte mudava `diasParado`.
  */
-export function inicioRelevante(datas: string[], ate: string, opcoes: OpcoesCaixaParado = {}): string {
+export function inicioDaJanela(ate: string, opcoes: OpcoesCaixaParado = {}): string {
   const janelaDias = opcoes.janelaDias ?? THRESHOLDS.caixaParadoJanelaDias;
-  const maxIntervalo = opcoes.maxIntervaloDias ?? THRESHOLDS.caixaParadoMaxIntervaloDias;
-  const inicioJanela = adicionarDias(ate, -(janelaDias - 1));
-
-  const ordenadas = datas.filter((d) => d <= ate).sort((a, b) => a.localeCompare(b));
-  if (!ordenadas.length) return inicioJanela;
-
-  let i = ordenadas.length - 1;
-  while (i > 0 && diasCorridos(ordenadas[i - 1], ordenadas[i]) <= maxIntervalo) i--;
-  const alcancavel = ordenadas[i];
-
-  return alcancavel < inicioJanela ? alcancavel : inicioJanela;
+  return adicionarDias(ate, -(janelaDias - 1));
 }
 
 /**
@@ -152,7 +141,10 @@ export function caixaParado(serie: Snapshot[], opcoes: OpcoesCaixaParado = {}): 
   const minDias = opcoes.minDias ?? THRESHOLDS.caixaParadoMinDias;
   const maxIntervalo = opcoes.maxIntervaloDias ?? THRESHOLDS.caixaParadoMaxIntervaloDias;
   const ref = serie[serie.length - 1];
-  const inicioJanela = adicionarDias(ref.data, -(janelaDias - 1));
+  const inicioJanela = inicioDaJanela(ref.data, { janelaDias });
+  // A janela é o universo inteiro da medição, inclusive da sequência: o dono
+  // decidiu em 2026-08-17 que "parado há 90 dias ou mais" basta. Fora daqui
+  // nada é lido nem contado.
   const janelaSerie = serie.filter((s) => s.data >= inicioJanela);
 
   const itens: CaixaParadoItem[] = [];
@@ -162,21 +154,28 @@ export function caixaParado(serie: Snapshot[], opcoes: OpcoesCaixaParado = {}): 
     const nome = cRef.nome;
     if (!qualifica(ref, nome, minPct)) continue;
 
-    // Sequência: de trás para frente na série completa enquanto qualifica E
+    // Sequência: de trás para frente dentro da janela enquanto qualifica E
     // enquanto há evidência de continuidade. Buraco na série interrompe: sem
     // snapshot no meio não se sabe se o caixa ficou parado, e afirmar que ficou
     // é inventar número. Ver THRESHOLDS.caixaParadoMaxIntervaloDias.
-    let inicioIdx = serie.length - 1;
-    for (let i = serie.length - 2; i >= 0; i--) {
-      if (diasCorridos(serie[i].data, serie[i + 1].data) > maxIntervalo) break;
-      if (!qualifica(serie[i], nome, minPct)) break;
+    let inicioIdx = janelaSerie.length - 1;
+    for (let i = janelaSerie.length - 2; i >= 0; i--) {
+      if (diasCorridos(janelaSerie[i].data, janelaSerie[i + 1].data) > maxIntervalo) break;
+      if (!qualifica(janelaSerie[i], nome, minPct)) break;
       inicioIdx = i;
     }
-    const diasParado = diasCorridos(serie[inicioIdx].data, ref.data) + 1;
+    const diasParado = diasCorridos(janelaSerie[inicioIdx].data, ref.data) + 1;
+
+    // A sequência bateu na borda da janela e um snapshot logo antes dela
+    // poderia continuá-la. Não medimos o quanto, então a tela diz "90d+" em vez
+    // de afirmar um número exato. Série curta que simplesmente acaba antes da
+    // borda não é truncada, ela terminou de verdade.
+    const sequenciaTruncada =
+      inicioIdx === 0 && diasCorridos(inicioJanela, janelaSerie[0].data) < maxIntervalo;
 
     let pico = 0;
-    for (let i = inicioIdx; i < serie.length; i++) {
-      pico = Math.max(pico, liquidezDoDia(serie[i], nome) ?? 0);
+    for (let i = inicioIdx; i < janelaSerie.length; i++) {
+      pico = Math.max(pico, liquidezDoDia(janelaSerie[i], nome) ?? 0);
     }
 
     // R$-dias da janela: liquidez do dia vale até o próximo snapshot, mas no
@@ -193,9 +192,9 @@ export function caixaParado(serie: Snapshot[], opcoes: OpcoesCaixaParado = {}): 
 
     // R$-dias da sequência: pares com ambos os extremos dentro da sequência.
     let rsDiasSequencia = 0;
-    for (let i = inicioIdx; i + 1 < serie.length; i++) {
-      const liq = liquidezDoDia(serie[i], nome) ?? 0;
-      rsDiasSequencia += liq * diasEntre(serie[i].data, serie[i + 1].data);
+    for (let i = inicioIdx; i + 1 < janelaSerie.length; i++) {
+      const liq = liquidezDoDia(janelaSerie[i], nome) ?? 0;
+      rsDiasSequencia += liq * diasEntre(janelaSerie[i].data, janelaSerie[i + 1].data);
     }
 
     if (diasParado < minDias) continue;
@@ -208,7 +207,8 @@ export function caixaParado(serie: Snapshot[], opcoes: OpcoesCaixaParado = {}): 
       rsDias,
       rsDiasSequencia,
       pico,
-      inicioSequencia: serie[inicioIdx].data,
+      inicioSequencia: janelaSerie[inicioIdx].data,
+      sequenciaTruncada,
       oportunidadeId: idOportunidade(ref.data, nome, TIPO_OPORTUNIDADE_CAIXA_PARADO, ''),
     });
   }

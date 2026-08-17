@@ -11,9 +11,13 @@ aqui, trate este arquivo como suspeito e rode o refresh do fim da página.
 ## Portão de verificação, medido hoje
 
 ```
-460/460 checks OK — todos os checks passaram
-ℹ tests 131   ℹ suites 35   ℹ pass 130   ℹ fail 0   ℹ skipped 1
+469/469 checks OK — todos os checks passaram
+ℹ tests 129   ℹ suites 35   ℹ pass 128   ℹ fail 0   ℹ skipped 1
 ```
+
+A contagem de testes desceu de 131 para 129 de propósito: o corte de 90 dias no caixa parado
+substituiu cinco testes do contrato antigo por três do contrato novo. Os checks subiram de 460
+para 469 no mesmo trabalho.
 
 Contagem subiu de 352/101 (início do dia) com as correções das Ondas 1 a 5, cada uma trazendo
 o teste que pegaria o próprio defeito. Ver a seção das cinco fases, abaixo.
@@ -61,13 +65,16 @@ comando aborta com "no submodule mapping found". Para ler o ponteiro use
 2. **A segunda cópia de dado real de cliente vai ser movida** para a área de instância, não
    apagada. Decidido. Ainda **não executado**, ver a seção de LGPD abaixo.
 
-3. **Teto de `diasParado` no caixa parado: aberto, apareceu na Onda 5.** A leitura da série de
-   snapshots foi limitada ao que pode mudar o resultado, mas o corte é conservador porque a
-   sequência de "parado" não é truncada pela janela de 90 dias. Consequência: num root com
-   ingestão diária sem buraco nenhum, o corte não corta. Para sempre limitar a leitura à
-   janela seria preciso decidir que "parado há 90 dias ou mais" basta, o que muda um número
-   que a tela mostra hoje. Custo de continuar como está é leitura maior em root muito antigo,
-   não número errado. Aguardando o dono.
+3. **Teto de `diasParado` no caixa parado: decidido, "parado há 90 dias ou mais basta".**
+   A janela de 90 dias passou a ser o universo inteiro da medição, inclusive da sequência.
+   Implementado no mesmo dia. Quando a sequência preenche a janela o item vem com
+   `sequenciaTruncada` e a tela escreve "89d+" com "pelo menos desde", em vez de afirmar um
+   número exato que não foi medido. O "+" é o que carrega o "ou mais", e o número mostrado é o
+   primeiro dia com arquivo dentro da janela, não o limite teórico.
+
+   Com isso o corte de leitura deixou de ser conservador: só a janela é aberta. Numa carteira
+   parada o ano inteiro, `diasParado` saiu de 366 para 89+, e a leitura caiu de 262 para 65
+   arquivos por execução.
 
 4. **Servidor morto: aberto.** O dono perguntou se dá para fazê-lo rodar com dado fictício.
    Resposta: tecnicamente sim, pouco trabalho, corrigir o casamento da rota e apontar para os
@@ -263,11 +270,9 @@ milhão vencendo em 7 dias (score 16).
 - **Endereço malformado.** `decodeURIComponent` sem proteção derrubava a aplicação em tela
   branca com `%`, `%zz` ou `%E0%A4%A`. Agora o pedaço malformado fica como veio.
 - **Leitura da série de snapshots.** O corte da janela passou a sair do nome do diretório, sem
-  abrir arquivo. Num root com 240 dias, 4 mensais e um mês sem ingestão, caiu de 244 arquivos
-  lidos por execução para 43, com resultado idêntico. **Limite honesto:** com série diária sem
-  buraco nenhum o corte não corta, porque a sequência de "parado" não é truncada pela janela e
-  "parado há 400 dias" é afirmação que a série inteira sustenta. Truncar em 90 dias mudaria
-  `diasParado`, e isso é decisão do dono, não de código. Ver a pendência aberta abaixo.
+  abrir arquivo. Ficou conservador enquanto a sequência de "parado" podia atravessar a janela,
+  e o dono resolveu isso no mesmo dia decidindo que "parado há 90 dias ou mais" basta. Ver a
+  decisão 3 acima.
 - **Resto da Onda 1.** O CSV de oportunidades ainda exportava o código interno do gestor
   enquanto a tela já mostrava o nome.
 
@@ -443,8 +448,14 @@ e é o que impede a próxima pessoa de repetir.
   no CSV de oportunidades. 436 → 460 checks, 120 → 131 testes. Registrada pendência nova de
   decisão do dono, o teto de `diasParado`. O plano de cinco ondas está cumprido.
 - **2026-08-17, correção de premissa.** A revisão afirmou que "só a janela de 90 dias importa"
-  na leitura da série do caixa parado. Não é verdade: `diasParado`, `pico`, `rsDiasSequencia` e
-  `inicioSequencia` saem da caminhada sobre a série completa, que a janela não trunca. Cortar
-  em 90 dias teria mudado número, então o corte implementado é conservador e a decisão de
-  encurtar ficou registrada como pendência do dono, em vez de ser tomada em silêncio dentro de
-  uma tarefa de eficiência.
+  na leitura da série do caixa parado. Não era verdade no contrato de então: `diasParado`,
+  `pico`, `rsDiasSequencia` e `inicioSequencia` saíam da caminhada sobre a série completa, que
+  a janela não truncava. Cortar em 90 dias mudava número, então o corte entrou conservador e a
+  decisão de encurtar foi levada ao dono em vez de ser tomada em silêncio dentro de uma tarefa
+  de eficiência.
+- **2026-08-17, teto de 90 dias decidido pelo dono.** "Parado há 90 dias ou mais basta." A
+  janela virou o universo inteiro da medição e a premissa da revisão passou a valer, agora por
+  decisão explícita. Numa carteira parada o ano inteiro, `diasParado` saiu de 366 para 89+ e a
+  leitura caiu de 262 para 65 arquivos por execução, conferido com o motor. 460 → 469 checks,
+  131 → 129 testes, porque cinco testes do contrato antigo deram lugar a três do novo. O demo
+  de caixa parado ganhou um caso truncado para a tela exercitar o "+".

@@ -8,7 +8,7 @@
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { caixaParado, inicioRelevante, TIPO_OPORTUNIDADE_CAIXA_PARADO } from '../src/intel/idle-cash.js';
+import { caixaParado, inicioDaJanela, TIPO_OPORTUNIDADE_CAIXA_PARADO } from '../src/intel/idle-cash.js';
 import type { Snapshot } from '../src/snapshot/types.js';
 
 type Pos = { carteira: string; ativo: string; valor: number; classe?: string | null };
@@ -107,15 +107,20 @@ describe('caixa parado', () => {
     assert.equal(caixaParado(serie, { minDias: 1 }).length, 0);
   });
 
-  it('janela capada trunca rsDias mas não a sequência', () => {
+  it('a janela trunca a sequência também, e o item se declara truncado', () => {
+    // Contrato trocado em 2026-08-17 por decisão do dono: "parado há 90 dias ou
+    // mais" basta, então a janela passou a ser o universo inteiro da medição.
+    // Antes a sequência atravessava a janela e este mesmo caso dizia
+    // diasParado 5 e rsDiasSequencia 400.000, medidos fora da janela.
     const serie = ['2026-08-10', '2026-08-11', '2026-08-12', '2026-08-13', '2026-08-14'].map((d) =>
       diaCaixa(d, 'A', 100_000)
     );
     const item = caixaParado(serie, { janelaDias: 3, minDias: 1 })[0];
     assert.equal(item.rsDias, 200_000); // janela de 3 dias: só os pares 12→13 e 13→14
-    assert.equal(item.rsDiasSequencia, 400_000); // sequência completa: 4 pares
-    assert.equal(item.diasParado, 5);
-    assert.equal(item.inicioSequencia, '2026-08-10');
+    assert.equal(item.rsDiasSequencia, 200_000, 'sequência não sai mais da janela');
+    assert.equal(item.diasParado, 3, 'capado na janela, não 5');
+    assert.equal(item.inicioSequencia, '2026-08-12');
+    assert.equal(item.sequenciaTruncada, true, 'a tela lê como "3d+"');
   });
 
   it('classe null não conta como caixa', () => {
@@ -272,77 +277,62 @@ describe('caixa parado', () => {
   });
 });
 
-describe('janela de leitura da serie (so o que pode mudar o resultado)', () => {
-  // O CLI carregava e fazia parse da serie inteira do root a cada execucao,
-  // mesmo com a janela de 90 dias. Nao e erro de numero, e desperdicio que
-  // cresce para sempre. O corte tem que ser conservador porque a sequencia de
-  // "parado" nao e truncada pela janela.
+describe('janela trunca a sequencia (decisao do dono: 90 dias ou mais basta)', () => {
   const opcoes = { janelaDias: 90, maxIntervaloDias: 4 };
 
-  it('serie continua alem da janela: le desde o inicio da cadeia, nao so 90 dias', () => {
-    const datas: string[] = [];
-    for (let d = new Date(Date.UTC(2026, 0, 1)); d <= new Date(Date.UTC(2026, 7, 14)); d.setUTCDate(d.getUTCDate() + 1)) {
-      datas.push(d.toISOString().slice(0, 10));
-    }
-    // cadeia sem buraco desde janeiro: a sequencia pode alcancar 01/jan
-    assert.equal(inicioRelevante(datas, '2026-08-14', opcoes), '2026-01-01');
-  });
-
-  it('buraco maior que maxIntervalo corta a leitura ali', () => {
-    const datas = ['2026-01-05', '2026-01-06', '2026-07-20', '2026-07-21', '2026-07-22', '2026-08-14'];
-    // 2026-07-22 -> 2026-08-14 sao 23 dias, entao a cadeia ja se rompe no fim;
-    // o corte cai no inicio da janela de 90 dias, que e mais antigo
-    assert.equal(inicioRelevante(datas, '2026-08-14', opcoes), '2026-05-17');
-  });
-
-  it('cadeia curta e recente: nunca le menos que a janela de 90 dias', () => {
-    const datas = ['2026-08-12', '2026-08-13', '2026-08-14'];
-    assert.equal(inicioRelevante(datas, '2026-08-14', opcoes), '2026-05-17');
-  });
-
-  it('sem datas, devolve o inicio da janela', () => {
-    assert.equal(inicioRelevante([], '2026-08-14', opcoes), '2026-05-17');
-  });
-
-  it('cadeia diaria ininterrupta NAO e cortada: a sequencia alcanca o comeco', () => {
-    // Limite honesto do corte: com dia util todo dia, "parado ha 400 dias" e
-    // afirmacao que a serie inteira sustenta, e truncar mudaria diasParado.
-    // Cortar em 90 dias aqui seria trocar ineficiencia por numero errado.
-    const datas: string[] = [];
-    for (let d = new Date(Date.UTC(2025, 7, 14)); d <= new Date(Date.UTC(2026, 7, 14)); d.setUTCDate(d.getUTCDate() + 1)) {
+  /** Serie de dias uteis entre duas datas, com caixa parado o tempo todo. */
+  function diasUteis(de: [number, number, number], ate: [number, number, number], pular?: (d: string) => boolean) {
+    const serie: Snapshot[] = [];
+    const fim = new Date(Date.UTC(ate[0], ate[1], ate[2]));
+    for (const d = new Date(Date.UTC(de[0], de[1], de[2])); d <= fim; d.setUTCDate(d.getUTCDate() + 1)) {
       const dow = d.getUTCDay();
       if (dow === 0 || dow === 6) continue; // fim de semana sem arquivo
-      datas.push(d.toISOString().slice(0, 10));
-    }
-    assert.equal(inicioRelevante(datas, '2026-08-14', opcoes), datas[0]);
-  });
-
-  it('com buraco na serie o corte acontece, e o numero nao muda', () => {
-    // Um ano de dias uteis, com um mes sem ingestao no meio (ferias do
-    // operador). Tudo antes do buraco e inalcancavel pela sequencia e esta
-    // fora da janela: nao precisa nem ser lido do disco.
-    const serie: Snapshot[] = [];
-    const datas: string[] = [];
-    for (let d = new Date(Date.UTC(2025, 7, 14)); d <= new Date(Date.UTC(2026, 7, 14)); d.setUTCDate(d.getUTCDate() + 1)) {
-      const dow = d.getUTCDay();
-      if (dow === 0 || dow === 6) continue;
       const data = d.toISOString().slice(0, 10);
-      if (data >= '2026-06-01' && data <= '2026-06-30') continue; // buraco
-      datas.push(data);
+      if (pular && pular(data)) continue;
       serie.push(mkSnapshot(data, [
         { carteira: 'A', ativo: 'Caixa', valor: 200_000, classe: 'liquidez' },
         { carteira: 'A', ativo: 'CDB', valor: 800_000, classe: 'Renda Fixa' },
       ]));
     }
-    const desde = inicioRelevante(datas, '2026-08-14', opcoes);
-    const limitada = serie.filter((s) => s.data >= desde);
-    assert.ok(limitada.length < serie.length, `limitou: ${limitada.length} de ${serie.length}`);
-    assert.deepEqual(caixaParado(limitada), caixaParado(serie), 'mesmo resultado com menos leitura');
+    return serie;
+  }
+
+  it('inicioDaJanela e a borda de 90 dias corridos, inclusive', () => {
+    assert.equal(inicioDaJanela('2026-08-14', opcoes), '2026-05-17');
+    assert.equal(inicioDaJanela('2026-08-14'), '2026-05-17', 'default dos thresholds');
   });
 
-  it('dia depois da referencia nunca entra, mesmo existindo no disco', () => {
-    const datas = ['2026-08-13', '2026-08-14', '2026-08-15', '2026-09-30'];
-    const desde = inicioRelevante(datas, '2026-08-14', opcoes);
-    assert.ok(desde <= '2026-08-13');
+  it('um ano parado nao vira "365 dias": para em 90 e marca truncada', () => {
+    const serie = diasUteis([2025, 7, 14], [2026, 7, 14]);
+    const item = caixaParado(serie, opcoes)[0];
+    assert.ok(item.diasParado <= 90, `diasParado: ${item.diasParado}`);
+    assert.equal(item.sequenciaTruncada, true, 'a tela le como "90d+"');
+    assert.ok(item.inicioSequencia >= inicioDaJanela('2026-08-14', opcoes));
+  });
+
+  it('o corte nao muda numero: ler so a janela da o MESMO resultado', () => {
+    const completa = diasUteis([2025, 7, 14], [2026, 7, 14]);
+    const janela = completa.filter((s) => s.data >= inicioDaJanela('2026-08-14', opcoes));
+    assert.ok(janela.length < completa.length, `${janela.length} de ${completa.length}`);
+    assert.deepEqual(caixaParado(janela, opcoes), caixaParado(completa, opcoes));
+  });
+
+  it('sequencia que acaba antes da borda nao e marcada como truncada', () => {
+    const serie = [
+      diaCaixa('2026-08-11', 'A', 100_000),
+      diaCaixa('2026-08-12', 'A', 100_000),
+      diaCaixa('2026-08-13', 'A', 100_000),
+      diaCaixa('2026-08-14', 'A', 100_000),
+    ];
+    const item = caixaParado(serie, { ...opcoes, minDias: 1 })[0];
+    assert.equal(item.diasParado, 4);
+    assert.equal(item.sequenciaTruncada, false, 'a serie acabou de verdade, nao foi cortada');
+  });
+
+  it('buraco dentro da janela quebra a sequencia e ela nao sai truncada', () => {
+    const serie = diasUteis([2025, 7, 14], [2026, 7, 14], (d) => d >= '2026-07-01' && d <= '2026-07-20');
+    const item = caixaParado(serie, opcoes)[0];
+    assert.equal(item.sequenciaTruncada, false, 'quem interrompeu foi o buraco, nao a borda');
+    assert.ok(item.inicioSequencia > '2026-07-20', `inicio: ${item.inicioSequencia}`);
   });
 });

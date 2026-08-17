@@ -1592,6 +1592,11 @@ ok('R$ × dias não é formatado como moeda',
 {
   const utilsSrc = fs.readFileSync(path.join(ROOT, 'platform-utils.jsx'), 'utf8');
 
+  const winCaixa5 = {};
+  winCaixa5.window = winCaixa5;
+  try { new Function('window', 'globalThis', caixaDemo)(winCaixa5, winCaixa5); } catch { /* vira falha no check */ }
+  const demoCaixa = (winCaixa5.ATLAS_CAIXA_PARADO_DATA && winCaixa5.ATLAS_CAIXA_PARADO_DATA.itens) || [];
+
   // 29a. O motivo da oportunidade e a observação do contato saem de textarea:
   // uma quebra de linha partia a linha do CSV em duas e desalinhava todas as
   // colunas dali para baixo. Nada era escapado.
@@ -1650,20 +1655,41 @@ ok('R$ × dias não é formatado como moeda',
   ok('tela de vencimentos avisa quando vence hoje',
     /v\.diasRestantes === 0/.test(vencPage) && vencPage.includes('vence hoje'));
 
-  // 29d. A série inteira era lida e parseada a cada execução. O corte sai do
-  // nome do diretório, sem carregar snapshot, e é conservador: a sequência de
-  // "parado" não é truncada pela janela.
+  // 29d. A série inteira era lida e parseada a cada execução. Só a janela é
+  // lida agora, e ela também trunca a sequência de "parado": decisão do dono
+  // em 2026-08-17, "parado há 90 dias ou mais" basta. Quando a sequência
+  // preenche a janela o item se declara truncado, para a tela dizer "90d+" em
+  // vez de afirmar um número exato que não foi medido.
   const idleSrc = fs.readFileSync(path.join(ROOT, 'audit-engine/src/intel/idle-cash.ts'), 'utf8');
   const seriesSrc2 = fs.readFileSync(path.join(ROOT, 'audit-engine/src/snapshot/series.ts'), 'utf8');
   const cliSrc2 = fs.readFileSync(path.join(ROOT, 'audit-engine/src/snapshot/cli-snapshot.ts'), 'utf8');
-  ok('idle-cash calcula o início relevante da leitura', /export function inicioRelevante/.test(idleSrc));
+  ok('idle-cash expõe o início da janela', /export function inicioDaJanela/.test(idleSrc));
   ok('série aceita corte por data mínima antes de qualquer parse', /desde\?:\s*string/.test(seriesSrc2)
     && /nome <= ate && \(desde === undefined \|\| nome >= desde\)/.test(seriesSrc2));
   ok('série ignora diretório que não é dia (o mensal era lido e descartado)',
     /const DIA = \/\^\\d\{4\}-\\d\{2\}-\\d\{2\}\$\//.test(seriesSrc2));
-  ok('CLI de caixa parado passa o corte',
-    /const desde = inicioRelevante\(listarDatasDiarias\(root, data\), data\)/.test(cliSrc2)
-    && /listarSnapshotsDiarios\(root, data, \{ desde \}\)/.test(cliSrc2));
+  ok('CLI de caixa parado lê só a janela',
+    /listarSnapshotsDiarios\(root, data, \{ desde: inicioDaJanela\(data\) \}\)/.test(cliSrc2));
+  ok('a sequência anda dentro da janela, não na série completa',
+    /for \(let i = janelaSerie\.length - 2; i >= 0; i--\)/.test(idleSrc)
+    && !/for \(let i = serie\.length - 2; i >= 0; i--\)/.test(idleSrc));
+  ok('item declara quando diasParado é piso, não medida exata',
+    /sequenciaTruncada: boolean/.test(idleSrc) && /const sequenciaTruncada =/.test(idleSrc));
+  ok('janela de 90 dias segue sendo a do motor', /caixaParadoJanelaDias:\s*90/.test(
+    fs.readFileSync(path.join(ROOT, 'audit-engine/src/snapshot/thresholds.ts'), 'utf8')));
+  ok('tela marca "+" quando a sequência foi truncada',
+    /\{v\.diasParado\}d\{v\.sequenciaTruncada \? '\+' : ''\}/.test(caixaPage));
+  ok('tela diz "pelo menos desde" quando o início é piso',
+    caixaPage.includes('pelo menos desde'));
+  ok('CSV registra se dias parado é piso', /'Dias parado e um piso'/.test(caixaPage));
+  ok('todo item do demo de caixa parado declara sequenciaTruncada',
+    demoCaixa.length > 0 && demoCaixa.every((v) => typeof v.sequenciaTruncada === 'boolean'),
+    demoCaixa.filter((v) => typeof v.sequenciaTruncada !== 'boolean').map((v) => v.carteira).join(' | '));
+  ok('demo tem um caso truncado, para a tela exercitar o "+"',
+    demoCaixa.some((v) => v.sequenciaTruncada === true));
+  ok('nenhum item do demo passa da janela de 90 dias',
+    demoCaixa.every((v) => v.diasParado <= 90),
+    demoCaixa.filter((v) => v.diasParado > 90).map((v) => `${v.carteira}: ${v.diasParado}`).join(' | '));
 
   // 29e. Resto da Onda 1: a tela já resolvia o nome do gestor, o CSV de
   // oportunidades continuava exportando o código interno.

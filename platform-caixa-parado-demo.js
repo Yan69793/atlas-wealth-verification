@@ -28,6 +28,7 @@
         rsDiasSequencia: 2100000,
         pico: 300000,
         inicioSequencia: '2026-08-06',
+        sequenciaTruncada: false,
         oportunidadeId: '2026-08-14|ALPHA_01|IDLE_CASH|',
       },
       {
@@ -39,6 +40,7 @@
         rsDiasSequencia: 2520000,
         pico: 210000,
         inicioSequencia: '2026-07-31',
+        sequenciaTruncada: false,
         oportunidadeId: '2026-08-14|KAPPA_PV|IDLE_CASH|',
       },
       {
@@ -50,17 +52,23 @@
         rsDiasSequencia: 9400000,
         pico: 380000,
         inicioSequencia: '2026-07-16',
+        sequenciaTruncada: false,
         oportunidadeId: '2026-08-14|BRAVO_FAM|IDLE_CASH|',
       },
       {
+        /* Caso da sequencia que preenche a janela inteira: o motor para na
+           borda dos 90 dias e nao olha mais para tras, entao a tela mostra
+           "90d+" e "pelo menos desde", em vez de afirmar um numero exato que
+           nao foi medido. Decisao do dono em 2026-08-17. */
         carteira: 'GAMMA_LRG',
         liquidezAtual: 410000,
         pctPlAtual: 0.14,
-        diasParado: 45,
-        rsDias: 18450000,
-        rsDiasSequencia: 18300000,
+        diasParado: 90,
+        rsDias: 36490000,
+        rsDiasSequencia: 36490000,
         pico: 410000,
-        inicioSequencia: '2026-07-01',
+        inicioSequencia: '2026-05-17',
+        sequenciaTruncada: true,
         oportunidadeId: '2026-08-14|GAMMA_LRG|IDLE_CASH|',
       },
     ],
