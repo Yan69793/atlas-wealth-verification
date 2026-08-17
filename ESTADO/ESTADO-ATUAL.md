@@ -25,27 +25,29 @@ o teste que pegaria o próprio defeito. Ver a seção das cinco fases, abaixo.
 O único pulado é o de parity, que só roda com `ATLAS_FIXTURES` e `ATLAS_BOOKS` apontando
 para dado de instância. Pular é o comportamento correto no repo do produto.
 
-## Cadeia de gitlink, com deriva aberta
+## Cadeia de gitlink, fechada em 17/ago
 
 | Camada | Branch | HEAD | Registra o filho em |
 |---|---|---|---|
-| Produto | `feat/separacao-cloudflare` | `0848b56` (15/ago) | instância em `95d159c` |
-| Instância | `fix/workers-dev-off` | `468af8d` (15/ago) | core em `d33ee42` |
+| Produto | `feat/separacao-cloudflare` | `f8356fa` (17/ago) | instância em `019ceda` |
+| Instância | `fix/workers-dev-off` | `019ceda` (17/ago) | core em `e693239` |
 | Core | `fix/paths-bom-pos-mudanca` | `e693239` (15/ago) | folha |
 
-Deriva não publicada em dois níveis, confirmada hoje:
+Cada pai aponta o HEAD do filho, conferido em disco. Os três working trees estão limpos, com
+a exceção conhecida do material não versionado listado adiante, que é do produto e não é
+produto.
 
-1. O produto aponta a instância em `95d159c`, mas a instância está em `468af8d`. Aparece
-   como `M verificacao-carteiras` em `git status`.
-2. A instância aponta o core em `d33ee42`, mas o core está em `e693239`.
+A deriva de dois níveis que existia desde 15 de agosto foi fechada de baixo para cima, core
+primeiro. Eram dois commits soltos, as trocas de travessão por vírgula para PowerShell 5.1,
+que já estavam commitados mas cujos pais ainda não apontavam para eles. Fechar custou dois
+commits de ponteiro, sem nenhum arquivo de dado envolvido.
 
-Os commits soltos nas duas pontas são as trocas de travessão por vírgula para PowerShell
-5.1. Estão commitados localmente, mas os pais ainda não apontam para eles. Fechar a cadeia
-exige avançar de baixo para cima, core primeiro.
+Nada disso foi publicado. A cadeia está fechada localmente, e o `git push` dos três continua
+sendo decisão do dono.
 
 Os hashes que o `CLAUDE.md` do projeto registra (`c0ad7b4` para a instância, `810f0d9` para
-o produto, `d33ee42` para o core) descrevem o estado de 15 de agosto e já não batem com o
-disco. `d33ee42` é o único que ainda tem função, é o que a instância aponta.
+o produto, `d33ee42` para o core) descrevem o estado de 15 de agosto e não batem mais com o
+disco. Agora nenhum dos três tem função, esta tabela é a fonte.
 
 `git submodule status` não funciona aqui. São gitlink sem entrada em `.gitmodules`, o
 comando aborta com "no submodule mapping found". Para ler o ponteiro use
@@ -453,6 +455,14 @@ e é o que impede a próxima pessoa de repetir.
   a janela não truncava. Cortar em 90 dias mudava número, então o corte entrou conservador e a
   decisão de encurtar foi levada ao dono em vez de ser tomada em silêncio dentro de uma tarefa
   de eficiência.
+- **2026-08-17, demo publicado.** O dono autorizou e o demo público subiu com as cinco ondas,
+  versão `960a60fe`, pacote `index-BpOTxmi3.js` no lugar de `index-DQAeG96b.js`. Conferido no
+  ar por seis marcas do código novo. A primeira conferência pegou cache de borda servindo a
+  página antiga, que expirou sozinho em vinte segundos; a limpeza de cache pela API falhou por
+  falta de permissão no token. A instância do cliente **não** foi publicada.
+- **2026-08-17, cadeia de gitlink fechada.** Dois commits de ponteiro, de baixo para cima:
+  instância registra core em `e693239` (`019ceda`), produto registra instância em `019ceda`
+  (`f8356fa`). Sem push. Ver a tabela no topo.
 - **2026-08-17, teto de 90 dias decidido pelo dono.** "Parado há 90 dias ou mais basta." A
   janela virou o universo inteiro da medição e a premissa da revisão passou a valer, agora por
   decisão explícita. Numa carteira parada o ano inteiro, `diasParado` saiu de 366 para 89+ e a
