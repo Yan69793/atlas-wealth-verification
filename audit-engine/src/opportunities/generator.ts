@@ -9,7 +9,7 @@
  */
 
 import type { EventoTipo, SnapshotEvent } from '../snapshot/types.js';
-import type { Oportunidade, RegraOportunidade } from './types.js';
+import type { ConsequenciaOportunidade, Oportunidade, RegraOportunidade, VolumeEspecie } from './types.js';
 
 /**
  * id estável de oportunidade derivada de evento. Fonte única da convenção:
@@ -121,6 +121,54 @@ function volumeDoEvento(e: SnapshotEvent): number {
   return e.valorAtual;
 }
 
+/** REVENUE_DROP mede receita MENSAL da casa; todo o resto mede patrimônio. */
+const VOLUME_E_RECEITA: ReadonlySet<EventoTipo> = new Set<EventoTipo>(['REVENUE_DROP']);
+
+function especieDoVolume(e: SnapshotEvent): VolumeEspecie {
+  return VOLUME_E_RECEITA.has(e.tipo) ? 'receita' : 'patrimonio';
+}
+
+/**
+ * Família "movimento de patrimônio": eventos que, dentro da MESMA carteira e do
+ * MESMO período, descrevem um único fato de negócio visto de ângulos
+ * diferentes. Ordem = poder explicativo, do que explica os outros para o que é
+ * explicado por eles.
+ *
+ * O defeito que isto fecha: um saque de R$ 950 mil na BETA gerava quatro linhas
+ * na fila (saque grande, liquidez caiu, posição encerrada, concentração subiu),
+ * cada uma pedindo uma ação comercial diferente pelo mesmo motivo, e o
+ * indicador "Volume na fila" somava R$ 3,85 milhões para um saque de R$ 950
+ * mil. No mensal entrava ainda a queda de receita, chegando a cinco.
+ *
+ * MATURITY_APPROACHING fica de fora de propósito: um vencimento é fato próprio
+ * de um título, não consequência de movimento de caixa, e dois vencimentos na
+ * mesma carteira são duas conversas de renovação diferentes.
+ */
+export const PRECEDENCIA_CAUSA_RAIZ: readonly EventoTipo[] = [
+  'LARGE_WITHDRAWAL',
+  'REVENUE_DROP',
+  'CASH_DECREASE',
+  'CONCENTRATION_INCREASE',
+  'POSITION_CLOSED',
+];
+
+const ROTULO_CONSEQUENCIA: Partial<Record<EventoTipo, string>> = {
+  LARGE_WITHDRAWAL: 'saque grande',
+  REVENUE_DROP: 'receita caiu',
+  CASH_DECREASE: 'liquidez caiu',
+  CONCENTRATION_INCREASE: 'concentracao subiu',
+  POSITION_CLOSED: 'posicao encerrada',
+};
+
+function textoConsequencias(cs: ConsequenciaOportunidade[]): string {
+  if (!cs.length) return '';
+  const partes = cs.map((c) => {
+    const rotulo = ROTULO_CONSEQUENCIA[c.tipo as EventoTipo] ?? c.tipo;
+    return c.ativo ? `${rotulo} (${c.ativo})` : rotulo;
+  });
+  return ` (no mesmo movimento: ${partes.join(', ')})`;
+}
+
 export interface ContextoOportunidade {
   periodo: string; // 'YYYY-MM-DD' ou 'YYYY-MM'
   assessor: string;
@@ -129,6 +177,11 @@ export interface ContextoOportunidade {
 /**
  * Aplica as regras aos eventos e devolve uma oportunidade por
  * (carteira, tipo, ativo) — o mesmo evento repetido não duplica a fila.
+ *
+ * Depois da geração vem a supressão por causa raiz: dentro de uma carteira, os
+ * eventos da PRECEDENCIA_CAUSA_RAIZ descrevem um só fato, então sobra a
+ * oportunidade de maior poder explicativo e as demais viram `consequencias`
+ * dela. Nada é perdido, o motivo passa a citá-las.
  */
 export function gerarOportunidades(
   eventos: SnapshotEvent[],
@@ -138,7 +191,7 @@ export function gerarOportunidades(
   const ref = dataReferenciaPeriodo(contexto.periodo);
   const createdAt = `${ref}T12:00:00Z`;
   const vistos = new Set<string>();
-  const ops: Oportunidade[] = [];
+  const candidatos: Array<{ op: Oportunidade; tipo: EventoTipo; ativo: string | null }> = [];
 
   for (const evento of eventos) {
     for (const regra of regras) {
@@ -148,25 +201,57 @@ export function gerarOportunidades(
       vistos.add(id);
 
       const prazoDias = typeof regra.prazoDias === 'function' ? regra.prazoDias(evento) : regra.prazoDias;
-      ops.push({
-        id,
-        cliente: evento.carteira,
-        assessor: contexto.assessor,
-        motivo: regra.texto(evento),
-        volume: volumeDoEvento(evento),
-        prioridade: regra.prioridade,
-        prazo: adicionarDias(ref, prazoDias),
-        status: 'Nova',
-        ultimoContato: null,
-        proximoContato: null,
-        observacao: '',
-        resultado: null,
-        origem: { tipo: 'evento', id, periodo: contexto.periodo },
-        createdAt,
-        updatedAt: createdAt,
+      candidatos.push({
+        tipo: evento.tipo,
+        ativo: evento.ativo ?? null,
+        op: {
+          id,
+          cliente: evento.carteira,
+          assessor: contexto.assessor,
+          motivo: regra.texto(evento),
+          volume: volumeDoEvento(evento),
+          volumeEspecie: especieDoVolume(evento),
+          consequencias: [],
+          prioridade: regra.prioridade,
+          prazo: adicionarDias(ref, prazoDias),
+          status: 'Nova',
+          ultimoContato: null,
+          proximoContato: null,
+          observacao: '',
+          resultado: null,
+          origem: { tipo: 'evento', id, periodo: contexto.periodo },
+          createdAt,
+          updatedAt: createdAt,
+        },
       });
     }
   }
+
+  // causa raiz por carteira: menor índice na precedência ganha
+  const precedencia = (t: EventoTipo) => PRECEDENCIA_CAUSA_RAIZ.indexOf(t);
+  const raizPorCarteira = new Map<string, number>();
+  for (let i = 0; i < candidatos.length; i++) {
+    const prec = precedencia(candidatos[i].tipo);
+    if (prec < 0) continue; // fora da família: independente
+    const atual = raizPorCarteira.get(candidatos[i].op.cliente);
+    if (atual === undefined || prec < precedencia(candidatos[atual].tipo)) {
+      raizPorCarteira.set(candidatos[i].op.cliente, i);
+    }
+  }
+
+  const ops: Oportunidade[] = [];
+  for (let i = 0; i < candidatos.length; i++) {
+    const { op, tipo, ativo } = candidatos[i];
+    if (precedencia(tipo) < 0) {
+      ops.push(op);
+      continue;
+    }
+    const raiz = raizPorCarteira.get(op.cliente);
+    if (raiz === i) ops.push(op);
+    else if (raiz !== undefined) candidatos[raiz].op.consequencias.push({ tipo, ativo });
+  }
+
+  for (const op of ops) op.motivo += textoConsequencias(op.consequencias);
 
   return ops;
 }

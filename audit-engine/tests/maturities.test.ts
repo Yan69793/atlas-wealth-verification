@@ -9,6 +9,8 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { vencimentosProximos } from '../src/intel/maturities.js';
+import { gerarOportunidades } from '../src/opportunities/generator.js';
+import { diffSnapshots } from '../src/snapshot/diff.js';
 import type { Snapshot } from '../src/snapshot/types.js';
 
 function mkSnapshot(data: string, posicoes: Array<{ carteira: string; ativo: string; valor: number; vencimento?: string; instituicao?: string | null }>): Snapshot {
@@ -109,5 +111,60 @@ describe('vencimentos próximos', () => {
     const lista = vencimentosProximos(snap);
     assert.equal(lista.length, 1);
     assert.equal(lista[0].janelaDias, 7);
+  });
+});
+
+describe('cruzamento da janela em dia sem snapshot (fim de semana e feriado)', () => {
+  // Trava do defeito: o id da oportunidade usava a data TEORICA do cruzamento
+  // (vencimento - janela). Quando essa data cai em sabado, domingo ou feriado
+  // nao ha arquivo do custodiante, o diff so roda no proximo dia util, e o
+  // evento nasce COM A DATA DESSE DIA. O link vencimento -> oportunidade
+  // procurava um id que a fila nunca teve. Cerca de dois em cada sete casos.
+  const VENC = '2026-09-21';           // segunda
+  const CRUZAMENTO_TEORICO = '2026-08-22'; // sabado (VENC - 30)
+  const REF = '2026-08-24';            // segunda, primeiro dia util com snapshot
+
+  const snap = mkSnapshot(REF, [
+    { carteira: 'ALFA', ativo: 'LCI BANCO W', valor: 500_137, vencimento: VENC },
+    { carteira: 'ALFA', ativo: 'CAIXA', valor: 500_000 },
+  ]);
+
+  it('sem a lista de datas, cai no cruzamento teorico (comportamento antigo preservado)', () => {
+    const item = vencimentosProximos(snap, { dataReferencia: REF })[0];
+    assert.equal(item.janelaDias, 30);
+    assert.equal(item.oportunidadeId, `${CRUZAMENTO_TEORICO}|ALFA|MATURITY_APPROACHING|LCI BANCO W`);
+  });
+
+  it('com a lista de datas, o id ancora no primeiro dia COM snapshot >= cruzamento', () => {
+    // sexta 21, sabado e domingo sem arquivo, segunda 24
+    const datasSnapshot = ['2026-08-19', '2026-08-20', '2026-08-21', '2026-08-24'];
+    const item = vencimentosProximos(snap, { dataReferencia: REF, datasSnapshot })[0];
+    assert.equal(item.oportunidadeId, `${REF}|ALFA|MATURITY_APPROACHING|LCI BANCO W`);
+    assert.notEqual(item.oportunidadeId, `${CRUZAMENTO_TEORICO}|ALFA|MATURITY_APPROACHING|LCI BANCO W`);
+  });
+
+  it('cruzamento em dia util com snapshot continua no proprio dia', () => {
+    // vencimento numa quarta: o cruzamento de 30 dias cai em dia com arquivo
+    const snapUtil = mkSnapshot('2026-08-24', [
+      { carteira: 'ALFA', ativo: 'CDB X', valor: 100_000, vencimento: '2026-09-18' }, // sexta
+    ]);
+    const datasSnapshot = ['2026-08-19', '2026-08-20', '2026-08-21', '2026-08-24'];
+    const item = vencimentosProximos(snapUtil, { dataReferencia: '2026-08-24', datasSnapshot })[0];
+    assert.equal(item.janelaDias, 30);
+    assert.equal(item.oportunidadeId, '2026-08-19|ALFA|MATURITY_APPROACHING|CDB X');
+  });
+
+  it('o id da tela bate com o id que o motor gera a partir do evento do diff', () => {
+    const anterior = mkSnapshot('2026-08-21', [
+      { carteira: 'ALFA', ativo: 'LCI BANCO W', valor: 500_000, vencimento: VENC },
+      { carteira: 'ALFA', ativo: 'CAIXA', valor: 500_000 },
+    ]);
+    const eventos = diffSnapshots(snap, anterior).eventos.filter((e) => e.tipo === 'MATURITY_APPROACHING');
+    assert.equal(eventos.length, 1, 'o diff emite o evento na segunda');
+
+    const idDaFila = gerarOportunidades(eventos, { periodo: snap.data, assessor: '' })[0].id;
+    const datasSnapshot = ['2026-08-19', '2026-08-20', '2026-08-21', '2026-08-24'];
+    const idDaTela = vencimentosProximos(snap, { dataReferencia: REF, datasSnapshot })[0].oportunidadeId;
+    assert.equal(idDaTela, idDaFila);
   });
 });

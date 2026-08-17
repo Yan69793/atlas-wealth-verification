@@ -8,7 +8,7 @@
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { caixaParado } from '../src/intel/idle-cash.js';
+import { caixaParado, TIPO_OPORTUNIDADE_CAIXA_PARADO } from '../src/intel/idle-cash.js';
 import type { Snapshot } from '../src/snapshot/types.js';
 
 type Pos = { carteira: string; ativo: string; valor: number; classe?: string | null };
@@ -253,5 +253,21 @@ describe('caixa parado', () => {
     const comBuraco = caixaParado([caixa('2026-07-29'), caixa('2026-08-14')], { minDias: 1 });
     // sem teto seriam 100.000 x 16 = 1.600.000; o teto é maxIntervalo (4 dias)
     assert.equal(comBuraco[0].rsDias, 100_000 * 4);
+  });
+
+  // Trava do defeito: o botao "Criar oportunidade" da tela montava id fora da
+  // convencao do motor e sem chave estavel, entao cada clique criava linha nova
+  // e o botao nunca virava chip de status.
+  it('cada item carrega oportunidadeId estavel na convencao do motor', () => {
+    const serie = [
+      diaCaixa('2026-08-12', 'A', 100_000),
+      diaCaixa('2026-08-13', 'A', 100_000),
+      diaCaixa('2026-08-14', 'A', 100_000),
+    ];
+    const item = caixaParado(serie, { minDias: 1 })[0];
+    assert.equal(item.oportunidadeId, `2026-08-14|A|${TIPO_OPORTUNIDADE_CAIXA_PARADO}|`);
+    assert.equal(item.oportunidadeId.split('|').length, 4, 'convencao periodo|carteira|tipo|ativo');
+    // duas execucoes, mesmo id: o botao consegue reconhecer a oportunidade
+    assert.equal(caixaParado(serie, { minDias: 1 })[0].oportunidadeId, item.oportunidadeId);
   });
 });

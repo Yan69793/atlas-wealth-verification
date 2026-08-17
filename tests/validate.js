@@ -1426,6 +1426,163 @@ ok('R$ × dias não é formatado como moeda',
   ok('CSV de oportunidades exporta o Score', /Score:\s*pontuarOportunidade\(/.test(oportPage));
 }
 
+// ─── 28. Onda 4 — integridade da fila de oportunidade ───────────────────────
+//
+// Quatro achados: um fato virando até cinco linhas, botão de criar
+// oportunidade fabricando duplicata, link de vencimento quebrando em fim de
+// semana, e armazenamento local congelando as linhas da base.
+
+{
+  // Avalia um fallback sintético num sandbox e devolve a janela resultante.
+  function rodarDemo(src) {
+    const win = {};
+    win.window = win;
+    try { new Function('window', 'globalThis', src)(win, win); } catch { /* vira falha no check */ }
+    return win;
+  }
+
+  // 28a. Causa raiz: dentro de uma carteira e um período, os eventos da família
+  // "movimento de patrimônio" descrevem um fato só. O demo tinha BRAVO_FAM com
+  // saque grande E queda de liquidez no mesmo 2026-08-13, exatamente a
+  // duplicata que o achado descreve.
+  const generatorSrc = fs.existsSync(path.join(ROOT, 'audit-engine/src/opportunities/generator.ts'))
+    ? fs.readFileSync(path.join(ROOT, 'audit-engine/src/opportunities/generator.ts'), 'utf8') : '';
+  ok('motor declara a precedência de causa raiz',
+    /PRECEDENCIA_CAUSA_RAIZ[^=]*=\s*\[[^\]]*'LARGE_WITHDRAWAL'[^\]]*'REVENUE_DROP'[^\]]*'CASH_DECREASE'[^\]]*'CONCENTRATION_INCREASE'[^\]]*'POSITION_CLOSED'[^\]]*\]/.test(generatorSrc));
+  ok('vencimento fica FORA da supressão por causa raiz',
+    !/PRECEDENCIA_CAUSA_RAIZ[^=]*=\s*\[[^\]]*MATURITY_APPROACHING/.test(generatorSrc));
+
+  const FAMILIA = ['LARGE_WITHDRAWAL', 'REVENUE_DROP', 'CASH_DECREASE', 'CONCENTRATION_INCREASE', 'POSITION_CLOSED'];
+  const winOport = rodarDemo(oportDemo);
+  const demoOps = (winOport.ATLAS_OPORTUNIDADES_DATA && winOport.ATLAS_OPORTUNIDADES_DATA.oportunidades) || [];
+  ok('demo de oportunidades tem itens avaliáveis', demoOps.length > 0);
+
+  const porCarteiraPeriodo = new Map();
+  for (const o of demoOps) {
+    const [periodo, carteira, tipo] = String(o.id).split('|');
+    if (FAMILIA.indexOf(tipo) < 0) continue;
+    const k = periodo + '|' + carteira;
+    porCarteiraPeriodo.set(k, (porCarteiraPeriodo.get(k) || []).concat(tipo));
+  }
+  const duplicadas = [...porCarteiraPeriodo.entries()].filter(([, tipos]) => tipos.length > 1);
+  ok('demo não tem dois eventos da mesma família na mesma carteira e período',
+    duplicadas.length === 0,
+    duplicadas.map(([k, t]) => `${k}: ${t.join(', ')}`).join(' | '));
+
+  // 28b. O indicador "Volume na fila" somava receita MENSAL da casa com
+  // PATRIMÔNIO na mesma célula. Espécie declarada no item; a tela não soma
+  // espécies diferentes.
+  ok('todo item do demo declara a espécie do volume',
+    demoOps.length > 0 && demoOps.every((o) => o.volumeEspecie === 'patrimonio' || o.volumeEspecie === 'receita'),
+    demoOps.filter((o) => !o.volumeEspecie).map((o) => o.id).join(' | '));
+  ok('motor grava a espécie do volume', /volumeEspecie:\s*especieDoVolume\(evento\)/.test(generatorSrc));
+  ok('tela soma volume só de patrimônio',
+    /const volumePatrimonio = fila[\s\S]{0,160}especieDoVolume\(o\) === 'patrimonio'/.test(oportPage));
+  ok('tela não soma o volume da fila inteira',
+    !/value=\{fmtCompactBRL\(fila\.reduce\(\(s, o\) => s \+ o\.volume, 0\)\)\}/.test(oportPage));
+
+  // 28c. Botão "Criar oportunidade": id canônico do motor no link, e status
+  // procurado na base E no navegador (era só na base estática, então o botão
+  // nunca virava chip e cada clique criava outra linha).
+  for (const [nome, src] of [['platform-vencimentos.jsx', vencPage], ['platform-caixa-parado.jsx', caixaPage]]) {
+    ok(`${nome} manda o id canônico do motor no link (opid)`,
+      /'&opid=' \+ encodeURIComponent\(v\.oportunidadeId/.test(src));
+    ok(`${nome} não tem leitura própria de status da base estática`,
+      !/window\.ATLAS_OPORTUNIDADES_DATA/.test(src));
+    ok(`${nome} usa statusOportunidade de AtlasUtils`,
+      /statusOportunidade\s*\}?\s*=\s*window\.AtlasUtils|statusOportunidade\s*,/.test(src)
+      && src.includes('statusOportunidade(v.oportunidadeId)'));
+  }
+  ok('caixa parado mostra chip de status em vez de só o botão',
+    /statusOportunidade\(v\.oportunidadeId\)\s*\?\s*\(/.test(caixaPage));
+  ok('motor grava oportunidadeId em cada item de caixa parado',
+    fs.readFileSync(path.join(ROOT, 'audit-engine/src/intel/idle-cash.ts'), 'utf8')
+      .includes('oportunidadeId: idOportunidade('));
+
+  const winCaixa = rodarDemo(caixaDemo);
+  const demoCaixa = (winCaixa.ATLAS_CAIXA_PARADO_DATA && winCaixa.ATLAS_CAIXA_PARADO_DATA.itens) || [];
+  ok('demo de caixa parado tem itens avaliáveis', demoCaixa.length > 0);
+  ok('todo item de caixa parado tem oportunidadeId na convenção do motor',
+    demoCaixa.length > 0 && demoCaixa.every((v) => /^[\d-]+\|[A-Z_0-9]+\|IDLE_CASH\|$/.test(v.oportunidadeId || '')),
+    demoCaixa.filter((v) => !v.oportunidadeId).map((v) => v.carteira).join(' | '));
+
+  ok('a tela de oportunidades reaproveita o id canônico em vez de inventar outro',
+    /const id = dados\.idCanonico \|\|/.test(oportPage));
+  ok('criar duas vezes a mesma origem não duplica a linha',
+    /lista\.some\(\(o\) => o\.id === id\)/.test(oportPage));
+
+  // 28d. Link de vencimento: id ancorado no dia REAL do cruzamento (primeiro
+  // dia COM snapshot), não no teórico, que cai em fim de semana ou feriado em
+  // cerca de dois de cada sete casos.
+  const maturitiesSrc = fs.readFileSync(path.join(ROOT, 'audit-engine/src/intel/maturities.ts'), 'utf8');
+  ok('vencimentos aceita a lista de datas com snapshot', /datasSnapshot\?:\s*string\[\]/.test(maturitiesSrc));
+  ok('id do vencimento usa o cruzamento real, não só o teórico',
+    /dataRealDoCruzamento\(adicionarDias\(p\.vencimento, -janela\), opcoes\.datasSnapshot\)/.test(maturitiesSrc));
+  const seriesSrc = fs.readFileSync(path.join(ROOT, 'audit-engine/src/snapshot/series.ts'), 'utf8');
+  ok('série expõe as datas sem carregar snapshot', /export function listarDatasDiarias/.test(seriesSrc));
+  const cliSrc = fs.readFileSync(path.join(ROOT, 'audit-engine/src/snapshot/cli-snapshot.ts'), 'utf8');
+  ok('CLI de vencimentos passa as datas disponíveis',
+    /vencimentosProximos\(snap,\s*\{\s*datasSnapshot:\s*listarDatasDiarias\(root, data\)\s*\}\)/.test(cliSrc));
+
+  // 28e. Reconciliação base x navegador: fato da base pode ser corrigido,
+  // acompanhamento do assessor sobrevive, e evento removido numa reingestão
+  // vira órfão em vez de continuar contando no indicador.
+  const INI = '// ATLAS_OPORTUNIDADES_INICIO';
+  const FIM = '// ATLAS_OPORTUNIDADES_FIM';
+  const utilsSrc = fs.readFileSync(path.join(ROOT, 'platform-utils.jsx'), 'utf8');
+  const iu = utilsSrc.indexOf(INI);
+  const fu = utilsSrc.indexOf(FIM);
+  ok('platform-utils.jsx delimita a fila de oportunidades', iu > 0 && fu > iu);
+
+  let loja = null;
+  if (iu > 0 && fu > iu) {
+    try {
+      loja = new Function(
+        'window',
+        utilsSrc.slice(iu + INI.length, fu) +
+        '\n return { mesclarOportunidades, especieDoVolume, criadaNaTela };'
+      )({ ATLAS_OPORTUNIDADES_DATA: null, localStorage: null });
+    } catch (e) {
+      ok('bloco da fila é avaliável', false, e.message);
+    }
+  }
+  ok('bloco da fila exporta mesclagem e espécie', !!loja
+    && typeof loja.mesclarOportunidades === 'function'
+    && typeof loja.especieDoVolume === 'function');
+
+  if (loja) {
+    // Caso concreto: o overlay real corrige o volume de 137 para 500.137 e
+    // muda o status para Contatar no navegador. Antes a linha salva
+    // sobrescrevia a base inteira e o número corrigido nunca chegava na tela.
+    const baseAtual = [{ id: 'X|ALFA|MATURITY_APPROACHING|CDB', volume: 500137, motivo: 'novo', status: 'Nova' }];
+    const salvasAntigas = [{ id: 'X|ALFA|MATURITY_APPROACHING|CDB', volume: 137, motivo: 'velho', status: 'Contatar' }];
+    const fundida = loja.mesclarOportunidades(baseAtual, salvasAntigas)[0];
+    ok('correção de número na base chega na tela', fundida.volume === 500137, `volume: ${fundida.volume}`);
+    ok('texto do motivo também é atualizado pela base', fundida.motivo === 'novo');
+    ok('acompanhamento do assessor sobrevive à reingestão', fundida.status === 'Contatar');
+    ok('linha presente na base não é órfã', fundida.orfao === false);
+
+    // Evento removido numa reingestão: sobrevive marcado, fora dos indicadores.
+    const orfa = loja.mesclarOportunidades([], [{ id: 'Y|BETA|CASH_DECREASE|', volume: 10, status: 'Nova' }]);
+    ok('evento que sumiu da base vira órfão', orfa.length === 1 && orfa[0].orfao === true);
+
+    // Oportunidade criada à mão só existe no navegador e não é órfã.
+    const manual = loja.mesclarOportunidades([], [{ id: 'op-ALFA-2026-08-17-1', volume: 10, status: 'Nova' }]);
+    ok('oportunidade criada à mão não é marcada como órfã', manual[0].orfao === false);
+
+    ok('espécie do volume cai na convenção do id quando o campo falta',
+      loja.especieDoVolume({ id: 'A|B|REVENUE_DROP|' }) === 'receita'
+      && loja.especieDoVolume({ id: 'A|B|CASH_DECREASE|' }) === 'patrimonio'
+      && loja.especieDoVolume({ id: 'A|B|CASH_DECREASE|', volumeEspecie: 'receita' }) === 'receita');
+  }
+
+  ok('fila e indicadores ignoram órfãs', /const fila = ordenadas\.filter\(\(o\) => !o\.orfao/.test(oportPage));
+  ok('órfã é visível na tabela, não escondida', /o\.orfao && \(/.test(oportPage));
+  ok('a tela não tem mais leitura própria do localStorage da fila',
+    !/window\.localStorage\.getItem\('atlas_oportunidades_v1'\)/.test(oportPage)
+    && !oportPage.includes("const STORAGE_KEY = 'atlas_oportunidades_v1'"));
+}
+
 // ─── Resultado ──────────────────────────────────────────────────────────────
 
 const total = pass + fail;

@@ -28,6 +28,7 @@
         rsDiasSequencia: 2100000,
         pico: 300000,
         inicioSequencia: '2026-08-06',
+        oportunidadeId: '2026-08-14|ALPHA_01|IDLE_CASH|',
       },
       {
         carteira: 'KAPPA_PV',
@@ -38,6 +39,7 @@
         rsDiasSequencia: 2520000,
         pico: 210000,
         inicioSequencia: '2026-07-31',
+        oportunidadeId: '2026-08-14|KAPPA_PV|IDLE_CASH|',
       },
       {
         carteira: 'BRAVO_FAM',
@@ -48,6 +50,7 @@
         rsDiasSequencia: 9400000,
         pico: 380000,
         inicioSequencia: '2026-07-16',
+        oportunidadeId: '2026-08-14|BRAVO_FAM|IDLE_CASH|',
       },
       {
         carteira: 'GAMMA_LRG',
@@ -58,6 +61,7 @@
         rsDiasSequencia: 18300000,
         pico: 410000,
         inicioSequencia: '2026-07-01',
+        oportunidadeId: '2026-08-14|GAMMA_LRG|IDLE_CASH|',
       },
     ],
     geradoEm: null, // sintetico: sem timestamp de processamento real

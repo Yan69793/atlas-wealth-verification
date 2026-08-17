@@ -10,7 +10,11 @@ import React from 'react';
 (() => {
   const { useState, useMemo, useEffect } = React;
 
-  const { fmtCompactBRL, downloadCSV, navigate } = window.AtlasUtils;
+  const {
+    fmtCompactBRL, downloadCSV, navigate,
+    oportunidadesBase, oportunidadesSalvas, salvarOportunidades, mesclarOportunidades,
+    especieDoVolume,
+  } = window.AtlasUtils;
 
   // Sufixo monotônico para ids criados pelo assessor: duas criações no mesmo
   // milissegundo não colidem.
@@ -92,21 +96,11 @@ import React from 'react';
     P3: 'var(--navy, #1e3a5f)',
   };
 
-  const STORAGE_KEY = 'atlas_oportunidades_v1';
-
-  function carregarSalvo() {
-    try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      if (!raw) return null;
-      const parsed = JSON.parse(raw);
-      if (parsed && parsed.v === 1 && Array.isArray(parsed.oportunidades)) return parsed.oportunidades;
-    } catch (e) { /* storage ilegivel: segue com a base */ }
-    return null;
-  }
-
-  function salvar(lista) {
-    try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ v: 1, oportunidades: lista })); } catch (e) {}
-  }
+  /* A leitura, a mesclagem e a gravacao vivem em AtlasUtils: as telas de
+     Vencimentos e Caixa parado precisam do mesmo status, e ter tres leituras
+     diferentes da mesma fila foi o que deixou o botao "Criar oportunidade"
+     nunca virar chip. */
+  const salvar = salvarOportunidades;
 
   function hojeISO() {
     return new Date().toISOString().slice(0, 10);
@@ -155,7 +149,12 @@ import React from 'react';
         setErro('Preencha carteira, motivo, volume e prazo.');
         return;
       }
-      onSalvar({ carteira, motivo: motivo.trim(), volume: vol, prioridade, prazo, origem: inicial.origem });
+      onSalvar({
+        carteira, motivo: motivo.trim(), volume: vol, prioridade, prazo,
+        origem: inicial.origem,
+        // só existe quando a origem é uma tela que já tem o id do motor
+        idCanonico: inicial.idCanonico || '',
+      });
     }
 
     return (
@@ -233,29 +232,23 @@ import React from 'react';
 
   function Oportunidades({ location }) {
     const { addToast } = useToast();
-    const base = useMemo(
-      () => (window.ATLAS_OPORTUNIDADES_DATA ? window.ATLAS_OPORTUNIDADES_DATA.oportunidades : []),
-      []
-    );
-    const [lista, setLista] = useState(() => {
-      // Fusão por id: a base (demo/overlay) é relida a cada visita, então
-      // eventos novos do snapshot aparecem; as edições do assessor salvas no
-      // navegador sobrescrevem; oportunidades criadas à mão, que só existem
-      // no storage, sobrevivem. Sem isso a fila congelava no primeiro
-      // salvamento e parava de crescer em silêncio.
-      const salvas = carregarSalvo();
-      if (!salvas) return base;
-      const salvasPorId = new Map(salvas.map((o) => [o.id, o]));
-      const basePorId = new Map(base.map((o) => [o.id, o]));
-      const fundidas = base.map((o) => salvasPorId.get(o.id) ?? o);
-      const soSalvas = salvas.filter((o) => !basePorId.has(o.id));
-      return [...soSalvas, ...fundidas];
-    });
+    const base = useMemo(() => oportunidadesBase(), []);
+    // Reconciliação base x navegador (ver AtlasUtils.mesclarOportunidades):
+    // fato vem da base e pode ser corrigido numa reingestão, acompanhamento do
+    // assessor sobrevive, e linha cujo evento sumiu da base vira órfã em vez de
+    // continuar contando nos indicadores.
+    const [lista, setLista] = useState(() => mesclarOportunidades(base, oportunidadesSalvas()));
     const [form, setForm] = useState(null); // null | { tipo:'nova', ... } | { tipo:'contato', id }
 
-    // Fluxo "criar a partir do achado": #/oportunidades?nova=1&carteira=..&motivo=..&origem=achado&periodo=..
+    // Fluxo "criar a partir do achado":
+    // #/oportunidades?nova=1&carteira=..&motivo=..&origem=achado&periodo=..&opid=..
     // O parâmetro é consumido e a URL limpa na sequência: recarregar a página
     // não reabre o formulário pré-preenchido (sem duplicata por engano).
+    //
+    // `opid` é o id canônico do motor, enviado pelas telas de Vencimentos e
+    // Caixa parado. Antes a origem era montada como periodo|carteira, fora da
+    // convenção, e a oportunidade criada ganhava um id novo a cada clique: o
+    // botão de origem nunca reconhecia a linha e virava fábrica de duplicata.
     useEffect(() => {
       const p = location && location.params;
       if (p && p.nova === '1') {
@@ -266,8 +259,9 @@ import React from 'react';
           volume: '',
           prioridade: 'P2',
           prazo: '',
+          idCanonico: p.opid || '',
           origem: p.origem === 'achado'
-            ? { tipo: 'achado', id: (p.periodo || '') + '|' + (p.carteira || ''), periodo: p.periodo || '' }
+            ? { tipo: 'achado', id: p.opid || ((p.periodo || '') + '|' + (p.carteira || '')), periodo: p.periodo || '' }
             : { tipo: 'achado', id: '', periodo: '' },
         });
         navigate('#/oportunidades');
@@ -278,7 +272,21 @@ import React from 'react';
 
     const ordenadas = useMemo(() => priorizarOportunidades(lista, hoje), [lista, hoje]);
 
-    const fila = ordenadas.filter((o) => STATUS_ATIVOS.indexOf(o.status) >= 0);
+    // Órfã é linha salva no navegador cujo evento sumiu da base numa
+    // reingestão. Continua visível, marcada, mas fora da fila e dos
+    // indicadores: somar número que aponta para evento inexistente é o mesmo
+    // erro de mostrar dado sintético como real.
+    const fila = ordenadas.filter((o) => !o.orfao && STATUS_ATIVOS.indexOf(o.status) >= 0);
+    const orfas = ordenadas.filter((o) => o.orfao);
+
+    // Volume só de patrimônio: receita mensal da casa é outra unidade e não
+    // entra na mesma soma.
+    const volumePatrimonio = fila
+      .filter((o) => especieDoVolume(o) === 'patrimonio')
+      .reduce((s, o) => s + o.volume, 0);
+    const volumeReceita = fila
+      .filter((o) => especieDoVolume(o) === 'receita')
+      .reduce((s, o) => s + o.volume, 0);
 
     function aplicarTransicao(op, para) {
       const permitidos = PROXIMOS[op.status] || [];
@@ -304,12 +312,22 @@ import React from 'react';
     function criarOportunidade(dados) {
       const agora = new Date().toISOString();
       const cat = ((D && D.CATALOG) || []).find((p) => p.code === dados.carteira);
+      // Vindo de Vencimentos ou Caixa parado, o id é o do motor: a mesma
+      // origem clicada duas vezes cai na mesma linha em vez de duplicar.
+      const id = dados.idCanonico || ('op-' + dados.carteira + '-' + agora + '-' + (++contadorId));
+      if (lista.some((o) => o.id === id)) {
+        setForm(null);
+        addToast('Esta oportunidade já está na fila.');
+        return;
+      }
       const nova = {
-        id: 'op-' + dados.carteira + '-' + agora + '-' + (++contadorId),
+        id,
         cliente: dados.carteira,
         assessor: cat ? cat.mgr : '',
         motivo: dados.motivo,
         volume: dados.volume,
+        volumeEspecie: 'patrimonio',
+        consequencias: [],
         prioridade: dados.prioridade,
         prazo: dados.prazo,
         status: 'Nova',
@@ -368,7 +386,10 @@ import React from 'react';
           <div className="page-eyebrow">Advisor Intelligence</div>
           <h1 className="page-title">Oportunidades</h1>
           <div className="page-subtitle" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
-            <span>{fila.length} na fila · {lista.length - fila.length} fora da fila</span>
+            <span>
+              {fila.length} na fila · {lista.length - fila.length - orfas.length} fora da fila
+              {orfas.length > 0 ? ' · ' + orfas.length + ' órfã(s), evento não existe mais na base' : ''}
+            </span>
             <span style={{ display: 'flex', gap: 8 }}>
               <button className="btn btn--ghost" onClick={() => setForm({ tipo: 'nova', carteira: '', motivo: '', volume: '', prioridade: 'P2', prazo: '', origem: { tipo: 'achado', id: '', periodo: '' } })} style={{ fontSize: '0.786rem', padding: '6px 12px' }}>
                 <Icon name="portfolios" size={14} /> Nova oportunidade
@@ -383,7 +404,13 @@ import React from 'react';
         <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
           <KPITile label="Na fila" value={fila.length} sub="Ações comerciais ativas" variant="navy" />
           <KPITile label="P1 na fila" value={fila.filter((o) => o.prioridade === 'P1').length} sub="Prioridade máxima" variant={fila.some((o) => o.prioridade === 'P1') ? 'red' : undefined} />
-          <KPITile label="Volume na fila" value={fmtCompactBRL(fila.reduce((s, o) => s + o.volume, 0))} sub="Soma dos volumes" />
+          <KPITile
+            label="Volume na fila"
+            value={fmtCompactBRL(volumePatrimonio)}
+            sub={volumeReceita > 0
+              ? 'Patrimônio · receita mensal em queda: ' + fmtCompactBRL(volumeReceita)
+              : 'Patrimônio em jogo'}
+          />
           <KPITile label="Convertidas" value={lista.filter((o) => o.status === 'Convertida').length} sub="Resultado do ciclo" variant="green" />
         </div>
 
@@ -426,6 +453,11 @@ import React from 'react';
                     <td>
                       <div style={{ fontWeight: 600, fontSize: '0.857rem' }}>{o.cliente}</div>
                       <div style={{ fontSize: '0.714rem', color: 'var(--muted)' }}>{nomeCarteira(o.cliente)}</div>
+                      {o.orfao && (
+                        <div style={{ fontSize: '0.714rem', color: 'var(--red)', fontWeight: 600 }}>
+                          órfã · fora dos indicadores
+                        </div>
+                      )}
                     </td>
                     <td style={{ fontSize: '0.786rem', color: 'var(--muted)' }}>{nomeAssessor(o.assessor)}</td>
                     <td className="cell-prose" style={{ fontSize: '0.857rem', maxWidth: 420 }}>{o.motivo}</td>

@@ -8,7 +8,7 @@
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { gerarOportunidades, REGRAS_PADRAO } from '../src/opportunities/generator.js';
+import { gerarOportunidades, PRECEDENCIA_CAUSA_RAIZ, REGRAS_PADRAO } from '../src/opportunities/generator.js';
 import { fatorPrazo, fatorVolume, pontuarOportunidade, priorizarOportunidades } from '../src/opportunities/prioritize.js';
 import { transicaoPermitida } from '../src/opportunities/types.js';
 import type { Oportunidade, StatusOportunidade } from '../src/opportunities/types.js';
@@ -157,6 +157,104 @@ describe('regras declarativas evento → oportunidade', () => {
   });
 });
 
+describe('supressao por causa raiz (um fato, uma linha na fila)', () => {
+  // Trava do defeito: um saque de R$ 950 mil na BETA gerava quatro linhas na
+  // fila (saque grande, liquidez caiu, posicao encerrada, concentracao subiu),
+  // e o indicador "Volume na fila" somava R$ 3,85 mi para um saque de R$ 950
+  // mil. No mensal entrava a queda de receita e virava cinco.
+  const saqueBeta: SnapshotEvent[] = [
+    evento({ tipo: 'CASH_DECREASE', carteira: 'BETA', valorAnterior: 1_000_000, valorAtual: 50_000, delta: -950_000 }),
+    evento({ tipo: 'POSITION_CLOSED', carteira: 'BETA', ativo: 'FUNDO MULTIMERCADO X', valorAnterior: 950_000, delta: -950_000 }),
+    evento({ tipo: 'LARGE_WITHDRAWAL', carteira: 'BETA', valorAnterior: 2_000_000, valorAtual: 1_050_000, delta: -950_000 }),
+    evento({ tipo: 'CONCENTRATION_INCREASE', carteira: 'BETA', ativo: 'CDB BANCO Y', valorAtual: 1_000_000 }),
+  ];
+
+  it('saque de R$ 950 mil vira UMA linha, nao quatro, e o volume nao soma 3,85 mi', () => {
+    const ops = gerarOportunidades(saqueBeta, CTX);
+    assert.equal(ops.length, 1, `linhas: ${ops.map((o) => o.id).join(' | ')}`);
+    assert.equal(ops[0].id, '2026-08-13|BETA|LARGE_WITHDRAWAL|', 'o saque e a causa raiz');
+    assert.equal(ops[0].volume, 950_000);
+    assert.equal(ops.reduce((s, o) => s + o.volume, 0), 950_000, 'soma da fila = o saque, nao 3.850.000');
+  });
+
+  it('nada some: os eventos absorvidos viram consequencias e aparecem no motivo', () => {
+    const [op] = gerarOportunidades(saqueBeta, CTX);
+    const tipos = op.consequencias.map((c) => c.tipo).sort();
+    assert.deepEqual(tipos, ['CASH_DECREASE', 'CONCENTRATION_INCREASE', 'POSITION_CLOSED']);
+    assert.ok(op.motivo.includes('no mesmo movimento'), op.motivo);
+    assert.ok(op.motivo.includes('posicao encerrada (FUNDO MULTIMERCADO X)'), op.motivo);
+  });
+
+  it('mensal: a queda de receita tambem e absorvida pelo saque da mesma carteira', () => {
+    const eventos = [
+      ...saqueBeta,
+      evento({
+        tipo: 'REVENUE_DROP', carteira: 'BETA',
+        valorAnterior: 8_000, valorAtual: 4_200, delta: -3_800, deltaPct: -0.475,
+        evidencias: { receitaBase: 8_000, receitaAtual: 4_200, queda: 3_800 },
+      }),
+    ];
+    const ops = gerarOportunidades(eventos, { periodo: '2026-07', assessor: '' });
+    assert.equal(ops.length, 1);
+    assert.ok(ops[0].consequencias.some((c) => c.tipo === 'REVENUE_DROP'));
+  });
+
+  it('carteiras diferentes nao se suprimem', () => {
+    const ops = gerarOportunidades(
+      [
+        evento({ tipo: 'LARGE_WITHDRAWAL', carteira: 'BETA', delta: -950_000 }),
+        evento({ tipo: 'CASH_DECREASE', carteira: 'GAMA', delta: -120_000 }),
+      ],
+      CTX
+    );
+    assert.deepEqual(ops.map((o) => o.cliente).sort(), ['BETA', 'GAMA']);
+  });
+
+  it('vencimento nao e consequencia de saque: sobrevive, e dois vencimentos sao duas linhas', () => {
+    const ops = gerarOportunidades(
+      [
+        evento({ tipo: 'LARGE_WITHDRAWAL', carteira: 'ALFA', delta: -950_000 }),
+        evento({ tipo: 'MATURITY_APPROACHING', carteira: 'ALFA', ativo: 'LCI A', valorAtual: 100_000, evidencias: { janelaDias: 7 } }),
+        evento({ tipo: 'MATURITY_APPROACHING', carteira: 'ALFA', ativo: 'CDB B', valorAtual: 200_000, evidencias: { janelaDias: 30 } }),
+      ],
+      CTX
+    );
+    assert.equal(ops.length, 3);
+    assert.equal(ops.filter((o) => o.id.includes('MATURITY_APPROACHING')).length, 2);
+  });
+
+  it('sem o saque, a proxima da precedencia assume a causa raiz', () => {
+    const semSaque = saqueBeta.filter((e) => e.tipo !== 'LARGE_WITHDRAWAL');
+    const ops = gerarOportunidades(semSaque, CTX);
+    assert.equal(ops.length, 1);
+    assert.equal(ops[0].id, '2026-08-13|BETA|CASH_DECREASE|');
+  });
+
+  it('a precedencia declarada e a ordem aplicada', () => {
+    assert.deepEqual([...PRECEDENCIA_CAUSA_RAIZ], [
+      'LARGE_WITHDRAWAL', 'REVENUE_DROP', 'CASH_DECREASE', 'CONCENTRATION_INCREASE', 'POSITION_CLOSED',
+    ]);
+    assert.equal(PRECEDENCIA_CAUSA_RAIZ.includes('MATURITY_APPROACHING' as never), false);
+  });
+});
+
+describe('especie do volume (receita nao soma com patrimonio)', () => {
+  it('REVENUE_DROP mede receita; os demais medem patrimonio', () => {
+    const receita = gerarOportunidades(
+      [evento({
+        tipo: 'REVENUE_DROP', carteira: 'ALFA',
+        valorAnterior: 320, valorAtual: 300, delta: -20, deltaPct: -0.0625,
+        evidencias: { receitaBase: 320, receitaAtual: 300, queda: 20 },
+      })],
+      { periodo: '2026-06', assessor: '' }
+    );
+    assert.equal(receita[0].volumeEspecie, 'receita');
+
+    const patrimonio = gerarOportunidades([evento({ tipo: 'LARGE_WITHDRAWAL', carteira: 'BETA', delta: -950_000 })], CTX);
+    assert.equal(patrimonio[0].volumeEspecie, 'patrimonio');
+  });
+});
+
 describe('ciclo de status (CRM-lite)', () => {
   const caso = (de: StatusOportunidade, para: StatusOportunidade, esperado: boolean) => {
     assert.equal(transicaoPermitida(de, para), esperado, `${de} → ${para}`);
@@ -196,6 +294,8 @@ describe('priorização (score transparente e determinístico)', () => {
       assessor: '',
       motivo: 'motivo',
       volume: 0,
+      volumeEspecie: 'patrimonio',
+      consequencias: [],
       prioridade: 'P3',
       prazo: '2026-12-31',
       status: 'Nova',

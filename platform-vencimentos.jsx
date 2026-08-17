@@ -9,7 +9,7 @@ import React from 'react';
 (() => {
   const { useState, useMemo } = React;
 
-  const { fmtCompactBRL, fmtPct, downloadCSV, navigate } = window.AtlasUtils;
+  const { fmtCompactBRL, fmtPct, downloadCSV, navigate, statusOportunidade } = window.AtlasUtils;
   const { Icon } = window.AtlasIcons;
   const { KPITile, EmptyState } = window.AtlasUI;
   const D = window.AtlasData;
@@ -48,11 +48,10 @@ import React from 'react';
     return String(ativo).replace(/\s*Vencto:?\s*\d{1,2}\/\d{1,2}\/\d{2,4}/i, '');
   }
 
-  function statusOportunidade(id) {
-    const ops = (window.ATLAS_OPORTUNIDADES_DATA && window.ATLAS_OPORTUNIDADES_DATA.oportunidades) || [];
-    const op = ops.find((o) => o.id === id);
-    return op ? op.status : null;
-  }
+  /* statusOportunidade vem de AtlasUtils e olha a base E o navegador. A versao
+     local desta tela lia so a base estatica da janela, onde a oportunidade
+     recem-criada nunca esta: o botao nunca virava chip e cada clique criava
+     outra linha. */
 
   function Vencimentos() {
     const base = useMemo(
@@ -92,10 +91,14 @@ import React from 'react';
 
     function criarOportunidade(v) {
       const motivo = 'Vencimento de ' + ativoLimpo(v.ativo) + ' em ' + v.diasRestantes + ' dias: avaliar renovação/rotação';
+      // opid = id canonico do motor (o mesmo que esta tela consulta para
+      // decidir entre chip e botao). Sem ele a oportunidade criada ganhava id
+      // novo a cada clique e nunca fechava o ciclo.
       navigate(
         '#/oportunidades?nova=1&carteira=' + encodeURIComponent(v.carteira) +
         '&motivo=' + encodeURIComponent(motivo) +
-        '&origem=achado&periodo=' + encodeURIComponent(v.vencimento.slice(0, 7))
+        '&origem=achado&periodo=' + encodeURIComponent(v.vencimento.slice(0, 7)) +
+        '&opid=' + encodeURIComponent(v.oportunidadeId || '')
       );
     }
 

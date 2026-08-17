@@ -48,12 +48,30 @@ export interface ContatoOportunidade {
   observacao: string;
 }
 
+/** Evento do mesmo fato que foi absorvido pela causa raiz (Onda 4). */
+export interface ConsequenciaOportunidade {
+  tipo: string; // EventoTipo do evento suprimido
+  ativo: string | null;
+}
+
+/**
+ * Unidade do `volume`. Sem isto o indicador "Volume na fila" somava receita
+ * MENSAL da casa (dezenas ou centenas de reais) com PATRIMÔNIO da carteira
+ * (centenas de milhares) na mesma célula, produzindo um número que não é
+ * nem uma coisa nem outra.
+ */
+export type VolumeEspecie = 'patrimonio' | 'receita';
+
 export interface Oportunidade {
   id: string;
   cliente: string; // nome canônico da carteira (nome real só na instância)
   assessor: string;
   motivo: string;
   volume: number; // em reais
+  /** o que o volume mede; nunca somar espécies diferentes */
+  volumeEspecie: VolumeEspecie;
+  /** eventos do mesmo fato absorvidos por esta oportunidade */
+  consequencias: ConsequenciaOportunidade[];
   prioridade: PrioridadeOportunidade;
   prazo: string; // YYYY-MM-DD, alvo para agir
   status: StatusOportunidade;

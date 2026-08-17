@@ -620,6 +620,105 @@ import React from 'react';
   }
 
   /* ===========================================================
+     OPORTUNIDADES — base + edições do assessor, num lugar só
+  =========================================================== */
+  // ATLAS_OPORTUNIDADES_INICIO
+
+  /* Três telas mexem com a mesma fila: Oportunidades (lê e escreve),
+     Vencimentos e Caixa parado (leem status para decidir entre o chip e o
+     botão "Criar oportunidade"). Antes cada uma tinha a sua leitura, e as duas
+     últimas olhavam SÓ a base estática, nunca o localStorage onde a
+     oportunidade recém-criada vive. Resultado: o botão nunca virava chip e o
+     assessor criava a mesma linha quantas vezes clicasse. */
+
+  const STORAGE_OPORTUNIDADES = 'atlas_oportunidades_v1';
+
+  /* O que o assessor escreveu é dele e sobrevive à reingestão. Todo o resto é
+     fato vindo da base e tem que poder ser corrigido: antes a mesclagem
+     substituía a linha inteira pela versão salva, então número corrigido no
+     overlay real nunca chegava na tela. */
+  const CAMPOS_DO_ASSESSOR = [
+    'status', 'ultimoContato', 'proximoContato', 'observacao', 'resultado', 'updatedAt',
+  ];
+
+  /* Oportunidade criada à mão pelo assessor só existe no navegador: não some
+     por não estar na base. As demais, se sumirem da base, viraram órfãs. */
+  function criadaNaTela(id) {
+    return String(id || '').indexOf('op-') === 0;
+  }
+
+  function oportunidadesBase() {
+    const d = window.ATLAS_OPORTUNIDADES_DATA;
+    return (d && Array.isArray(d.oportunidades)) ? d.oportunidades : [];
+  }
+
+  function oportunidadesSalvas() {
+    try {
+      const raw = window.localStorage.getItem(STORAGE_OPORTUNIDADES);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.v === 1 && Array.isArray(parsed.oportunidades)) return parsed.oportunidades;
+    } catch (e) { /* storage ilegivel: segue com a base */ }
+    return null;
+  }
+
+  function salvarOportunidades(lista) {
+    try {
+      window.localStorage.setItem(STORAGE_OPORTUNIDADES, JSON.stringify({ v: 1, oportunidades: lista }));
+    } catch (e) {}
+  }
+
+  /* Reconciliação base x storage:
+     - linha que existe nos dois: fato da base, acompanhamento do assessor
+     - linha só no storage e criada à mão: passa direto
+     - linha só no storage e vinda da base: órfã (evento sumiu numa reingestão),
+       marcada e fora dos indicadores, em vez de contar como válida */
+  function mesclarOportunidades(base, salvas) {
+    if (!salvas) return base.map((o) => Object.assign({}, o, { orfao: false }));
+    const salvasPorId = new Map(salvas.map((o) => [o.id, o]));
+    const basePorId = new Map(base.map((o) => [o.id, o]));
+
+    const fundidas = base.map((o) => {
+      const s = salvasPorId.get(o.id);
+      if (!s) return Object.assign({}, o, { orfao: false });
+      const fundida = Object.assign({}, o, { orfao: false });
+      CAMPOS_DO_ASSESSOR.forEach((c) => {
+        if (Object.prototype.hasOwnProperty.call(s, c)) fundida[c] = s[c];
+      });
+      return fundida;
+    });
+
+    const soSalvas = salvas
+      .filter((o) => !basePorId.has(o.id))
+      .map((o) => Object.assign({}, o, { orfao: !criadaNaTela(o.id) }));
+
+    return [...soSalvas, ...fundidas];
+  }
+
+  function oportunidadesAtuais() {
+    return mesclarOportunidades(oportunidadesBase(), oportunidadesSalvas());
+  }
+
+  /* Status de uma oportunidade por id, olhando base E storage. Devolve null
+     quando a oportunidade não existe, que é o sinal de "ainda não criada". */
+  function statusOportunidade(id) {
+    if (!id) return null;
+    const o = oportunidadesAtuais().find((x) => x.id === id);
+    return o ? o.status : null;
+  }
+
+  /* Espécie do volume (patrimônio x receita mensal da casa). O motor grava o
+     campo; overlay ou demo antigo sem ele cai na convenção do id, que é a mesma
+     coisa dita de outro jeito. Somar as duas espécies na mesma célula produz um
+     número que não é nem patrimônio nem receita. */
+  function especieDoVolume(o) {
+    if (o && o.volumeEspecie) return o.volumeEspecie;
+    return String((o && o.id) || '').indexOf('|REVENUE_DROP|') >= 0 ? 'receita' : 'patrimonio';
+  }
+
+  // ATLAS_OPORTUNIDADES_FIM
+
+  /* ===========================================================
      DOWNLOAD — exportação CSV/JSON (G09)
      Gera arquivo e dispara download via Blob URL, sem dependência externa.
   =========================================================== */
@@ -669,6 +768,9 @@ import React from 'react';
     fmt, fmtBRL, fmtCompactBRL, fmtPct, fmtPctRaw, fmtMonthLabel,
     signClass, computeDrawdown, storage, navigate, useRouter,
     getBlockingExceptions, downloadCSV, downloadJSON,
+    STORAGE_OPORTUNIDADES, oportunidadesBase, oportunidadesSalvas, salvarOportunidades,
+    mesclarOportunidades, oportunidadesAtuais, statusOportunidade, especieDoVolume,
+    criadaNaTela,
   };
 
   window.AtlasIcons = { Icon };

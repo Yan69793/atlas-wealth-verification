@@ -28,12 +28,23 @@
  * - Determinístico: sem IO, sem Date.now; Date.UTC com argumentos explícitos.
  */
 
-import { adicionarDias } from '../opportunities/generator.js';
+import { adicionarDias, idOportunidade } from '../opportunities/generator.js';
 import { isLiquidez } from '../snapshot/normalize.js';
 import { THRESHOLDS } from '../snapshot/thresholds.js';
 import type { Snapshot, SnapshotCarteira } from '../snapshot/types.js';
 
 const EPS = 1e-9;
+
+/**
+ * Rótulo do "tipo" no id de oportunidade vindo de caixa parado.
+ *
+ * Não é um EventoTipo: caixa parado é inteligência sobre a série, o diff não
+ * emite evento para ele. Mas o botão "Criar oportunidade" da Fase 4 precisa de
+ * um id ESTÁVEL na mesma convenção `periodo|carteira|tipo|ativo`, senão cada
+ * clique cria uma linha nova, o botão nunca vira chip de status e a fila enche
+ * de duplicata da mesma carteira.
+ */
+export const TIPO_OPORTUNIDADE_CAIXA_PARADO = 'IDLE_CASH';
 
 export interface CaixaParadoItem {
   carteira: string;
@@ -44,6 +55,8 @@ export interface CaixaParadoItem {
   rsDiasSequencia: number; // R$-dias só dos pares dentro da sequência
   pico: number; // maior liquidez entre os dias da sequência
   inicioSequencia: string; // data do primeiro dia da sequência
+  /** id estável da oportunidade associada, mesma convenção do motor */
+  oportunidadeId: string;
 }
 
 export interface CaixaParadoFile {
@@ -165,6 +178,7 @@ export function caixaParado(serie: Snapshot[], opcoes: OpcoesCaixaParado = {}): 
       rsDiasSequencia,
       pico,
       inicioSequencia: serie[inicioIdx].data,
+      oportunidadeId: idOportunidade(ref.data, nome, TIPO_OPORTUNIDADE_CAIXA_PARADO, ''),
     });
   }
 

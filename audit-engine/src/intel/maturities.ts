@@ -38,6 +38,26 @@ export interface VencimentosFile {
 export interface OpcoesVencimentos {
   /** default: data do próprio snapshot (no mensal, diasAte ancora no fim do mês) */
   dataReferencia?: string;
+  /**
+   * Datas em que existe snapshot diário (ASC), de `listarDatasDiarias`. Sem
+   * elas o id da oportunidade é montado com a data TEÓRICA do cruzamento da
+   * janela, que erra sempre que essa data cai em dia sem arquivo do
+   * custodiante: fim de semana e feriado, cerca de dois em cada sete casos.
+   * Nesses dias o evento do diff nasce no próximo dia com snapshot, e o link
+   * vencimento → oportunidade apontava para um id que a fila não tem.
+   */
+  datasSnapshot?: string[];
+}
+
+/**
+ * Primeira data com snapshot em que o vencimento já estava dentro da janela.
+ * É onde o diff emite o MATURITY_APPROACHING de verdade. Sem lista de datas,
+ * devolve o cruzamento teórico (comportamento anterior).
+ */
+function dataRealDoCruzamento(cruzamentoTeorico: string, datas: string[] | undefined): string {
+  if (!datas || !datas.length) return cruzamentoTeorico;
+  for (const d of datas) if (d >= cruzamentoTeorico) return d;
+  return cruzamentoTeorico;
 }
 
 export function vencimentosProximos(snapshot: Snapshot, opcoes: OpcoesVencimentos = {}): VencimentoItem[] {
@@ -52,11 +72,14 @@ export function vencimentosProximos(snapshot: Snapshot, opcoes: OpcoesVencimento
       if (janela === null) continue; // vencido ou além da janela máxima
       // A oportunidade da Fase 2 nasce no dia em que o vencimento CRUZA a
       // borda da janela (vencimento - janela), não no dia em que a lista é
-      // gerada. No mensal o período do evento é o próprio mês.
+      // gerada. Mas o diff só roda em dia com arquivo do custodiante: se o
+      // cruzamento cai em sábado, domingo ou feriado, o evento nasce no próximo
+      // dia com snapshot, e é essa data que compõe o id da fila. No mensal o
+      // período do evento é o próprio mês.
       const periodoDoEvento =
         tipoPeriodo(snapshot.data) === 'mensal'
           ? snapshot.data
-          : adicionarDias(p.vencimento, -janela);
+          : dataRealDoCruzamento(adicionarDias(p.vencimento, -janela), opcoes.datasSnapshot);
       itens.push({
         carteira: c.nome,
         ativo: p.ativo,

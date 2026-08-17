@@ -10,7 +10,7 @@ import React from 'react';
 (() => {
   const { useMemo } = React;
 
-  const { fmtCompactBRL, fmtPct, downloadCSV, navigate } = window.AtlasUtils;
+  const { fmtCompactBRL, fmtPct, downloadCSV, navigate, statusOportunidade } = window.AtlasUtils;
   const { Icon } = window.AtlasIcons;
   const { KPITile, EmptyState } = window.AtlasUI;
   const D = window.AtlasData;
@@ -97,10 +97,13 @@ import React from 'react';
       const motivo =
         'Liquidez de ' + fmtCompactBRL(v.liquidezAtual) + ' (' + fmtPct(v.pctPlAtual, 1) +
         ' do PL) parada ha ' + v.diasParado + ' dias: avaliar alocacao';
+      // opid = id canonico que o motor grava em cada item (idle-cash.ts). Sem
+      // ele cada clique criava uma linha nova e o botao nunca virava chip.
       navigate(
         '#/oportunidades?nova=1&carteira=' + encodeURIComponent(v.carteira) +
         '&motivo=' + encodeURIComponent(motivo) +
-        '&origem=achado&periodo=' + encodeURIComponent(((DATA && DATA.data) || '').slice(0, 7))
+        '&origem=achado&periodo=' + encodeURIComponent(((DATA && DATA.data) || '').slice(0, 7)) +
+        '&opid=' + encodeURIComponent(v.oportunidadeId || '')
       );
     }
 
@@ -115,6 +118,7 @@ import React from 'react';
         'R$ x dias (sequencia)': v.rsDiasSequencia,
         Pico: v.pico,
         'Inicio da sequencia': v.inicioSequencia,
+        Oportunidade: statusOportunidade(v.oportunidadeId) || 'sem acao',
       }));
       downloadCSV(rows, 'atlas_caixa_parado_' + new Date().toISOString().slice(0, 10));
     }
@@ -149,7 +153,7 @@ import React from 'react';
                 <th>Dias parado</th>
                 <th style={{ textAlign: 'right' }}>R$ × dias</th>
                 <th style={{ textAlign: 'right' }}>Pico</th>
-                <th>Ação</th>
+                <th>Oportunidade</th>
               </tr>
             </thead>
             <tbody>
@@ -178,14 +182,27 @@ import React from 'react';
                   </td>
                   <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>{fmtCompactBRL(v.pico)}</td>
                   <td>
-                    <button
-                      className="btn btn--ghost"
-                      title="Criar oportunidade a partir deste caixa parado"
-                      onClick={() => criarOportunidade(v)}
-                      style={{ fontSize: '0.714rem', padding: '2px 8px', whiteSpace: 'nowrap' }}
-                    >
-                      Criar oportunidade
-                    </button>
+                    {statusOportunidade(v.oportunidadeId) ? (
+                      <span style={{
+                        display: 'inline-block', padding: '2px 8px', borderRadius: 999,
+                        fontSize: '0.714rem', fontWeight: 600,
+                        color: statusOportunidade(v.oportunidadeId) === 'Convertida' ? 'var(--green, #166534)'
+                          : ['Perdida', 'Descartada'].indexOf(statusOportunidade(v.oportunidadeId)) >= 0 ? 'var(--muted, #64748b)'
+                          : 'var(--amber, #b45309)',
+                        border: '1px solid currentColor', whiteSpace: 'nowrap',
+                      }}>
+                        {statusOportunidade(v.oportunidadeId)}
+                      </span>
+                    ) : (
+                      <button
+                        className="btn btn--ghost"
+                        title="Criar oportunidade a partir deste caixa parado"
+                        onClick={() => criarOportunidade(v)}
+                        style={{ fontSize: '0.714rem', padding: '2px 8px', whiteSpace: 'nowrap' }}
+                      >
+                        Criar oportunidade
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}

@@ -15,7 +15,7 @@ import { diffSnapshots, encontrarPeriodoAnterior, salvarEventsFile } from './dif
 import { caixaParado, type CaixaParadoFile } from '../intel/idle-cash.js';
 import { vencimentosProximos, type VencimentosFile } from '../intel/maturities.js';
 import { ingestSnapshot } from './ingest.js';
-import { listarSnapshotsDiarios } from './series.js';
+import { listarDatasDiarias, listarSnapshotsDiarios } from './series.js';
 import { carregarSnapshot } from './state.js';
 import type { FormatoEntrada, Snapshot } from './types.js';
 
@@ -99,7 +99,10 @@ async function main(): Promise<void> {
     const data = exigirData(args);
     const root = resolverRoot(args);
     const snap = carregarSnapshot(root, data);
-    const vencimentos = vencimentosProximos(snap);
+    // datasSnapshot é só nome de diretório, sem parse: com ela o id da
+    // oportunidade cai no dia REAL do cruzamento da janela, não no teórico,
+    // que erra em fim de semana e feriado.
+    const vencimentos = vencimentosProximos(snap, { datasSnapshot: listarDatasDiarias(root, data) });
     const arquivo = path.join(root, 'audits', data, 'vencimentos.json');
     fs.mkdirSync(path.dirname(arquivo), { recursive: true });
     const saida: VencimentosFile = {
