@@ -1,6 +1,6 @@
 # Estado do projeto — ATLAS
 
-Última atualização: 2026-08-17 (agente: Claude Code)
+Última atualização: 2026-08-19 (agente: Claude Code)
 
 Leia este arquivo antes de começar qualquer trabalho, seja qual for o agente.
 Atualize a data e os itens abertos ao fechar uma sessão que mudou o estado.
@@ -28,12 +28,10 @@ exposta revogada pelo dono, credencial do git no github.com via keyring do
 percentual) e Fase 4 publicada no demo. Suíte registrada após a última rodada:
 352/352 checks + 101/101 testes.
 
-Pendências abertas registradas no CLAUDE.md, uma linha por item (detalhe no
-CLAUDE.md): separação de conta Cloudflare (domínio novo + conta dedicada,
-caminho decidido, sem data, checklist em `docs/separacao-cloudflare.md`); e
-dependência pontual de CDN no demo, que restou só na importação de planilha
-(sheetjs) e no analytics. Quando o custodiante mandar o primeiro arquivo
-diário real, ele entra como dado de instância normal, sem pendência de produto.
+Pendências abertas: nenhuma registrada no CLAUDE.md. Pendências e decisões em
+aberto vivem em `ESTADO/ESTADO-ATUAL.md`. A separação de conta Cloudflare e a
+dependência de CDN do demo foram fechadas em 2026-08-19, o detalhe está nas
+Resolvidas do CLAUDE.md.
 
 ## Como verificar
 
@@ -62,5 +60,8 @@ não puder executar, diga explicitamente.
 
 ## Itens abertos
 
-- Separação de conta Cloudflare (domínio novo + conta dedicada), sem data — detalhe no CLAUDE.md
-- Dependência pontual de CDN no demo (sheetjs na importação, analytics) — detalhe no CLAUDE.md
+Nenhum registrado aqui. Itens abertos e decisões pendentes vivem em
+`ESTADO/ESTADO-ATUAL.md` (fonte única de estado, com precedência sobre este
+arquivo). A separação de conta Cloudflare segue suspensa por decisão do dono
+de 2026-08-15, com plano e checklist em `docs/separacao-cloudflare.md`, fora
+da fila até a decisão mudar.

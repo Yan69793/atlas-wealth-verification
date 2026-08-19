@@ -1,4 +1,4 @@
-# CLAUDE.md — ATLAS (hardened 2026-07-25, atualizado 2026-08-17)
+# CLAUDE.md — ATLAS (hardened 2026-07-25, atualizado 2026-08-19)
 
 ## Estado do projeto: comece por `ESTADO/`
 
@@ -103,18 +103,8 @@ Cole a saída real na resposta. Se falhar ou não puder executar, diga explicita
 
 ## Pendências abertas
 
-Revistas em 2026-08-15, ao fim da sessão de segurança:
-
-1. **Separação de conta Cloudflare**: domínio novo + conta dedicada para o
-   ATLAS segue como caminho decidido, sem data. Inventário canônico,
-   checklist manual da conta nova (11 passos) e bloqueadores da Fase 1 em
-   `docs/separacao-cloudflare.md`.
-2. **CDN do demo**: o risco de página em branco morreu com o build Vite (CSP
-   do demo não referencia unpkg/jsdelivr). Resta dependência pontual de CDN
-   só na importação de planilha (sheetjs) e no analytics.
-
-Quando o custodiante mandar o primeiro arquivo diário real, ele entra como
-dado de instância normal, sem pendência de produto.
+Nenhuma registrada aqui. Pendências e decisões em aberto do projeto vivem em
+`ESTADO/ESTADO-ATUAL.md` (fonte única de estado, precedência declarada acima).
 
 ### Resolvidas em 2026-08-14
 
@@ -163,3 +153,16 @@ dado de instância normal, sem pendência de produto.
   `atlas-instancia.prospects-intel.workers.dev` saiu do ar (404) e
   `atlas.szuchmacher.com.br` segue servido pelo Access (302 sem JWT). O
   teste do diretor passa a ser pelo domínio próprio com Access.
+
+### Resolvidas em 2026-08-19
+
+- **Separação de conta Cloudflare**: suspensa pelo dono em 2026-08-15. A conta
+  nova chegou a ser criada e recebeu o demo, que foi removido em seguida; o demo
+  segue publicado só na conta antiga (`demo.multi-assets.com`). Plano, inventário
+  canônico e checklist de 11 passos seguem em `docs/separacao-cloudflare.md`, e o
+  item fica fora da fila em `ESTADO/ESTADO-ATUAL.md`, pronto para reabrir se a
+  decisão mudar. As branches `feat/separacao-cloudflare` e `fix/workers-dev-off`
+  ficam no GitHub como histórico do plano.
+- **CDN do demo**: risco de página em branco morto com o build Vite, CSP do demo
+  não referencia unpkg/jsdelivr. A dependência pontual de CDN que resta (sheetjs
+  na importação de planilha, analytics) é de produto, não pendência.
