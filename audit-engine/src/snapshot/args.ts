@@ -80,7 +80,7 @@ export function helpTexto(): string {
     'snapshot — pipeline de snapshot EOD diario (Fase 1)',
     '',
     'Uso:',
-    '  node dist/src/snapshot/cli-snapshot.js ingest <fonte> [<arquivo>] --data AAAA-MM-DD|AAAA-MM [--formato xlsx|csv|pdf|html|api-json|txt-b3] [--root dir] [--force]',
+    '  node dist/src/snapshot/cli-snapshot.js ingest <fonte> [<arquivo>] --data AAAA-MM-DD|AAAA-MM [--formato xlsx|csv|pdf|html|api-json|txt-b3] [--root dir] [--force] [--tenant id]',
     '  node dist/src/snapshot/cli-snapshot.js diff  --data AAAA-MM-DD|AAAA-MM [--root dir]',
     '  node dist/src/snapshot/cli-snapshot.js state --data AAAA-MM-DD|AAAA-MM [--root dir]',
     '  node dist/src/snapshot/cli-snapshot.js vencimentos --data AAAA-MM-DD|AAAA-MM [--root dir]',
@@ -101,6 +101,8 @@ export function helpTexto(): string {
     '          serie com menos de 2 snapshots grava itens [] com motivo.',
     '',
     '  <fonte>  rotulo logico da fonte (nao pode ser vazio nem conter separador de path)',
+    '  --tenant rotulo do cliente dono dos artefatos (default "default").',
+    '           Mesma regra da fonte: nao pode conter separador de path.',
     '  --root   raiz dos artefatos (obrigatorio na pratica: nunca escrever na arvore do produto)',
     '           precedencia: --root > ATLAS_DATA_ROOT; sem nenhum, erro.',
   ].join('\n');

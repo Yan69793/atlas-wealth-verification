@@ -16,6 +16,13 @@ import path from 'node:path';
 import { adaptar, detectFormato } from './adapters/index.js';
 import { protegerRoot, tipoPeriodo, validarData } from './args.js';
 import { loadClassMapping, loadNameMapping, loadTaxaMapping, normalize } from './normalize.js';
+import {
+  enfileirarExcecao,
+  reconciliar,
+  TENANT_DEFAULT,
+  validarSnapshot,
+  validarTenant,
+} from './pipeline.js';
 import type { FormatoEntrada, Snapshot, SnapshotFonte } from './types.js';
 
 export interface IngestResult {
@@ -61,6 +68,8 @@ export async function ingestSnapshot(opts: {
   formato?: FormatoEntrada;
   root: string;
   force?: boolean;
+  /** Rótulo do cliente dono dos artefatos. Default 'default' (instância única). */
+  tenantId?: string;
 }): Promise<IngestResult> {
   const { arquivo, data, fonte, formato, root, force } = opts;
 
@@ -74,10 +83,14 @@ export async function ingestSnapshot(opts: {
   }
   if (!fs.existsSync(arquivo)) throw new Error(`Arquivo nao encontrado: ${arquivo}`);
 
+  const tenant = validarTenant(opts.tenantId ?? TENANT_DEFAULT);
   const hash = sha256Arquivo(arquivo);
+  try {
   const formatoDetectado = detectFormato(arquivo, formato);
   const raw = await adaptar({ arquivo, data, fonte, formato: formatoDetectado });
   const snapshot = normalize(raw, periodo, loadNameMapping(root), loadClassMapping(root), loadTaxaMapping(root));
+  snapshot.tenantId = tenant;
+  validarSnapshot(snapshot);
 
   const dir = path.join(root, 'audits', data);
   const caminhos = {
@@ -136,6 +149,7 @@ export async function ingestSnapshot(opts: {
   const ingestion = {
     schema: 'ingestion/v1',
     data,
+    tenantId: tenant,
     fonte,
     formato: formatoDetectado,
     arquivo: path.basename(arquivo), // nunca caminho absoluto da máquina do cliente
@@ -150,8 +164,27 @@ export async function ingestSnapshot(opts: {
   const status: IngestResult['status'] = anterior && !force ? 'reingerido' : 'criado';
   console.log(
     anterior && !force
-      ? `[reingerido] ${data}: hash ${hash.slice(0, 8)} substitui ${ingestion.historico[0]?.sha256.slice(0, 8)} (anterior arquivado).`
-      : `[criado] ${data}: ${snapshot.carteiras.length} carteiras, hash ${hash.slice(0, 8)}.`
+      ? `[reingerido] tenant=${tenant} ${data}: hash ${hash.slice(0, 8)} substitui ${ingestion.historico[0]?.sha256.slice(0, 8)} (anterior arquivado).`
+      : `[criado] tenant=${tenant} ${data}: ${snapshot.carteiras.length} carteiras, hash ${hash.slice(0, 8)}.`
   );
+
+  // Reconciliação é fato contra o período anterior, não gate: falha dela não
+  // derruba ingestão já gravada, o aviso fica no log para auditoria.
+  try {
+    reconciliar(root, data, tenant, snapshot);
+  } catch (err) {
+    console.warn(
+      `[reconciliacao] ${data}: falhou (${err instanceof Error ? err.message : String(err)}) — ingestao gravada, reconciliacao nao.`
+    );
+  }
+
   return { status, hash, caminhos };
+  } catch (err) {
+    // Fila de exceção: o arquivo que falhou não some, cópia e manifest ficam em
+    // audits/<data>/fila-excecao/. O erro original segue, o chamador decide se
+    // para (o CLI para com exit 1, que é o comportamento pretendido).
+    const erro = err instanceof Error ? err : new Error(String(err));
+    enfileirarExcecao({ root, data, tenantId: tenant, fonte, arquivo, hash, erro });
+    throw erro;
+  }
 }

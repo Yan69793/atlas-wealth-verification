@@ -374,7 +374,8 @@ export function diffSnapshots(atual: Snapshot, anterior: Snapshot | null): DiffR
 export function salvarEventsFile(
   root: string,
   data: string,
-  diff: DiffResult
+  diff: DiffResult,
+  tenantId?: string
 ): string {
   const dir = path.join(root, 'audits', data);
   fs.mkdirSync(dir, { recursive: true });
@@ -386,6 +387,7 @@ export function salvarEventsFile(
     geradoEm: string;
     engine: { nome: 'atlas-audit-engine'; versao: string };
     eventos: SnapshotEvent[];
+    tenantId?: string;
   } = {
     schema: 'events/v1',
     data,
@@ -394,6 +396,7 @@ export function salvarEventsFile(
     geradoEm: new Date().toISOString(),
     engine: { nome: 'atlas-audit-engine', versao: process.env.npm_package_version ?? '0.0.0' },
     eventos: diff.eventos,
+    ...(tenantId !== undefined ? { tenantId } : {}),
   };
   const p = path.join(dir, 'events.json');
   fs.writeFileSync(p, JSON.stringify(file, null, 2) + '\n', 'utf8');

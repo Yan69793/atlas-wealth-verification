@@ -12,12 +12,13 @@ aqui, trate este arquivo como suspeito e rode o refresh do fim da página.
 
 ```
 469/469 checks OK — todos os checks passaram
-ℹ tests 129   ℹ suites 35   ℹ pass 128   ℹ fail 0   ℹ skipped 1
+ℹ tests 143   ℹ suites 38   ℹ pass 142   ℹ fail 0   ℹ skipped 1
 ```
 
 A contagem de testes desceu de 131 para 129 de propósito: o corte de 90 dias no caixa parado
 substituiu cinco testes do contrato antigo por três do contrato novo. Os checks subiram de 460
-para 469 no mesmo trabalho.
+para 469 no mesmo trabalho. Em 21/08 a suíte do motor subiu de 129 para 143 testes com os 14
+novos do caminho multi-cliente (tenantId, fila de exceção, reconciliação).
 
 Contagem subiu de 352/101 (início do dia) com as correções das Ondas 1 a 5, cada uma trazendo
 o teste que pegaria o próprio defeito. Ver a seção das cinco fases, abaixo.
@@ -344,11 +345,15 @@ saída colada, caso concreto reproduzido mostrando número antes e depois, e um 
 
 ## Pendências, ordenadas por prioridade acordada com o dono em 17/ago
 
-1. **Distância entre protótipo e produto vendável.** Hoje quem opera o motor é o próprio
-   time. Falta gestão de usuário por cliente e a entrada de dado depende de alguém colocar
-   arquivo no lugar certo à mão. O backend existente não encurta esse caminho, ver a seção
-   acima, ele é esqueleto sem rota de leitura e sem noção de cliente. A decisão que trava
-   tudo é de arquitetura e é do dono. Enquanto ela não sai, construir aqui é aposta.
+1. **Distância entre protótipo e produto vendável — decisão de arquitetura tomada em
+   2026-08-21.** Pesquisa (tendências 2025-2026 + análise do sistema) entregue ao dono e
+   plano aprovado: manter instância por cliente para o cliente atual e o próximo, colocar
+   noção de cliente no motor agora, e subir o rung 2 da escada Cloudflare (um Worker com
+   D1 ou Durable Object por cliente) quando o 2º cliente assinar. Instância física vira
+   tier premium de venda, não padrão operacional. **Executado em 21/08:** `tenantId` no
+   modelo de dados do motor (snapshot, ingestion, events, reconciliação, fila de exceção),
+   com default `default`, compat com artefato antigo e teste que pega regressão. Falta
+   gestão de usuário por cliente, que é o próximo passo concreto da pendência.
 2. ~~**Corrigir as cinco fases de agosto.**~~ **Fechada em 17/ago.** Os doze defeitos
    bloqueantes e os seis não bloqueantes foram corrigidos nas Ondas 0 a 5, cada um com o teste
    que pegaria o defeito de volta. Sobrou uma decisão do dono, o teto de `diasParado`, na
@@ -390,6 +395,26 @@ o arquivo real chegar, entra como dado de instância normal, sem pendência de p
 
 Fixtures sintéticos são 100% regeneráveis e versionados, custodiante fictício, carteiras
 ALFA, BETA e GAMA. `npm run seed:demo` roda o pipeline inteiro sem tocar na instância.
+
+## Pipeline de ingestão, endurecido em 2026-08-21
+
+Três peças novas no fluxo de ingestão do snapshot, decididas no plano multi-cliente:
+
+- **Validação pós-normalização** (`validarSnapshot`, em `audit-engine/src/snapshot/pipeline.ts`):
+  guard do arquivo final antes de gravar, plTotal coerente com a soma das posições, carteira
+  única e nomeada. O normalize valida a entrada, isto valida o produto, uma regressão de
+  derivação não grava mentira.
+- **Fila de exceção**: arquivo que falha no adaptar/normalizar/validar não some. Cópia e
+  manifest (`excecao/v1`) ficam em `audits/<data>/fila-excecao/` e o erro original é
+  relançado, o CLI segue parando com exit 1. O descarte silencioso era o modo de falha do
+  ciclo mensal.
+- **Reconciliação** (`reconciliacao.json` por período): fatos contra o período anterior,
+  delta de PL por carteira em comum, carteiras novas e sumidas. Sem julgamento, o diff de
+  eventos continua em `diff.ts`. Falha de reconciliação não derruba ingestão já gravada.
+
+`tenantId` (rótulo do cliente dono) via `--tenant`, default `default`, acompanha snapshot,
+ingestion, events, reconciliação e fila de exceção. Artefato antigo sem o campo lê como
+`default`.
 
 ## Como atualizar este arquivo
 
@@ -477,6 +502,12 @@ e é o que impede a próxima pessoa de repetir.
   leitura caiu de 262 para 65 arquivos por execução, conferido com o motor. 460 → 469 checks,
   131 → 129 testes, porque cinco testes do contrato antigo deram lugar a três do novo. O demo
   de caixa parado ganhou um caso truncado para a tela exercitar o "+".
+- **2026-08-21, caminho multi-cliente.** Decisão de arquitetura tomada com base em pesquisa
+  (tendências 2025-2026 + análise do sistema): instância por cliente segue para o cliente
+  atual e o próximo, rung 2 da escada Cloudflare quando o 2º cliente assinar. Executado no
+  motor: `tenantId` no modelo de dados, validação pós-normalização, fila de exceção e
+  reconciliação. Suíte do motor 129 → 143 testes, portão 469/469. Próximo passo concreto:
+  gestão de usuário por cliente.
 - **2026-08-21, decisões do dono.** Servidor morto marcado como protótipo não funcional
   (banner em `audit-engine/src/server.ts`, decisão de não rodar nem remover). Segunda cópia
   de dado real movida de `.archive\Verificacao-carteiras-legacy\` para

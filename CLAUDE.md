@@ -179,3 +179,9 @@ Nenhuma registrada aqui. Pendências e decisões em aberto do projeto vivem em
   cobria os nomes, nada de dado entrou no git.
 - **Push dos três repos**: autorizado pelo dono, executado em 2026-08-21 (produto,
   instância e core).
+- **Caminho multi-cliente (decisão 2026-08-21)**: pesquisa de tendências 2025-2026 +
+  análise do sistema aprovada pelo dono. Instância por cliente segue para o cliente
+  atual e o próximo, rung 2 da escada Cloudflare (um Worker, D1 ou Durable Object por
+  cliente) quando o 2º cliente assinar, instância física vira tier premium de venda.
+  Executado no motor: `tenantId` no modelo de dados, validação pós-normalização, fila
+  de exceção e reconciliação na ingestão. Detalhe no `ESTADO/ESTADO-ATUAL.md`.

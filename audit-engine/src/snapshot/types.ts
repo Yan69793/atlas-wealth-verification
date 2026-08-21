@@ -63,6 +63,13 @@ export interface Snapshot {
   geradoEm: string; // ISO
   engine: { nome: 'atlas-audit-engine'; versao: string };
   carteiras: SnapshotCarteira[];
+  /**
+   * Rótulo do cliente dono dos artefatos (caminho multi-cliente, 2026-08-21).
+   * Obrigatório nas gravações novas, via ingest. Ausente só em snapshot.json
+   * antigo no disco: quem lê trata ausência como 'default' (tenantDe, em
+   * pipeline.ts). Nunca carrega separador de path (validado na ingestão).
+   */
+  tenantId?: string;
 }
 
 export type EventoTipo =
@@ -106,4 +113,6 @@ export interface EventsFile {
   geradoEm: string;
   engine: { nome: 'atlas-audit-engine'; versao: string };
   eventos: SnapshotEvent[];
+  /** Mesma semântica do tenantId do Snapshot: rótulo do cliente dono. */
+  tenantId?: string;
 }

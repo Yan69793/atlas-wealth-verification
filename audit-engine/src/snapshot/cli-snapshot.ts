@@ -15,6 +15,7 @@ import { diffSnapshots, encontrarPeriodoAnterior, salvarEventsFile } from './dif
 import { caixaParado, inicioDaJanela, type CaixaParadoFile } from '../intel/idle-cash.js';
 import { vencimentosProximos, type VencimentosFile } from '../intel/maturities.js';
 import { ingestSnapshot } from './ingest.js';
+import { tenantDe } from './pipeline.js';
 import { listarDatasDiarias, listarSnapshotsDiarios } from './series.js';
 import { carregarSnapshot } from './state.js';
 import type { FormatoEntrada, Snapshot } from './types.js';
@@ -70,6 +71,7 @@ async function main(): Promise<void> {
       formato: formatoArg as FormatoEntrada | undefined,
       root,
       force: Boolean(args.force),
+      tenantId: typeof args.tenant === 'string' ? args.tenant : undefined,
     });
     return;
   }
@@ -80,7 +82,7 @@ async function main(): Promise<void> {
     const atual = carregarSnapshot(root, data);
     const anterior = encontrarPeriodoAnterior(root, data);
     const diff = diffSnapshots(atual, anterior?.snapshot ?? null);
-    const p = salvarEventsFile(root, data, diff);
+    const p = salvarEventsFile(root, data, diff, tenantDe(atual));
     console.log(
       `[diff] ${data} vs ${diff.baseData ?? '(linha de base)'}: ${diff.eventos.length} evento(s) → ${p}`
     );

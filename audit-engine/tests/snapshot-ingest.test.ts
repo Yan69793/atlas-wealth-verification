@@ -110,12 +110,14 @@ describe('ingestSnapshot', () => {
     );
   });
 
-  it('snapshot sem carteiras não grava nada', async () => {
+  it('snapshot sem carteiras não grava snapshot, exceção vai para a fila', async () => {
     const { root } = tmpRoot();
     const vazio = path.join(root, 'vazio.csv');
     fs.writeFileSync(vazio, 'carteira,ativo,valor\n', 'utf8');
     await assert.rejects(() => ingestSnapshot({ arquivo: vazio, data: DATA, fonte: FONTE, formato: 'csv', root }));
-    assert.ok(!fs.existsSync(path.join(root, 'audits', DATA)));
+    const dir = path.join(root, 'audits', DATA);
+    assert.ok(!fs.existsSync(path.join(dir, 'snapshot.json')), 'nenhum snapshot gravado');
+    assert.ok(fs.existsSync(path.join(dir, 'fila-excecao')), 'exceção enfileirada com cópia e manifest');
   });
 
   it('name-map.local.json da instância renomeia a carteira', async () => {
