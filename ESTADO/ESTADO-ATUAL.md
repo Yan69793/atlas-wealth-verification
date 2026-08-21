@@ -42,8 +42,9 @@ primeiro. Eram dois commits soltos, as trocas de travessão por vírgula para Po
 que já estavam commitados mas cujos pais ainda não apontavam para eles. Fechar custou dois
 commits de ponteiro, sem nenhum arquivo de dado envolvido.
 
-Nada disso foi publicado. A cadeia está fechada localmente, e o `git push` dos três continua
-sendo decisão do dono.
+**Publicado em 2026-08-21, decisão do dono.** Os três branches subiram e o hash do remoto
+foi conferido igual ao local: produto `97c4c49` (feat/separacao-cloudflare), instância
+`019ceda` (fix/workers-dev-off), core `e693239` (fix/paths-bom-pos-mudanca).
 
 Os hashes que o `CLAUDE.md` do projeto registra (`c0ad7b4` para a instância, `810f0d9` para
 o produto, `d33ee42` para o core) descrevem o estado de 15 de agosto e não batem mais com o
@@ -481,5 +482,5 @@ e é o que impede a próxima pessoa de repetir.
   de dado real movida de `.archive\Verificacao-carteiras-legacy\` para
   `verificacao-carteiras\.archive\Verificacao-carteiras-legacy\` (quatro arquivos,
   `.gitignore` da instância conferido antes, nada entrou no git). Push dos três repos
-  autorizado. Pesquisa de arquitetura multi-cliente (tendências 2025-2026 + análise do
-  sistema) entregue para decisão da pendência 1.
+  executado, hashes conferidos no remoto. Pesquisa de arquitetura multi-cliente
+  (tendências 2025-2026 + análise do sistema) entregue para decisão da pendência 1.
