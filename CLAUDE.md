@@ -166,3 +166,16 @@ Nenhuma registrada aqui. Pendências e decisões em aberto do projeto vivem em
 - **CDN do demo**: risco de página em branco morto com o build Vite, CSP do demo
   não referencia unpkg/jsdelivr. A dependência pontual de CDN que resta (sheetjs
   na importação de planilha, analytics) é de produto, não pendência.
+
+### Resolvidas em 2026-08-21
+
+- **Servidor morto, decidido não rodar nem remover**: marcado como protótipo não
+  funcional com banner no topo de `audit-engine/src/server.ts`, listando os sete
+  buracos e apontando para `ESTADO/ESTADO-ATUAL.md`. Detalhe no ESTADO.
+- **Segunda cópia de dado real (LGPD)**: movida de `.archive\Verificacao-carteiras-legacy\`
+  para `verificacao-carteiras\.archive\Verificacao-carteiras-legacy\`. Os quatro arquivos
+  de dado (`data.js`, `data.json`, `historico.js`, `historico.json`) saíram do repo do
+  produto; a casca de código ficou no lugar. `.gitignore` deny-by-default da instância já
+  cobria os nomes, nada de dado entrou no git.
+- **Push dos três repos**: autorizado pelo dono, executado em 2026-08-21 (produto,
+  instância e core).

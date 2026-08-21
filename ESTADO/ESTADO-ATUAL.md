@@ -1,6 +1,6 @@
 # ESTADO ATUAL do ATLAS
 
-**Data-base: 2026-08-17.** Colhido rodando os comandos, não de memória.
+**Data-base: 2026-08-21.** Colhido rodando os comandos, não de memória.
 
 Fonte única do estado do projeto. Se outro arquivo divergir deste, este ganha. Se você chegou
 sem contexto, leia [[LEIA-PRIMEIRO]] primeiro. Para achar coisa, [[MAPA]].
@@ -65,7 +65,7 @@ comando aborta com "no submodule mapping found". Para ler o ponteiro use
    multi-cliente**. Ele só era caminho na opção descartada.
 
 2. **A segunda cópia de dado real de cliente vai ser movida** para a área de instância, não
-   apagada. Decidido. Ainda **não executado**, ver a seção de LGPD abaixo.
+   apagada. Decidido. **Executado em 2026-08-21**, ver a seção de LGPD abaixo.
 
 3. **Teto de `diasParado` no caixa parado: decidido, "parado há 90 dias ou mais basta".**
    A janela de 90 dias passou a ser o universo inteiro da medição, inclusive da sequência.
@@ -84,7 +84,9 @@ comando aborta com "no submodule mapping found". Para ler o ponteiro use
    caminho em que ele serviria, porque rodar não fecha nenhum dos sete buracos nem cria rota de
    leitura ou isolamento, e porque o app já tem modo de demonstração com dado sintético que
    mostra mais do que ele mostraria. Um servidor que liga e responde parece pronto muito mais
-   do que um que nem sobe, o que agrava o risco que motivou a pergunta. Aguardando o dono.
+   do que um que nem sobe, o que agrava o risco que motivou a pergunta. **Fechado em
+   2026-08-21, decisão do dono:** não rodar, marcar o código como protótipo não funcional.
+   Ver a seção do backend abaixo.
 
 ## Segunda cópia de dado real de cliente no disco (LGPD)
 
@@ -96,8 +98,12 @@ Não há exposição no repositório, conferido: `.gitignore` cobre `.archive/` 
 versionado. O problema é outro, é uma segunda cópia de dado real de cliente parada num
 diretório fácil de esquecer, fora da área de instância onde dado real deveria viver.
 
-Pendente de decisão do dono, apagar ou mover para a área de instância. Não tocar sem
-autorização explícita, é dado de cliente e a remoção não tem volta.
+**Resolvido em 2026-08-21, decisão do dono: mover.** Os quatro arquivos de dado real
+(`data.js`, `data.json`, `historico.js`, `historico.json`) agora vivem em
+`verificacao-carteiras\.archive\Verificacao-carteiras-legacy\`, fora do repo do
+produto. O `.gitignore` deny-by-default da instância já cobria os quatro nomes e
+`.archive/`, conferido antes de mover, nada de dado entrou no git. Na origem ficou
+só a casca de código anterior à migração Vite, que não carrega dado.
 
 A mesma pasta guarda uma terceira cópia da casca de app anterior à migração Vite, com o
 mesmo `fetch` sem autorização das outras duas. Nenhuma delas entra no bundle.
@@ -177,9 +183,10 @@ O que presta e é reaproveitável: bcrypt com custo 12, comparação de senha em
 constante, fail-closed no boot se faltar segredo, expiração de 15 minutos, schemas de
 validação e a estrutura de papéis. Primitivas boas, servidor ruim.
 
-**Ação barata e recomendada, pendente de decisão:** esse código é passivo justamente porque
-parece terminado. Marcar explicitamente como protótipo não funcional, ou remover, antes que
-alguém o ligue acreditando que está pronto.
+**Executado em 2026-08-21, decisão do dono: marcar.** Banner no topo de
+`audit-engine/src/server.ts` declara o arquivo como protótipo não funcional, lista os sete
+buracos e aponta para esta seção. Não removido, as primitivas boas ficam como referência.
+Antes de qualquer reuso, fechar os sete buracos.
 
 ## As cinco fases de inteligência de agosto
 
@@ -469,3 +476,10 @@ e é o que impede a próxima pessoa de repetir.
   leitura caiu de 262 para 65 arquivos por execução, conferido com o motor. 460 → 469 checks,
   131 → 129 testes, porque cinco testes do contrato antigo deram lugar a três do novo. O demo
   de caixa parado ganhou um caso truncado para a tela exercitar o "+".
+- **2026-08-21, decisões do dono.** Servidor morto marcado como protótipo não funcional
+  (banner em `audit-engine/src/server.ts`, decisão de não rodar nem remover). Segunda cópia
+  de dado real movida de `.archive\Verificacao-carteiras-legacy\` para
+  `verificacao-carteiras\.archive\Verificacao-carteiras-legacy\` (quatro arquivos,
+  `.gitignore` da instância conferido antes, nada entrou no git). Push dos três repos
+  autorizado. Pesquisa de arquitetura multi-cliente (tendências 2025-2026 + análise do
+  sistema) entregue para decisão da pendência 1.

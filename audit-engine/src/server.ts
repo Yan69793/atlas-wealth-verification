@@ -1,3 +1,21 @@
+/**
+ * PROTÓTIPO NÃO FUNCIONAL — NÃO LIGAR (marcado 2026-08-21, decisão do dono).
+ *
+ * Compila, mas nunca completou uma ingestão: quatro rotas (health, login,
+ * refresh, ingest), nenhuma rota de leitura, sem isolamento entre clientes,
+ * cobertura de teste zero. Sete buracos conhecidos, todos documentados em
+ * ESTADO/ESTADO-ATUAL.md na seção "O backend em audit-engine/src/server.ts
+ * é código morto": travessia de diretório com escrita arbitrária, upload
+ * sem limite de tamanho, pool de worker correlacionando resposta com
+ * requisição errada, refresh sem revogação e sem limite de taxa, erro
+ * interno devolvido cru no corpo, oráculo de tempo no login, escuta sem TLS
+ * com rate limit por socket ignorando X-Forwarded-For.
+ *
+ * Primitivas aproveitáveis (bcrypt custo 12, comparação de senha em tempo
+ * constante, fail-closed no boot, expiração de 15 min, schemas de validação,
+ * estrutura de papéis) ficam como referência. Nenhum código de produção
+ * chama este arquivo. Antes de qualquer reuso, fechar os sete buracos acima.
+ */
 import fs from 'node:fs/promises';
 import http from 'node:http';
 import path from 'node:path';
