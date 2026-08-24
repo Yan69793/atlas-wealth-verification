@@ -1,6 +1,6 @@
 # ESTADO ATUAL do ATLAS
 
-**Data-base: 2026-08-21.** Colhido rodando os comandos, não de memória.
+**Data-base: 2026-08-24.** Colhido rodando os comandos, não de memória.
 
 Fonte única do estado do projeto. Se outro arquivo divergir deste, este ganha. Se você chegou
 sem contexto, leia [[LEIA-PRIMEIRO]] primeiro. Para achar coisa, [[MAPA]].
@@ -15,9 +15,11 @@ aqui, trate este arquivo como suspeito e rode o refresh do fim da página.
 ℹ tests 278   ℹ suites 73   ℹ pass 278   ℹ fail 0   ℹ skipped 0
 ```
 
-Medido em 2026-08-24, depois das Entregas A, B e B.2 da camada de inteligência.
-Antes delas era 469/469 checks e 143 testes. A crescida: A somou 51 checks e 63
-testes, B mais 60 checks e 37 testes, B.2 mais 22 checks e 35 testes.
+Medido em 2026-08-24, depois das Entregas A, B, B.1, B.2 e B.3 da camada de
+inteligência. Antes delas era 469/469 checks e 143 testes. A crescida: A somou
+51 checks e 63 testes, B mais 60 checks e 37 testes, B.2 mais 22 checks e 35
+testes. B.1 (calibração, sem código) e B.3 (aplicação dos limiares calibrados)
+não mudam a contagem: reajustam valor dentro de teste e fixture já existentes.
 
 A contagem de testes desceu de 131 para 129 de propósito: o corte de 90 dias no caixa parado
 substituiu cinco testes do contrato antigo por três do contrato novo. Os checks subiram de 460
@@ -404,14 +406,25 @@ B (fatores e credito) e C (materialidade, cenario, acao) nao foram iniciadas.
 ### Limiares novos (thresholds.ts, com o resto)
 
 `coberturaAfirmaMin` 0,70 · `coberturaRessalvaMin` 0,40 ·
-`radarConcentracaoAtivoPct` 0,20 · `radarConcentracaoEmissorPct` 0,15 ·
-`radarConcentracaoFatorPct` 0,50 · `radarLiquidezMinPct` 0,05 ·
-`radarVencimentoConcentradoPct` 0,20 em `radarVencimentoJanelaDias` 30 ·
+`radarConcentracaoAtivoPct` 0,30 · `radarConcentracaoEmissorPct` 0,25 ·
+`radarConcentracaoFatorPct` 0,70 · `radarLiquidezMinPct` 0,05 ·
+`radarVencimentoConcentradoPct` 0,15 em `radarVencimentoJanelaDias` 90 ·
 `radarDeterioracaoPct` 0,10 em `radarDeterioracaoJanelaDias` 30.
 
-**Nao calibrados pelo dono.** Sao defaults conservadores, mesmo espirito dos de
-agosto antes da calibracao. Precisam da mesma passada de confirmacao antes de
-estrear na instancia.
+**Calibrados pelo dono em 2026-08-24** sobre 37 meses de dado real
+(`docs/calibracao-limiares-2026-08.md`), aplicados no mesmo dia. `coberturaAfirmaMin`,
+`coberturaRessalvaMin` e `radarDeterioracaoPct`/`JanelaDias` foram medidos e
+confirmados como estavam, sem mudar. Junto com os quatro valores de radar que
+mudaram, `CONCENTRACAO_ATIVO` e `CONCENTRACAO_FATOR` passaram a medir severidade
+pelo EXCESSO sobre o proprio limiar em vez da fracao bruta (os dois novos
+valores encostam ou passam do corte generico de severidade alta, e sem a
+mudanca todo alerta desses dois tipos sairia "alta"), e `CONCENTRACAO_EMISSOR`
+e `CONCENTRACAO_FATOR` passaram a excluir a classe liquidez do alarme (70% e
+77% do volume medido, respectivamente, era fundo de caixa, nao risco de
+credito; continua agregado nas tabelas informativas da casa). `radarLiquidezMinPct`
+segue sem mudar: a saturacao de severidade dele (quase todo caso sai "alta")
+foi medida e registrada como problema aberto, mas sem formula de correcao
+medida ainda, entao nao foi tocado nesta passada.
 
 ### Nao tem score 0 a 100
 
@@ -498,18 +511,25 @@ desenho. A aba passou a declarar a data de apuracao e a dizer isso em uma linha.
 ### Limiares novos de B (thresholds.ts)
 
 `creditoPerdaConfirmada` altaMin 0,10 e mediaMin 0,02 ·
-`creditoPerdaConfirmadaMinAbs` R$ 50.000 ·
-`creditoPisoExposicao` perdaConfirmada 0, sinalizacao 0,005, observacao 0,01 ·
+`creditoPerdaConfirmadaMinAbs` R$ 250.000 ·
+`creditoPisoExposicao` perdaConfirmada 0, sinalizacao 0,02, observacao 0,05 ·
 `creditoVariacaoMaterialPct` 0,20.
 
-**Nao calibrados pelo dono**, junto com os oito de A.
+**Calibrados pelo dono em 2026-08-24**, junto com os de A e do radar (ver acima).
+`creditoPerdaConfirmada` e `creditoVariacaoMaterialPct` foram medidos e
+confirmados como estavam. `creditoPerdaConfirmadaMinAbs` e `creditoPisoExposicao`
+subiram: o piso antigo em reais promovia um terco de todos os pares
+emissor-carteira medidos no dado real, abaixo do ruido do livro (mediana de
+exposicao por par: R$ 232 mil); os pisos percentuais antigos deixavam passar
+91% e 80% dos pares.
 
 ### Pendencias abertas desta camada
 
 1. **Quem preenche o ativo-map.** A ferramenta gera o esqueleto; alguem tem que
    completar. Enquanto nao completar, o alerta de credito nao acha nada em producao.
    Medido no root sintetico: sem mapa, 100% do PL sem emissor e zero carteira avaliavel.
-2. **Calibrar os limiares** de A e de B com o dono.
+2. ~~Calibrar os limiares de A e de B com o dono.~~ **Resolvido em 2026-08-24**,
+   ver Entrega B.3 abaixo.
 3. **Integracao real do VIX Radar**, quando o dono quiser.
 4. **Rollup por grupo economico**, com o campo ja existindo e preservado.
 5. Nome e escala do score de materialidade, limite de linguagem em "o que revisar", e
@@ -633,13 +653,80 @@ itens em vez de 349.
 
 1. **O ativo de 9,34% do PL sem identificacao.** So o dono responde. Resolvido,
    a cobertura vai de 89,4% para 98,7%.
-2. **Os 12 limiares.** A recomendacao esta em `docs/calibracao-limiares-2026-08.md`.
-   Nada foi aplicado.
+2. ~~Os 12 limiares. Nada foi aplicado.~~ **Aplicados em 2026-08-24**, ver
+   Entrega B.3 abaixo.
 3. **`liquidezDias` nao sai do book.** Precisa do regulamento do fundo ou do campo
    D+ do custodiante.
 4. **`pdfplumber` sem versao presa.** Vale um `requirements.txt` e falhar em vez de
    pular quando faltar.
 5. Rollup por grupo economico, VIX Radar real, e os itens de C.
+
+## Camada de inteligencia, Entrega B.3 (2026-08-24)
+
+Aplica os 8 valores calibrados que a B.1 recomendou e nao chegou a aplicar,
+mais as 2 mudancas estruturais que a propria tabela de recomendacao exigia
+para os valores novos nao reproduzirem o defeito que a B.1 mediu. **Este e o
+primeiro `thresholds.ts` desta camada a sair do default conservador.**
+
+### Por que nao foi so trocar numero
+
+`CONCENTRACAO_FATOR` ja saia 100% "alta" em 2.974 de 2.974 alertas medidos: o
+limiar antigo (50%) ficava ACIMA do corte generico de severidade alta (30%),
+entao disparar ja garantia "alta", a escala de tres graus nunca era alcancada.
+Subir `radarConcentracaoAtivoPct` de 20% para 30% criaria o MESMO problema
+nele, porque 30% EMPATA com o corte de "alta". A tabela de recomendacao da B.1
+ja previa isso e pedia severidade relativa ao proprio limiar para os dois.
+Aplicar so o numero, sem a formula, teria entregado um limiar novo com o
+mesmo defeito medido.
+
+### Os 8 valores (`thresholds.ts`)
+
+`radarConcentracaoAtivoPct` 0,20→0,30 · `radarConcentracaoEmissorPct`
+0,15→0,25 · `radarConcentracaoFatorPct` 0,50→0,70 ·
+`radarVencimentoConcentradoPct` 0,20→0,15 · `radarVencimentoJanelaDias`
+30→90 · `creditoPerdaConfirmadaMinAbs` R$ 50 mil→R$ 250 mil ·
+`creditoPisoExposicao.sinalizacao` 0,5%→2% · `.observacao` 1%→5%. Detalhe e
+justificativa de cada um em `docs/calibracao-limiares-2026-08.md` e nos
+comentarios do proprio arquivo.
+
+### As 2 mudancas estruturais (`cross-portfolio.ts`)
+
+- **Severidade relativa ao proprio limiar**, so em `CONCENTRACAO_ATIVO` e
+  `CONCENTRACAO_FATOR` (nao em `EMISSOR`, cujo novo limiar nao colide com o
+  corte generico). Mesmo desenho ja usado em `LIQUIDEZ_BAIXA` (deficit
+  relativo ao piso), com excesso em vez de deficit.
+- **Exclusao da classe liquidez do alarme**, em `CONCENTRACAO_EMISSOR` e
+  `CONCENTRACAO_FATOR`. Medido: 70% e 77% do volume respectivo eram fundo de
+  caixa, nao risco de credito. `FATOR_BASE` (mesmo mecanismo que ja excluia
+  BRL/Brasil) ganhou `classeCanonica: 'liquidez'`. O dado continua agregado
+  nas tabelas informativas da casa (`agregarEmissores`/`agregarFatores`), so
+  o alarme fica de fora.
+
+### O que ficou de fora, de proposito
+
+A linha de `coberturaAfirmaMin` na tabela de recomendacao nao muda valor
+(mantem 0,70): o unico texto ali e limpeza nao relacionada (tirar
+`liquidezDias` de `ATRIBUTOS_MEDIDOS`, remedir `prazoAnos`), nao e troca de
+limiar. A saturacao de severidade de `LIQUIDEZ_BAIXA` (quase todo caso sai
+"alta", medido em 120 de 122 casos) segue como problema aberto: a B.1 mediu
+o problema mas nao chegou a uma formula de correcao, e sem numero medido nao
+se inventa um.
+
+### Portao e publicacao
+
+Sete asserções em 3 arquivos de teste tiveram que ser reajustadas (limiar
+hardcoded ou fixture cuja margem sumiu com o novo corte), mais 4 fixtures da
+casa sintetica (ALPHA_01, CEDRO_HLD, DUNAS_CAP, FAROL_INV) cuja razao de
+existir dependia de cruzar um limiar que mudou. Toda a aritmetica foi
+conferida a mao antes de editar, nao por tentativa e erro.
+
+```
+602/602 checks OK — todos os checks passaram
+ℹ tests 278   ℹ suites 73   ℹ pass 278   ℹ fail 0   ℹ skipped 0
+```
+
+Mesma contagem de antes: este passe muda valor dentro de teste e fixture
+existentes, nao adiciona nem remove `it()` nem check.
 
 ## Pendências, ordenadas por prioridade acordada com o dono em 17/ago
 

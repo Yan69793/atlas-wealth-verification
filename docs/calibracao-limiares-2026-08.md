@@ -1,5 +1,16 @@
 # Calibração dos limiares da camada de inteligência
 
+> **Aplicado em 24 de agosto de 2026 (Entrega B.3).** Os 8 valores da tabela em
+> §4.3 e os 2 ajustes estruturais que ela recomenda (severidade relativa ao
+> limiar em `CONCENTRACAO_ATIVO`/`FATOR`, exclusão de `classeCanonica=liquidez`
+> em `CONCENTRACAO_EMISSOR`/`FATOR`) foram aplicados em `thresholds.ts` e
+> `cross-portfolio.ts`, publicados no demo público. Portão após a aplicação:
+> `602/602 checks OK`, `278 testes, 73 suites, 278 pass, 0 fail, 0 skipped`
+> (mesma contagem de antes — o passe reajusta valor dentro de teste e fixture
+> já existentes, não adiciona nem remove check). Detalhe em
+> `ESTADO/ESTADO-ATUAL.md`, seção "Entrega B.3". O corpo do documento abaixo
+> continua sendo o registro da medição original, sem alteração.
+
 Medição feita em 24 de agosto de 2026 sobre o histórico real da casa, 37 meses
 (junho de 2023 a junho de 2026), 105 carteiras no último mês, R$ 2,04 bilhões.
 Nenhum limiar foi alterado: este documento é recomendação para decisão do dono.
