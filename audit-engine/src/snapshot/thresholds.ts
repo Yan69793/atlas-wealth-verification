@@ -113,6 +113,41 @@ export const THRESHOLDS = {
       cai em fim de semana em dois de cada sete casos. */
   radarDeterioracaoJanelaDias: 30,
 
+  /* ── Eventos de crédito (Entrega B, 2026-08-24) ───────────────────────────
+     Perda confirmada e sinalização de risco não se medem na mesma régua.
+     Num calote o dinheiro já foi; num rebaixamento nada foi perdido ainda.
+     Por isso são duas escadas e três pisos, e não um limiar só. */
+
+  /** Escada de impacto de PERDA CONFIRMADA (default, recuperação judicial).
+      Mais sensível que os cortes genéricos de `severidade` de propósito:
+      10% do PL já é alto aqui, contra 30% no resto do motor.
+      Abaixo de mediaMin a decisão é do piso absoluto, ver
+      creditoPerdaConfirmadaMinAbs. */
+  creditoPerdaConfirmada: { altaMin: 0.10, mediaMin: 0.02 },
+
+  /** Piso em REAIS que promove uma perda confirmada pequena de baixa para
+      média. Percentual sozinho silencia caso que importa: um calote de
+      R$ 300 mil numa carteira de R$ 20 mi é 1,5% do PL e continua sendo
+      R$ 300 mil que o assessor precisa explicar. Mesmo valor e mesma lógica
+      de saqueGrandePct + saqueGrandeMinAbs, que já combina os dois. */
+  creditoPerdaConfirmadaMinAbs: 50_000,
+
+  /** Piso de exposição por classe de evento, em fração do PL. O que é ruído
+      num rebaixamento é informação obrigatória num calote.
+      - perdaConfirmada: SEM piso. Qualquer exposição a um calote é reportada.
+      - sinalizacao: rebaixamento, atraso, covenant, suspensão e tipo não
+        reconhecido. Tipo que o motor não entendeu não é evidência de que o
+        evento seja pequeno, então cai no piso mais baixo, que reporta mais.
+      - observacao: notícia negativa. Piso maior porque é o tipo com mais
+        volume e menos consequência direta. */
+  creditoPisoExposicao: { perdaConfirmada: 0, sinalizacao: 0.005, observacao: 0.01 },
+
+  /** Variação relativa da exposição que separa "agravado"/"melhorado" de
+      "acompanhamento". Abaixo disso é oscilação de marcação a mercado, não
+      movimento do assessor, e marcar como agravado encheria a tela de
+      mudança que ninguém fez. */
+  creditoVariacaoMaterialPct: 0.20,
+
   /** REVENUE_DROP: queda >= 5% da receita mensal da carteira (receita =
       PL x taxa anual / 12, taxa-map da instancia no normalize mensal).
       Percentual puro por decisao do dono (2026-08-14): sem piso absoluto —

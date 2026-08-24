@@ -13,11 +13,17 @@ import { helpTexto, parseArgs, protegerRoot, tipoPeriodo, validarData } from './
 import { THRESHOLDS } from './thresholds.js';
 import { diffSnapshots, encontrarPeriodoAnterior, salvarEventsFile } from './diff.js';
 import { coberturaDaCasa, coberturaPorCarteira } from '../intel/coverage.js';
+import {
+  impactoDeCredito,
+  type CreditoFile,
+  type EventoCreditoEntrada,
+} from '../intel/credit-events.js';
 import { radarCruzado, type RadarFile } from '../intel/cross-portfolio.js';
 import { caixaParado, inicioDaJanela, type CaixaParadoFile } from '../intel/idle-cash.js';
 import { vencimentosProximos, type VencimentosFile } from '../intel/maturities.js';
 import { adicionarDias } from '../opportunities/generator.js';
 import { ingestSnapshot } from './ingest.js';
+import { classeCanonicaDe } from './normalize.js';
 import { tenantDe } from './pipeline.js';
 import { listarDatasDiarias, listarSnapshotsDiarios } from './series.js';
 import { carregarSnapshot } from './state.js';
@@ -242,8 +248,221 @@ async function main(): Promise<void> {
     return;
   }
 
+  if (comando === 'ativo-map') {
+    const data = exigirData(args);
+    const root = resolverRoot(args);
+    const snap = carregarSnapshot(root, data);
+    const saida = path.join(root, typeof args.saida === 'string' ? args.saida : 'ativo-map.local.json');
+
+    // Todo ativo distinto, com quanto ele vale na casa: quem preenche começa
+    // pelos que movem o número, não pela ordem alfabética.
+    const porAtivo = new Map<string, { valor: number; classe: string | null; carteiras: Set<string> }>();
+    let plCasa = 0;
+    for (const c of snap.carteiras) {
+      plCasa += c.plTotal;
+      for (const p of c.posicoes) {
+        const e = porAtivo.get(p.ativo) ?? { valor: 0, classe: p.classe, carteiras: new Set<string>() };
+        e.valor += p.valor;
+        if (!e.classe && p.classe) e.classe = p.classe;
+        e.carteiras.add(c.nome);
+        porAtivo.set(p.ativo, e);
+      }
+    }
+
+    // Lê o mapa CRU, não o saneado: preservar trabalho humano exige manter até
+    // o que o motor ignora. Perder uma tarde de preenchimento de alguém porque
+    // o gerador rodou de novo é o defeito que este bloco existe para impedir.
+    let existente: Record<string, Record<string, unknown>> = {};
+    if (fs.existsSync(saida)) {
+      try {
+        const cru = JSON.parse(fs.readFileSync(saida, 'utf8')) as { mappings?: Record<string, Record<string, unknown>> };
+        if (cru && typeof cru === 'object' && cru.mappings && typeof cru.mappings === 'object') {
+          existente = cru.mappings;
+        }
+      } catch {
+        throw new Error(
+          `${saida} existe e nao e JSON valido. Nada foi escrito: corrija ou mova o arquivo antes de regerar.`
+        );
+      }
+    }
+
+    const CAMPOS = [
+      'classeCanonica', 'indexador', 'taxaContratada', 'emissorNome', 'emissorId',
+      'economicGroupId', 'moeda', 'regiao', 'prazoAnos', 'liquidezDias', 'cobertoFGC',
+    ] as const;
+
+    const ordenados = [...porAtivo.entries()].sort(
+      (a, b) => b[1].valor - a[1].valor || a[0].localeCompare(b[0])
+    );
+
+    const mappings: Record<string, Record<string, unknown>> = {};
+    let novos = 0;
+    let preenchidos = 0;
+    let plDescoberto = 0;
+
+    for (const [ativo, info] of ordenados) {
+      const anterior = existente[ativo] ?? null;
+      if (!anterior) novos++;
+      const entrada: Record<string, unknown> = {
+        _nota:
+          `${(info.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })}` +
+          ` · ${plCasa > 0 ? ((info.valor / plCasa) * 100).toFixed(2) : '0.00'}% do PL da casa` +
+          ` · ${info.carteiras.size} carteira(s)` +
+          (info.classe ? ` · fonte diz "${info.classe}"` : ''),
+      };
+      for (const campo of CAMPOS) {
+        // Valor humano existente SEMPRE ganha, inclusive false e 0.
+        if (anterior && anterior[campo] !== undefined && anterior[campo] !== null) {
+          entrada[campo] = anterior[campo];
+          continue;
+        }
+        // Unica pre-inferencia permitida: classe canonica a partir do rotulo
+        // livre, e so quando ele e inequivoco. Emissor NUNCA e adivinhado:
+        // emissor errado liga evento de credito a carteira alheia.
+        entrada[campo] = campo === 'classeCanonica' ? classeCanonicaDe(info.classe) : null;
+      }
+      // Chave que o motor nao conhece (comentario do operador) tambem fica.
+      if (anterior) {
+        for (const [k, v] of Object.entries(anterior)) {
+          if (k !== '_nota' && entrada[k] === undefined) entrada[k] = v;
+        }
+      }
+      if (entrada.emissorId || entrada.emissorNome) preenchidos++;
+      else plDescoberto += info.valor;
+      mappings[ativo] = entrada;
+    }
+
+    // Ativo que sumiu da base NAO e apagado: pode voltar mes que vem, e o
+    // trabalho de quem preencheu vale mais que a limpeza do arquivo.
+    let ausentes = 0;
+    for (const [ativo, valor] of Object.entries(existente)) {
+      if (mappings[ativo]) continue;
+      mappings[ativo] = { ...valor, _ausenteDesde: valor._ausenteDesde ?? data };
+      ausentes++;
+    }
+
+    const conteudo = {
+      _leia:
+        'Gerado por `snapshot ativo-map`. Regerar NUNCA apaga valor preenchido a mao. ' +
+        'emissorId/emissorNome nao sao adivinhados de proposito: emissor errado liga evento ' +
+        'de credito a carteira que nao tem nada a ver. economicGroupId so quando duas razoes ' +
+        'sociais forem o mesmo risco. Campos _nota, _leia e _ausenteDesde sao ignorados pelo motor.',
+      _geradoDe: data,
+      mappings,
+    };
+
+    if (args['dry-run']) {
+      console.log(`[ativo-map] dry run, nada escrito. Seriam ${Object.keys(mappings).length} entrada(s).`);
+    } else {
+      fs.writeFileSync(saida, JSON.stringify(conteudo, null, 2) + '\n', 'utf8');
+    }
+    console.log(
+      `[ativo-map] ${data}: ${ordenados.length} ativo(s) distinto(s), ${novos} novo(s), ` +
+        `${preenchidos} com emissor, ${ordenados.length - preenchidos} sem` +
+        (ausentes ? `, ${ausentes} ausente(s) preservado(s)` : '') +
+        ` → ${saida}`
+    );
+    if (plCasa > 0 && plDescoberto > 0) {
+      console.log(
+        `  falta emissor em ${((plDescoberto / plCasa) * 100).toFixed(1)}% do PL da casa. ` +
+          `Sem isso o alerta de credito nao acha nada.`
+      );
+    }
+    return;
+  }
+
+  if (comando === 'credito') {
+    const data = exigirData(args);
+    const root = resolverRoot(args);
+    const snap = carregarSnapshot(root, data);
+    const arquivoEventos = typeof args.eventos === 'string' ? args.eventos : null;
+    if (!arquivoEventos) throw new Error('Falta --eventos <arquivo.json> com os eventos de credito.');
+
+    const cru = JSON.parse(fs.readFileSync(path.resolve(arquivoEventos), 'utf8')) as unknown;
+    const lista: EventoCreditoEntrada[] = Array.isArray(cru)
+      ? (cru as EventoCreditoEntrada[])
+      : ((cru as { eventos?: EventoCreditoEntrada[] })?.eventos ?? []);
+    if (!Array.isArray(lista)) {
+      throw new Error('Arquivo de eventos deve ser um array ou um objeto com a chave "eventos".');
+    }
+
+    // Estado temporal precisa do credito.json anterior. Sem ele, todo par sai
+    // como 'novo', que e a verdade na estreia.
+    const { anterior, baseData } = creditoAnterior(root, data);
+    const resultado = impactoDeCredito(snap, lista, { anterior });
+
+    const arquivo = path.join(root, 'audits', data, 'credito.json');
+    fs.mkdirSync(path.dirname(arquivo), { recursive: true });
+    const saida: CreditoFile = {
+      schema: 'credito/v1',
+      data,
+      periodo: tipoPeriodo(data) ?? 'diario',
+      tenantId: tenantDe(snap),
+      geradoEm: new Date().toISOString(),
+      engine: {
+        nome: 'atlas-audit-engine',
+        versao: process.env.npm_package_version ?? '0.0.0',
+      },
+      baseData,
+      limiares: {
+        creditoPerdaConfirmada: THRESHOLDS.creditoPerdaConfirmada,
+        creditoPerdaConfirmadaMinAbs: THRESHOLDS.creditoPerdaConfirmadaMinAbs,
+        creditoPisoExposicao: THRESHOLDS.creditoPisoExposicao,
+        creditoVariacaoMaterialPct: THRESHOLDS.creditoVariacaoMaterialPct,
+        coberturaAfirmaMin: THRESHOLDS.coberturaAfirmaMin,
+        coberturaRessalvaMin: THRESHOLDS.coberturaRessalvaMin,
+        severidade: THRESHOLDS.severidade,
+      },
+      fonteEventos: path.basename(arquivoEventos),
+      ...resultado,
+    };
+    fs.writeFileSync(arquivo, JSON.stringify(saida, null, 2), 'utf8');
+
+    const atingidas = resultado.impactos.reduce((s, i) => s + i.atingidas.length, 0);
+    console.log(
+      `[credito] ${data}: ${resultado.impactos.length} evento(s), ${atingidas} par(es) carteira-evento, ` +
+        `${resultado.encerrados.length} encerrado(s), ${resultado.descartados} descartado(s); ` +
+        `${resultado.carteirasAvaliaveis}/${resultado.carteiras} carteira(s) avaliavel(is)` +
+        (baseData ? `, base ${baseData}` : ', sem base (tudo novo)') +
+        ` → ${arquivo}`
+    );
+    const naoAvaliaveis = resultado.carteiras - resultado.carteirasAvaliaveis;
+    if (naoAvaliaveis > 0) {
+      console.log(
+        `  ATENCAO: ${naoAvaliaveis} carteira(s) sem cobertura de emissor suficiente. ` +
+          `Elas nao estao limpas, estao no escuro. Rode \`ativo-map\` para preencher.`
+      );
+    }
+    return;
+  }
+
   console.log(helpTexto());
   process.exit(1);
+}
+
+/**
+ * credito.json mais recente ANTES da data pedida. Varre para trás pelos nomes
+ * de diretório, sem abrir arquivo que não precise: mesmo cuidado do corte de
+ * leitura da Fase 4.
+ */
+function creditoAnterior(
+  root: string,
+  data: string
+): { anterior: { impactos: CreditoFile['impactos'] } | null; baseData: string | null } {
+  const datas = listarDatasDiarias(root, data)
+    .filter((d) => d < data)
+    .sort((a, b) => b.localeCompare(a));
+  for (const d of datas) {
+    const p = path.join(root, 'audits', d, 'credito.json');
+    if (!fs.existsSync(p)) continue;
+    try {
+      const cru = JSON.parse(fs.readFileSync(p, 'utf8')) as CreditoFile;
+      if (Array.isArray(cru?.impactos)) return { anterior: { impactos: cru.impactos }, baseData: d };
+    } catch {
+      // arquivo ilegivel: segue para o anterior em vez de derrubar a execucao
+    }
+  }
+  return { anterior: null, baseData: null };
 }
 
 /** Média das frações dos atributos medidos da casa. Só para a linha de log. */

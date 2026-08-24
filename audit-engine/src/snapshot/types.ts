@@ -93,6 +93,16 @@ export interface AtributosAtivo {
   /** chave estável do emissor: raiz de CNPJ quando houver, senão slug do nome */
   emissorId: string | null;
   emissorNome: string | null;
+  /**
+   * Grupo econômico, quando duas empresas de nomes diferentes são o mesmo
+   * risco de crédito. NUNCA inferido: preenchido à mão no ativo-map da
+   * instância, só quando aplicável, e preservado em toda regeneração do mapa.
+   *
+   * Fica fora de ATRIBUTOS_MEDIDOS (coverage.ts) de propósito: aplica-se a
+   * uma minoria dos ativos, e medir cobertura sobre ele derrubaria o número
+   * agregado para sempre sem melhorar decisão nenhuma.
+   */
+  economicGroupId: string | null;
   moeda: Moeda | null;
   regiao: Regiao | null;
   /** anos corridos até o vencimento, na data do snapshot; negativo = vencido */

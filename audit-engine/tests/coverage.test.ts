@@ -33,6 +33,7 @@ const VAZIO: AtributosAtivo = {
   taxaContratada: null,
   emissorId: null,
   emissorNome: null,
+  economicGroupId: null,
   moeda: null,
   regiao: null,
   prazoAnos: null,

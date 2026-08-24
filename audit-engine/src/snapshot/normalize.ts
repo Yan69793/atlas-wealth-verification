@@ -127,6 +127,7 @@ export const ATRIBUTOS_VAZIOS: AtributosAtivo = Object.freeze({
   taxaContratada: null,
   emissorId: null,
   emissorNome: null,
+  economicGroupId: null,
   moeda: null,
   regiao: null,
   prazoAnos: null,
@@ -294,6 +295,12 @@ function sanearAtributos(valor: unknown): AtributosParciais | null {
   } else if (out.emissorNome) {
     out.emissorId = emissorIdDe(out.emissorNome);
   }
+  // Grupo economico: aceito como veio, NUNCA derivado do emissor nem do nome
+  // do ativo. Quem sabe que duas razoes sociais sao o mesmo risco e uma
+  // pessoa, e adivinhar aqui ligaria evento de credito a carteira alheia.
+  if (typeof v.economicGroupId === 'string' && v.economicGroupId.trim()) {
+    out.economicGroupId = v.economicGroupId.trim();
+  }
   if (typeof v.moeda === 'string' && MOEDAS.has(v.moeda)) out.moeda = v.moeda as Moeda;
   if (typeof v.regiao === 'string' && REGIOES.has(v.regiao)) out.regiao = v.regiao as Regiao;
   if (typeof v.prazoAnos === 'number' && Number.isFinite(v.prazoAnos)) {
@@ -355,6 +362,7 @@ export function resolverAtributos(opts: {
     taxaContratada: doMapa.taxaContratada ?? null,
     emissorId,
     emissorNome,
+    economicGroupId: doMapa.economicGroupId ?? null,
     moeda: doMapa.moeda ?? null,
     regiao: doMapa.regiao ?? null,
     prazoAnos: doMapa.prazoAnos ?? prazoDerivado,
