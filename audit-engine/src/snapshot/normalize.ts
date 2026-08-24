@@ -13,7 +13,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { CASH_CLASSES } from './thresholds.js';
 import type {
+  AtributosAtivo,
+  ClasseCanonica,
+  Indexador,
+  Moeda,
   RawSnapshot,
+  Regiao,
   Snapshot,
   SnapshotCarteira,
   SnapshotPosition,
@@ -99,16 +104,277 @@ export function loadTaxaMapping(root: string): Record<string, number> {
   return {};
 }
 
+/* ════════════════════════════════════════════════════════════════════════════
+   Camada de atributos (Fase 0 da inteligência, 2026-08-24)
+
+   O arquivo do custodiante não traz indexador, emissor, moeda, região nem
+   prazo de resgate. Sem esses campos, exposição a juros/inflação/câmbio,
+   cruzamento de evento de crédito por emissor e sensibilidade a cenário não
+   têm de onde sair, e qualquer número produzido seria inventado.
+
+   Fonte, em ordem de precedência:
+     1. ativo-map da instância (autoridade);
+     2. derivação gratuita do que já está no snapshot (prazo do vencimento,
+        emissor da instituicao, classe canônica de rótulos inequívocos);
+     3. null.
+
+   Nunca zero, nunca default. Ver intel/coverage.ts para o consumo.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+export const ATRIBUTOS_VAZIOS: AtributosAtivo = Object.freeze({
+  classeCanonica: null,
+  indexador: null,
+  taxaContratada: null,
+  emissorId: null,
+  emissorNome: null,
+  moeda: null,
+  regiao: null,
+  prazoAnos: null,
+  liquidezDias: null,
+  cobertoFGC: null,
+});
+
+/** Atributos de uma posição lida do disco: ausente (arquivo antigo) = tudo null. */
+export function atributosDe(p: SnapshotPosition): AtributosAtivo {
+  return p.atributos ?? ATRIBUTOS_VAZIOS;
+}
+
+const CLASSES_CANONICAS: ReadonlySet<string> = new Set<ClasseCanonica>([
+  'liquidez',
+  'renda-fixa',
+  'credito-privado',
+  'fundo',
+  'acoes',
+  'multimercado',
+  'imobiliario',
+  'internacional',
+  'previdencia',
+  'derivativos',
+  'outros',
+]);
+
+const INDEXADORES: ReadonlySet<string> = new Set<Indexador>([
+  'CDI',
+  'SELIC',
+  'IPCA',
+  'IGPM',
+  'PRE',
+  'CAMBIO',
+  'BOLSA',
+  'MULTI',
+]);
+
+const MOEDAS: ReadonlySet<string> = new Set<Moeda>(['BRL', 'USD', 'EUR', 'GBP', 'CHF', 'JPY']);
+
+const REGIOES: ReadonlySet<string> = new Set<Regiao>(['brasil', 'eua', 'global']);
+
+/** minúscula sem acento, para casar rótulo de fonte com enum. */
+function chaveNormalizada(s: string): string {
+  return s
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+/**
+ * Classe canônica a partir do rótulo livre da fonte.
+ *
+ * DELIBERADAMENTE CONSERVADOR: só rótulo inequívoco vira classe. Qualquer
+ * coisa fora desta lista fica null e aparece como buraco no relatório de
+ * cobertura, que é o mecanismo de correção (o ativo-map da instância).
+ * Adivinhar aqui produziria cobertura de 100% com classificação errada, que é
+ * pior do que buraco declarado.
+ */
+export function classeCanonicaDe(classe: string | null): ClasseCanonica | null {
+  if (!classe) return null;
+  const k = chaveNormalizada(classe);
+  if (!k) return null;
+  if (CASH_CLASSES.includes(k)) return 'liquidez';
+  if (['renda fixa', 'renda-fixa', 'rf', 'tesouro', 'titulo publico', 'titulos publicos'].includes(k))
+    return 'renda-fixa';
+  if (
+    ['credito privado', 'credito-privado', 'debenture', 'debentures', 'cdb', 'lci', 'lca', 'cri', 'cra', 'letra financeira'].includes(k)
+  )
+    return 'credito-privado';
+  if (['fundo', 'fundos', 'fic', 'fi'].includes(k)) return 'fundo';
+  if (['acoes', 'acao', 'equity', 'renda variavel', 'renda-variavel', 'rv'].includes(k)) return 'acoes';
+  if (['multimercado', 'multimercados'].includes(k)) return 'multimercado';
+  if (['imobiliario', 'fii', 'fiis', 'fundo imobiliario', 'fundos imobiliarios'].includes(k))
+    return 'imobiliario';
+  if (['internacional', 'offshore', 'exterior', 'global'].includes(k)) return 'internacional';
+  if (['previdencia', 'pgbl', 'vgbl'].includes(k)) return 'previdencia';
+  if (['derivativo', 'derivativos', 'opcao', 'opcoes', 'futuro', 'futuros'].includes(k))
+    return 'derivativos';
+  return null;
+}
+
+/**
+ * Chave estável de emissor a partir do nome. Raiz de CNPJ quando o nome carrega
+ * um (14 ou 8 dígitos), senão slug do nome normalizado. É a chave que o
+ * adapter de crédito vai usar para casar evento com carteira, então precisa ser
+ * a MESMA para "BANCO X S.A." e "Banco  X SA".
+ */
+export function emissorIdDe(nome: string | null): string | null {
+  if (!nome) return null;
+  const digitos = nome.replace(/\D/g, '');
+  if (digitos.length === 14) return 'cnpj:' + digitos.slice(0, 8);
+  if (digitos.length === 8) return 'cnpj:' + digitos;
+  const slug = chaveNormalizada(nome)
+    .replace(/\b(s\.?\/?a\.?|ltda\.?|sa|me|epp|eireli)\b/g, ' ')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return slug || null;
+}
+
+/** Anos corridos entre duas datas AAAA-MM-DD. Negativo = já venceu. */
+function anosEntre(de: string, ate: string): number {
+  const [a1, m1, d1] = de.split('-').map(Number);
+  const [a2, m2, d2] = ate.split('-').map(Number);
+  const dias = (Date.UTC(a2, m2 - 1, d2) - Date.UTC(a1, m1 - 1, d1)) / 86_400_000;
+  return Math.round((dias / 365.25) * 10_000) / 10_000;
+}
+
+/** Entrada crua do ativo-map: campos desconhecidos e valores inválidos caem fora. */
+export type AtributosParciais = Partial<AtributosAtivo>;
+
+/**
+ * ativo-map: ativo-map.local.json (instância) sobre ativo-map.json (produto,
+ * vazio). Mesmo padrão de name-map/class-map/taxa-map, com um degrau a mais de
+ * saneamento porque o valor aqui é objeto, não string.
+ *
+ * Chave = nome canônico do ativo (pós name-map). Valor fora do enum é
+ * IGNORADO em silêncio, e o atributo fica null: um indexador escrito errado
+ * viraria fator fantasma agrupando sozinho, e o relatório de cobertura já
+ * denuncia o buraco.
+ */
+export function loadAtivoMapping(root: string): Record<string, AtributosParciais> {
+  for (const rel of ['ativo-map.local.json', 'ativo-map.json']) {
+    const p = path.join(root, rel);
+    if (!fs.existsSync(p)) continue;
+    try {
+      const raw = JSON.parse(fs.readFileSync(p, 'utf8')) as {
+        mappings?: Record<string, unknown>;
+      };
+      if (!raw || typeof raw !== 'object' || !raw.mappings || typeof raw.mappings !== 'object') {
+        return {};
+      }
+      const limpos: Record<string, AtributosParciais> = {};
+      for (const [ativo, valor] of Object.entries(raw.mappings)) {
+        const sane = sanearAtributos(valor);
+        if (sane) limpos[normalizarIdentificador(ativo)] = sane;
+      }
+      return limpos;
+    } catch {
+      // mapa ilegível: segue sem atributo; a cobertura cai e a tela avisa
+    }
+  }
+  return {};
+}
+
+function sanearAtributos(valor: unknown): AtributosParciais | null {
+  if (!valor || typeof valor !== 'object' || Array.isArray(valor)) return null;
+  const v = valor as Record<string, unknown>;
+  const out: AtributosParciais = {};
+
+  if (typeof v.classeCanonica === 'string' && CLASSES_CANONICAS.has(v.classeCanonica)) {
+    out.classeCanonica = v.classeCanonica as ClasseCanonica;
+  }
+  if (typeof v.indexador === 'string' && INDEXADORES.has(v.indexador)) {
+    out.indexador = v.indexador as Indexador;
+  }
+  if (typeof v.taxaContratada === 'string' && v.taxaContratada.trim()) {
+    out.taxaContratada = v.taxaContratada.trim();
+  }
+  if (typeof v.emissorNome === 'string' && v.emissorNome.trim()) {
+    out.emissorNome = normalizarIdentificador(v.emissorNome);
+  }
+  if (typeof v.emissorId === 'string' && v.emissorId.trim()) {
+    out.emissorId = v.emissorId.trim();
+  } else if (out.emissorNome) {
+    out.emissorId = emissorIdDe(out.emissorNome);
+  }
+  if (typeof v.moeda === 'string' && MOEDAS.has(v.moeda)) out.moeda = v.moeda as Moeda;
+  if (typeof v.regiao === 'string' && REGIOES.has(v.regiao)) out.regiao = v.regiao as Regiao;
+  if (typeof v.prazoAnos === 'number' && Number.isFinite(v.prazoAnos)) {
+    out.prazoAnos = v.prazoAnos;
+  }
+  if (typeof v.liquidezDias === 'number' && Number.isFinite(v.liquidezDias) && v.liquidezDias >= 0) {
+    out.liquidezDias = Math.round(v.liquidezDias);
+  }
+  if (typeof v.cobertoFGC === 'boolean') out.cobertoFGC = v.cobertoFGC;
+
+  return Object.keys(out).length ? out : null;
+}
+
+/**
+ * Resolve os atributos de uma posição. Mapa manda; derivação preenche o que o
+ * mapa não disse; o resto fica null.
+ */
+export function resolverAtributos(opts: {
+  ativo: string;
+  classe: string | null;
+  vencimento: string | null;
+  instituicao: string | null;
+  dataSnapshot: string;
+  mapa: Record<string, AtributosParciais>;
+}): AtributosAtivo {
+  const doMapa = opts.mapa[opts.ativo] ?? {};
+
+  /* EMISSOR SÓ VEM DO MAPA. Não derivar de `instituicao`.
+   *
+   * A tentação é óbvia: o campo existe e está preenchido. Mas `instituicao` é
+   * a coluna 1 do book (parsers/excel-v2.ts), que nas fontes que temos é o
+   * CUSTODIANTE, não o emissor. Derivar dali foi testado contra os fixtures
+   * sintéticos em 2026-08-24 e produziu, em toda carteira, "100% do patrimônio
+   * depende de um único emissor (CUSTODIANTE SINTETICO)". Alerta crítico
+   * falso, com cobertura reportada em 100%, que é exatamente o modo de falha
+   * que esta camada existe para impedir.
+   *
+   * Pior ainda olhando para a frente: o adapter de crédito casa evento a
+   * emissor. Casar com o custodiante ligaria um evento do Banco X a toda
+   * carteira custodiada no Banco X, o que é pior do que não casar nada.
+   *
+   * Consequência aceita: sem ativo-map, a cobertura de emissor é 0% e o motor
+   * cala sobre emissor. É a verdade, e o relatório de cobertura transforma isso
+   * na fila de trabalho de quem preenche o mapa.
+   */
+  const emissorNome = doMapa.emissorNome ? normalizarIdentificador(doMapa.emissorNome) : null;
+  const emissorId = doMapa.emissorId ?? emissorIdDe(emissorNome);
+
+  // prazoAnos derivado exige vencimento E data do snapshot. Determinístico:
+  // sem Date.now, a mesma dupla sempre dá o mesmo número.
+  const prazoDerivado =
+    opts.vencimento && /^\d{4}-\d{2}-\d{2}$/.test(opts.dataSnapshot)
+      ? anosEntre(opts.dataSnapshot, opts.vencimento)
+      : null;
+
+  return {
+    classeCanonica: doMapa.classeCanonica ?? classeCanonicaDe(opts.classe),
+    indexador: doMapa.indexador ?? null,
+    taxaContratada: doMapa.taxaContratada ?? null,
+    emissorId,
+    emissorNome,
+    moeda: doMapa.moeda ?? null,
+    regiao: doMapa.regiao ?? null,
+    prazoAnos: doMapa.prazoAnos ?? prazoDerivado,
+    liquidezDias: doMapa.liquidezDias ?? null,
+    cobertoFGC: doMapa.cobertoFGC ?? null,
+  };
+}
+
 export function normalize(
   raw: RawSnapshot,
   periodo: 'diario' | 'mensal',
   mapping?: Record<string, string>,
   classMapping?: Record<string, string>,
-  taxaMapping?: Record<string, number>
+  taxaMapping?: Record<string, number>,
+  ativoMapping?: Record<string, AtributosParciais>
 ): Snapshot {
   const mapa = mapping ?? {};
   const mapaClasse = classMapping ?? {};
   const mapaTaxa = taxaMapping ?? {};
+  const mapaAtivo = ativoMapping ?? {};
 
   const carteiras: SnapshotCarteira[] = raw.carteiras.map((rawC) => {
     const nome = normalizarIdentificador(mapa[rawC.nome] ?? rawC.nome);
@@ -137,18 +403,32 @@ export function normalize(
           existente.quantidade = (existente.quantidade ?? 0) + rawP.quantidade;
         }
       } else {
+        const classe = rawP.classe
+          ? normalizarIdentificador(rawP.classe)
+          : mapaClasse[ativo]
+            ? normalizarIdentificador(mapaClasse[ativo])
+            : null;
+        const vencimento = rawP.vencimento || null;
+        const instituicao = rawP.instituicao ? normalizarIdentificador(rawP.instituicao) : null;
         porAtivo.set(ativo, {
           carteira: nome,
           ativo,
-          classe: rawP.classe
-            ? normalizarIdentificador(rawP.classe)
-            : mapaClasse[ativo]
-              ? normalizarIdentificador(mapaClasse[ativo])
-              : null,
+          classe,
           valor: rawP.valor,
-          vencimento: rawP.vencimento || null,
+          vencimento,
           quantidade: rawP.quantidade ?? null,
-          instituicao: rawP.instituicao ? normalizarIdentificador(rawP.instituicao) : null,
+          instituicao,
+          // Primeira ocorrência manda, igual a classe e vencimento: o mesmo
+          // ativo em dois custodiantes é uma linha só depois da soma, e os
+          // atributos vêm do nome do ativo, que é idêntico nas duas.
+          atributos: resolverAtributos({
+            ativo,
+            classe,
+            vencimento,
+            instituicao,
+            dataSnapshot: raw.data,
+            mapa: mapaAtivo,
+          }),
         });
       }
     }

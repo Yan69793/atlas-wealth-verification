@@ -167,6 +167,7 @@ import ReactDOM from 'react-dom/client';
   const NAV_PAINEL = [
     { id:'dashboard',   label:'Dashboard',          icon:'dashboard',  path:'#/dashboard'   },
     { id:'risco',       label:'Radar de Risco',      icon:'alert',      path:'#/risco'       },
+    { id:'radar',       label:'Radar de Carteiras',  icon:'trend',      path:'#/radar'       },
     { id:'comparativo', label:'Comparativo',         icon:'compare',    path:'#/comparativo' },
     { id:'achados',     label:'Achados & Exceções',  icon:'findings',   path:'#/achados'     },
     { id:'oportunidades', label:'Oportunidades',      icon:'portfolios', path:'#/oportunidades' },
@@ -202,6 +203,7 @@ import ReactDOM from 'react-dom/client';
     oportunidades: 'ATLAS_OPORTUNIDADES_DATA',
     vencimentos: 'ATLAS_VENCIMENTOS_DATA',
     'caixa-parado': 'ATLAS_CAIXA_PARADO_DATA',
+    radar: 'ATLAS_RADAR_DATA',
   };
 
   function faseDisponivel(id) {
@@ -411,6 +413,7 @@ import ReactDOM from 'react-dom/client';
     if (path === '/cadastro') return 'cadastro';
     if (path === '/busca') return 'busca';
     if (path === '/risco') return 'risco';
+    if (path === '/radar') return 'radar';
     if (path === '/tendencia') return 'tendencia';
     if (path === '/importar') return 'importar';
     if (path === '/usuarios') return 'usuarios';
@@ -432,6 +435,7 @@ import ReactDOM from 'react-dom/client';
     cadastro:   'Cadastro & Compliance',
     busca:      'Busca por Ativo',
     risco:      'Radar de Risco',
+    radar:      'Radar de Carteiras',
     tendencia:  'Tendência do Ciclo',
     custos:     'Transparência de Custos',
     importar:   'Importar Extratos',
@@ -613,6 +617,15 @@ import ReactDOM from 'react-dom/client';
         return pages.Risco
           ? React.createElement(pages.Risco)
           : <PlaceholderPage title="Radar de Risco" etapa="risco" />;
+
+      /* Passa por faseDisponivel pelo mesmo motivo das tres de cima: link
+         salvo no favorito nao pode contornar o filtro do menu e mostrar
+         carteira sintetica como se fosse do cliente. */
+      case 'radar':
+        if (!faseDisponivel('radar')) return <FaseSemDado title="Radar de Carteiras" />;
+        return pages.Radar
+          ? React.createElement(pages.Radar)
+          : <PlaceholderPage title="Radar de Carteiras" etapa="radar" />;
 
       case 'importar':
         return pages.Importar

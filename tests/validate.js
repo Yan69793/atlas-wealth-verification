@@ -178,6 +178,7 @@ const CONTRATO = [
   'platform-vencimentos-demo.js',
   'platform-caixa-parado-demo.js',
   'platform-receita-drop-demo.js',
+  'platform-radar-demo.js',
   'platform-utils.jsx',
   'platform-dashboard.jsx',
   'platform-carteira.jsx',
@@ -196,6 +197,7 @@ const CONTRATO = [
   'platform-import.jsx',
   'platform-usuarios.jsx',
   'platform-risco.jsx',
+  'platform-radar.jsx',
   'platform-tendencia.jsx',
   'platform-app.jsx',
 ];
@@ -1050,7 +1052,7 @@ ok('.gitignore nega o overlay real platform-caixa-parado.js',
 // publicacao recusa em vez de subir dado de cliente.
 const buildDeploySrc = fs.readFileSync(path.join(ROOT, 'scripts', 'build-deploy.mjs'), 'utf8');
 const verifyBuildSrc = fs.readFileSync(path.join(ROOT, 'scripts', 'verify-build.mjs'), 'utf8');
-for (const f of ['platform-oportunidades.js', 'platform-vencimentos.js', 'platform-caixa-parado.js', 'platform-receita-drop.js']) {
+for (const f of ['platform-oportunidades.js', 'platform-vencimentos.js', 'platform-caixa-parado.js', 'platform-receita-drop.js', 'platform-radar.js']) {
   const base = f.replace(/\.js$/, '');
   ok('build-deploy.mjs proíbe o overlay ' + f, buildDeploySrc.includes(base));
   ok('verify-build.mjs proíbe o overlay ' + f, verifyBuildSrc.includes(base));
@@ -1697,6 +1699,148 @@ ok('R$ × dias não é formatado como moeda',
     /Assessor: nomeAssessor\(o\.assessor\)/.test(oportPage));
   ok('nenhum CSV das quatro telas exporta código de gestor cru',
     !/Assessor: o\.assessor\b/.test(oportPage));
+}
+
+
+// --- 30. Camada de inteligencia, Entrega A - Radar de Carteiras -------------
+//
+// Visão cruzada de todas as carteiras. Mesmas regras das fases anteriores:
+// demo sintético, overlay real negado, dado que não sai do navegador.
+//
+// Dois checks aqui não têm equivalente nas fases anteriores e são o coração da
+// entrega:
+//
+// 1. COBERTURA. Todo achado carrega a fração do PL que o motor conseguiu
+//    avaliar. Sem isso, "esta carteira não tem exposição a câmbio" e "não sei
+//    classificar 60% desta carteira" produzem a mesma tela. É a forma exata
+//    dos doze defeitos de agosto.
+// 2. EXPLICABILIDADE. Nenhum texto de explicação é escrito na tela. Regra,
+//    conta, evidência e fonte vêm do insight que o motor produziu. Foi por
+//    peso próprio na tela que o score da fila virou código morto em agosto.
+
+{
+  const radarDemoPath = path.join(ROOT, 'platform-radar-demo.js');
+  const radarPagePath = path.join(ROOT, 'platform-radar.jsx');
+  const radarDemo = fs.existsSync(radarDemoPath) ? fs.readFileSync(radarDemoPath, 'utf8') : '';
+  const radarPage = fs.existsSync(radarPagePath) ? fs.readFileSync(radarPagePath, 'utf8') : '';
+
+  ok('platform-radar-demo.js existe', fs.existsSync(radarDemoPath));
+  ok('platform-radar.jsx existe', fs.existsSync(radarPagePath));
+  ok('sem mojibake: platform-radar-demo.js', !MOJIBAKE.test(radarDemo));
+  ok('sem mojibake: platform-radar.jsx', !MOJIBAKE.test(radarPage));
+
+  ok('demo do radar publica window.ATLAS_RADAR_DATA',
+    radarDemo.includes('window.ATLAS_RADAR_DATA'));
+  ok('demo do radar e sintetico (geradoEm null)',
+    /"geradoEm":\s*null/.test(radarDemo));
+  ok('demo do radar nao popula quando ha dado real na instancia',
+    radarDemo.includes('window._AtlasRealData'));
+  ok('demo do radar e gerado pelo motor, nao escrito a mao',
+    radarDemo.includes('scripts/gerar-radar-demo.mjs')
+    && fs.existsSync(path.join(ROOT, 'scripts', 'gerar-radar-demo.mjs')));
+
+  ok('pagina registra AtlasPages.Radar', radarPage.includes('AtlasPages.Radar'));
+  ok('rota /radar em platform-app.jsx', appContent.includes("path === '/radar'"));
+  ok('navegacao contem Radar de Carteiras em platform-app.jsx',
+    appContent.includes("label:'Radar de Carteiras'"));
+  ok('radar passa por faseDisponivel (link salvo nao contorna o filtro)',
+    appContent.includes("radar: 'ATLAS_RADAR_DATA'")
+    && appContent.includes("faseDisponivel('radar')"));
+
+  ok('pagina do radar nao usa primitiva de envio (dado fica no navegador)',
+    !/fetch\s*\(|XMLHttpRequest|sendBeacon|WebSocket|EventSource/.test(radarPage));
+  ok('.gitignore nega o overlay real platform-radar.js',
+    gitignore.split(/\r?\n/).some((l) => l.trim() === 'platform-radar.js'));
+  ok('pagina do radar resolve nome de gestor por D.MANAGERS',
+    radarPage.includes('D.MANAGERS') && !/\bD\.managers\b/.test(radarPage));
+
+  // Explicabilidade: a tela LE o rastro do motor, nao redige explicacao.
+  ok('tela oferece "Por que estou vendo isso?"',
+    radarPage.includes('Por que estou vendo isso?'));
+  for (const campo of ['insight.calculo', 'insight.regra', 'insight.evidencias', 'insight.cobertura', 'insight.afirmacao', 'insight.confianca']) {
+    ok('tela renderiza ' + campo + ' vindo do motor', radarPage.includes(campo));
+  }
+
+  // Payload: o que a tela vai receber de verdade.
+  const winRadar = {};
+  winRadar.window = winRadar;
+  try { new Function('window', 'globalThis', radarDemo)(winRadar, winRadar); } catch { /* vira falha no check */ }
+  const R = winRadar.ATLAS_RADAR_DATA;
+
+  ok('demo do radar carrega e tem schema radar/v1', !!R && R.schema === 'radar/v1');
+
+  if (R) {
+    const insights = R.insights || [];
+    const porId = new Map(insights.map((i) => [i.id, i]));
+    const sinais = (R.carteiras || []).flatMap((c) => c.sinais || []);
+
+    ok('demo do radar tem carteiras e achados', (R.carteiras || []).length > 0 && insights.length > 0);
+
+    // Todo sinal na tela aponta para um rastro existente. Sem isso o botao
+    // "Por que estou vendo isso?" abre vazio, que e pior do que nao existir.
+    const orfaos = sinais.filter((s) => !porId.has(s.insightId));
+    ok('todo achado da tela tem insight correspondente', orfaos.length === 0,
+      orfaos.map((s) => s.tipo + '/' + s.rotulo).join(' | '));
+
+    const semRastro = insights.filter((i) =>
+      !i.regra || !i.regra.nome || !i.calculo || !i.evidencias
+      || typeof i.cobertura !== 'number' || !i.faixaCobertura || !i.confianca || !i.afirmacao);
+    ok('todo insight carrega regra, conta, evidencia, cobertura e confianca',
+      semRastro.length === 0, semRastro.map((i) => i.id).join(' | '));
+
+    // Cobertura: a faixa tem que bater com os limiares gravados no payload.
+    const lim = R.limiares || {};
+    ok('limiares de cobertura no payload sao os do dono (70% e 40%)',
+      lim.coberturaAfirmaMin === 0.7 && lim.coberturaRessalvaMin === 0.4);
+    const faixaEsperada = (f) =>
+      f >= lim.coberturaAfirmaMin ? 'afirma' : f >= lim.coberturaRessalvaMin ? 'ressalva' : 'insuficiente';
+    const faixaErrada = insights.filter((i) => i.faixaCobertura !== faixaEsperada(i.cobertura));
+    ok('faixa de cobertura de cada insight bate com os limiares',
+      faixaErrada.length === 0,
+      faixaErrada.map((i) => i.id + ': ' + i.cobertura + ' -> ' + i.faixaCobertura).join(' | '));
+
+    // Nenhum insight pode ser publicado com cobertura insuficiente: quando o
+    // motor nao consegue avaliar, ele cala e mostra o buraco no lugar.
+    const publicadoSemBase = insights.filter((i) => i.faixaCobertura === 'insuficiente');
+    ok('nenhum insight e publicado com cobertura insuficiente',
+      publicadoSemBase.length === 0, publicadoSemBase.map((i) => i.id).join(' | '));
+
+    ok('cobertura nunca e NaN ou negativa',
+      insights.every((i) => Number.isFinite(i.cobertura) && i.cobertura >= 0 && i.cobertura <= 1));
+
+    // Os casos que a demonstracao precisa conter para provar a entrega.
+    const tipos = new Set(insights.map((i) => i.tipo));
+    ok('demo tem concentracao escondida por emissor', tipos.has('CONCENTRACAO_EMISSOR'));
+    ok('demo tem fator comum entre ativos diferentes', tipos.has('CONCENTRACAO_FATOR'));
+    ok('demo tem deterioracao mes contra mes', tipos.has('DETERIORACAO_PL'));
+    ok('demo tem liquidez abaixo do piso', tipos.has('LIQUIDEZ_BAIXA'));
+    ok('demo tem vencimento concentrado', tipos.has('VENCIMENTO_CONCENTRADO'));
+    ok('demo tem base de comparacao para a deterioracao', !!R.baseData);
+
+    // O caso mais importante da entrega: uma carteira em que o sistema diz
+    // "nao sei" em vez de dizer zero.
+    const semBase = (R.cobertura || []).filter((c) => c.faixaGlobal === 'insuficiente');
+    ok('demo tem carteira com cobertura insuficiente, para a tela dizer "nao sei"',
+      semBase.length > 0);
+
+    // Concentracao escondida de verdade: emissor acima do limiar SEM nenhum
+    // ativo dessa carteira acima do limiar de ativo. E o risco que a tela de
+    // posicoes nao mostra.
+    const escondida = (R.carteiras || []).some((c) =>
+      (c.sinais || []).some((s) => s.tipo === 'CONCENTRACAO_EMISSOR')
+      && !(c.sinais || []).some((s) => s.tipo === 'CONCENTRACAO_ATIVO'));
+    ok('demo tem concentracao de emissor sem concentracao de ativo (risco escondido)', escondida);
+
+    // Moeda local e pais local sao linha de base, nao alarme: sem isso o radar
+    // dispararia em toda carteira brasileira, todo mes, e viraria ruido.
+    const alarmeBase = insights.filter((i) =>
+      i.tipo === 'CONCENTRACAO_FATOR'
+      && (i.evidencias.valor === 'BRL' || i.evidencias.valor === 'brasil'));
+    ok('estar em BRL e no Brasil nao vira alarme de fator',
+      alarmeBase.length === 0, alarmeBase.map((i) => i.id).join(' | '));
+
+    ok('demo do radar nao carrega carimbo de producao', R.geradoEm === null);
+  }
 }
 
 // ─── Resultado ──────────────────────────────────────────────────────────────

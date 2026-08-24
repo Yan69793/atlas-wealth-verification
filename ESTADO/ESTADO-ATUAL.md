@@ -11,9 +11,12 @@ aqui, trate este arquivo como suspeito e rode o refresh do fim da página.
 ## Portão de verificação, medido hoje
 
 ```
-469/469 checks OK — todos os checks passaram
-ℹ tests 143   ℹ suites 38   ℹ pass 142   ℹ fail 0   ℹ skipped 1
+515/515 checks OK — todos os checks passaram
+ℹ tests 206   ℹ suites 56   ℹ pass 205   ℹ fail 0   ℹ skipped 1
 ```
+
+Medido em 2026-08-24, depois da Entrega A da camada de inteligência. Antes dela era
+469/469 checks e 143 testes; a entrega somou 46 checks e 63 testes.
 
 A contagem de testes desceu de 131 para 129 de propósito: o corte de 90 dias no caixa parado
 substituiu cinco testes do contrato antigo por três do contrato novo. Os checks subiram de 460
@@ -342,6 +345,88 @@ alcançável pela interface.
 Plano de correção em cinco ondas, ordem e portão definidos pelo dono, em
 `C:\Users\User\.claude\plans\cosmic-skipping-anchor.md`. Portão por onda: sem regressão com
 saída colada, caso concreto reproduzido mostrando número antes e depois, e um commit isolado.
+
+## Camada de inteligencia, Entrega A (2026-08-24)
+
+Diretriz reescrita e aprovada pelo dono em 24/08, plano em
+`C:\Users\User\.claude\plans\nifty-singing-melody.md`. Executada SO a Entrega A;
+B (fatores e credito) e C (materialidade, cenario, acao) nao foram iniciadas.
+
+**Decisoes do dono em 24/08:**
+
+1. **Fonte externa de dado de mercado: reaberta.** Reverte a exclusao de agosto do
+   benchmark contra CDI/IBOV/IPCA. Ainda nao implementada (e da Entrega C). O
+   desenho aprovado e cache com degradacao em tres niveis (serie de hoje, cache com
+   idade na tela, premissa fixa declarada), comecando pela API publica do Banco
+   Central. Ibovespa, Nasdaq, spreads e petroleo seguem sem fonte definida.
+2. **Piso de cobertura: 70% afirma, 40% ressalva.** Implementado.
+3. **Central de Acao: extensao da fila de oportunidades existente**, nao fila nova.
+   Nao implementada (Entrega C).
+
+### O que entrou
+
+- **Camada de atributos por posicao.** `SnapshotPosition.atributos` com
+  classeCanonica, indexador, taxaContratada, emissorId, emissorNome, moeda, regiao,
+  prazoAnos, liquidezDias, cobertoFGC. Fonte: `ativo-map.local.json` da instancia,
+  mesmo padrao de name-map/class-map/taxa-map (`loadAtivoMapping` em normalize.ts).
+  Campo opcional, snapshot antigo le como tudo desconhecido.
+- **Regra de cobertura** (`src/intel/coverage.ts`). Medida em fracao do PL, nunca em
+  contagem de posicoes. Motor com cobertura abaixo de 40% nao afirma.
+- **Contrato de explicabilidade** (`src/intel/explain.ts`). Todo motor devolve
+  afirmacao, evidencias, regra, calculo, fonte, cobertura e confianca. A tela le,
+  nao redige.
+- **Radar de Carteiras** (`src/intel/cross-portfolio.ts`, tela `platform-radar.jsx`,
+  rota `#/radar`). Seis tipos de sinal, agregados de emissor e fator da casa,
+  deterioracao contra o periodo anterior, e a aba de cobertura como fila de trabalho.
+- **Comandos novos no CLI de snapshot:** `cobertura` e `radar`.
+- **Demo gerado pelo motor** (`scripts/gerar-radar-demo.mjs`). O payload nao e
+  digitado a mao, sai de `radarCruzado`. Fecha o buraco que deixou o demo certo e o
+  motor errado na queda de receita ate a Onda 2.
+
+### Dois achados que mudaram o desenho
+
+1. **Custodiante nao e emissor.** A primeira versao derivava `emissorId` de
+   `instituicao`. Rodado contra os fixtures sinteticos, isso produzia em TODA
+   carteira "100% do patrimonio depende de um unico emissor (CUSTODIANTE
+   SINTETICO)", com cobertura reportada em 100%. Alerta critico falso e cobertura
+   mentirosa ao mesmo tempo. `instituicao` e a coluna 1 do book, que ali e o
+   custodiante. Emissor passou a vir **so do ativo-map**, e sem mapa a cobertura de
+   emissor e 0%, que e a verdade. Travado em teste.
+2. **Moeda local e pais local sao linha de base, nao alarme.** Sem a excecao,
+   concentracao de fator dispararia em moeda e regiao em praticamente toda carteira
+   brasileira, todo mes. `FATOR_BASE` em cross-portfolio.ts. Moeda estrangeira
+   concentrada continua alarmando.
+
+### Limiares novos (thresholds.ts, com o resto)
+
+`coberturaAfirmaMin` 0,70 · `coberturaRessalvaMin` 0,40 ·
+`radarConcentracaoAtivoPct` 0,20 · `radarConcentracaoEmissorPct` 0,15 ·
+`radarConcentracaoFatorPct` 0,50 · `radarLiquidezMinPct` 0,05 ·
+`radarVencimentoConcentradoPct` 0,20 em `radarVencimentoJanelaDias` 30 ·
+`radarDeterioracaoPct` 0,10 em `radarDeterioracaoJanelaDias` 30.
+
+**Nao calibrados pelo dono.** Sao defaults conservadores, mesmo espirito dos de
+agosto antes da calibracao. Precisam da mesma passada de confirmacao antes de
+estrear na instancia.
+
+### Nao tem score 0 a 100
+
+De proposito. A escala do score de materialidade e decisao aberta, e ja existe um
+0 a 100 em `score.ts` onde 100 e BOM. O radar classifica em `Severidade`
+(baixa/media/alta), a escala que o motor de eventos ja usa e o dono ja calibrou. O
+ranking ordena por fato observavel: pior severidade, quantidade de sinais, maior
+R$ exposto, nome.
+
+### Pendencias abertas desta camada
+
+1. **Quem preenche o ativo-map** e quantos ativos distintos existem na base atual.
+   Sem mapa, cobertura de indexador, moeda, regiao, liquidez e emissor e 0%.
+2. **Calibrar os oito limiares novos** com o dono.
+3. **Nome e escala do score de materialidade**, para nao colidir com `score.ts`.
+4. **Limite de linguagem em "o que revisar"** (compliance). Bloqueia a Central de
+   Acao.
+5. **Fonte para Ibovespa, Nasdaq, spreads e petroleo.** Bloqueia quatro dos oito
+   cenarios da Entrega C. Petroleo tem a armadilha conhecida do contrato continuo.
 
 ## Pendências, ordenadas por prioridade acordada com o dono em 17/ago
 

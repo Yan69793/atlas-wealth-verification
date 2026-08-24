@@ -12,8 +12,11 @@ import path from 'node:path';
 import { helpTexto, parseArgs, protegerRoot, tipoPeriodo, validarData } from './args.js';
 import { THRESHOLDS } from './thresholds.js';
 import { diffSnapshots, encontrarPeriodoAnterior, salvarEventsFile } from './diff.js';
+import { coberturaDaCasa, coberturaPorCarteira } from '../intel/coverage.js';
+import { radarCruzado, type RadarFile } from '../intel/cross-portfolio.js';
 import { caixaParado, inicioDaJanela, type CaixaParadoFile } from '../intel/idle-cash.js';
 import { vencimentosProximos, type VencimentosFile } from '../intel/maturities.js';
+import { adicionarDias } from '../opportunities/generator.js';
 import { ingestSnapshot } from './ingest.js';
 import { tenantDe } from './pipeline.js';
 import { listarDatasDiarias, listarSnapshotsDiarios } from './series.js';
@@ -166,8 +169,87 @@ async function main(): Promise<void> {
     return;
   }
 
+  if (comando === 'cobertura') {
+    const data = exigirData(args);
+    const root = resolverRoot(args);
+    const snap = carregarSnapshot(root, data);
+    const casa = coberturaDaCasa(snap);
+    const porCarteira = coberturaPorCarteira(snap);
+    console.log(`[cobertura] ${data} — casa: ${casa.carteiras} carteira(s), faixa ${casa.faixaGlobal}`);
+    for (const a of casa.atributos) {
+      console.log(`  ${a.atributo.padEnd(16)} ${(a.fracao * 100).toFixed(1).padStart(6)}%  ${a.faixa}`);
+    }
+    // Pior primeiro: é a fila de trabalho de quem preenche o ativo-map.
+    console.log('  --- carteiras (pior cobertura primeiro) ---');
+    for (const c of porCarteira) {
+      console.log(
+        `  ${c.carteira.padEnd(20)} ${(c.fracaoMedia * 100).toFixed(1).padStart(6)}%  ${c.faixaGlobal}  (${c.posicoes} posicao/oes)`
+      );
+    }
+    return;
+  }
+
+  if (comando === 'radar') {
+    const data = exigirData(args);
+    const root = resolverRoot(args);
+    // data sem snapshot = erro, mesma regra de state/diff/vencimentos
+    carregarSnapshot(root, data);
+    const periodo = tipoPeriodo(data) ?? 'diario';
+    // A série só serve para a deterioração. No mensal cada snapshot já é um
+    // mês, então a série mensal não é enumerável por listarSnapshotsDiarios e
+    // o radar roda sobre o dia único, sem base de comparação.
+    const serie =
+      periodo === 'diario'
+        ? listarSnapshotsDiarios(root, data, {
+            desde: adicionarDias(data, -(THRESHOLDS.radarDeterioracaoJanelaDias * 2)),
+          })
+        : [carregarSnapshot(root, data)];
+    const resultado = radarCruzado(serie);
+    const arquivo = path.join(root, 'audits', data, 'radar.json');
+    fs.mkdirSync(path.dirname(arquivo), { recursive: true });
+    const saida: RadarFile = {
+      schema: 'radar/v1',
+      data,
+      periodo,
+      tenantId: tenantDe(serie[serie.length - 1]),
+      geradoEm: new Date().toISOString(),
+      engine: {
+        nome: 'atlas-audit-engine',
+        versao: process.env.npm_package_version ?? '0.0.0',
+      },
+      limiares: {
+        coberturaAfirmaMin: THRESHOLDS.coberturaAfirmaMin,
+        coberturaRessalvaMin: THRESHOLDS.coberturaRessalvaMin,
+        radarConcentracaoAtivoPct: THRESHOLDS.radarConcentracaoAtivoPct,
+        radarConcentracaoEmissorPct: THRESHOLDS.radarConcentracaoEmissorPct,
+        radarConcentracaoFatorPct: THRESHOLDS.radarConcentracaoFatorPct,
+        radarLiquidezMinPct: THRESHOLDS.radarLiquidezMinPct,
+        radarVencimentoConcentradoPct: THRESHOLDS.radarVencimentoConcentradoPct,
+        radarVencimentoJanelaDias: THRESHOLDS.radarVencimentoJanelaDias,
+        radarDeterioracaoPct: THRESHOLDS.radarDeterioracaoPct,
+        radarDeterioracaoJanelaDias: THRESHOLDS.radarDeterioracaoJanelaDias,
+      },
+      motivo: resultado.baseData === null ? 'serie-curta' : null,
+      ...resultado,
+    };
+    fs.writeFileSync(arquivo, JSON.stringify(saida, null, 2), 'utf8');
+    console.log(
+      `[radar] ${data}: ${resultado.insights.length} insight(s) em ${resultado.carteiras.length} carteira(s)` +
+        `, cobertura da casa ${(coberturaMedia(resultado) * 100).toFixed(1)}% (${resultado.coberturaCasa.faixaGlobal})` +
+        (resultado.baseData ? `, base ${resultado.baseData}` : ', sem base de comparacao') +
+        ` → ${arquivo}`
+    );
+    return;
+  }
+
   console.log(helpTexto());
   process.exit(1);
+}
+
+/** Média das frações dos atributos medidos da casa. Só para a linha de log. */
+function coberturaMedia(r: { coberturaCasa: { atributos: { fracao: number }[] } }): number {
+  const a = r.coberturaCasa.atributos;
+  return a.length ? a.reduce((s, x) => s + x.fracao, 0) / a.length : 0;
 }
 
 main().catch((err) => {

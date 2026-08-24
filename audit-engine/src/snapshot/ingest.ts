@@ -15,7 +15,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { adaptar, detectFormato } from './adapters/index.js';
 import { protegerRoot, tipoPeriodo, validarData } from './args.js';
-import { loadClassMapping, loadNameMapping, loadTaxaMapping, normalize } from './normalize.js';
+import {
+  loadAtivoMapping,
+  loadClassMapping,
+  loadNameMapping,
+  loadTaxaMapping,
+  normalize,
+} from './normalize.js';
 import {
   enfileirarExcecao,
   reconciliar,
@@ -88,7 +94,14 @@ export async function ingestSnapshot(opts: {
   try {
   const formatoDetectado = detectFormato(arquivo, formato);
   const raw = await adaptar({ arquivo, data, fonte, formato: formatoDetectado });
-  const snapshot = normalize(raw, periodo, loadNameMapping(root), loadClassMapping(root), loadTaxaMapping(root));
+  const snapshot = normalize(
+    raw,
+    periodo,
+    loadNameMapping(root),
+    loadClassMapping(root),
+    loadTaxaMapping(root),
+    loadAtivoMapping(root)
+  );
   snapshot.tenantId = tenant;
   validarSnapshot(snapshot);
 

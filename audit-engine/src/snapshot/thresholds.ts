@@ -68,6 +68,51 @@ export const THRESHOLDS = {
       inventado. */
   caixaParadoMaxIntervaloDias: 4,
 
+  /* ── Camada de inteligência (2026-08-24) ──────────────────────────────────
+     Cobertura: fração do PL da carteira com o atributo preenchido. Decisão do
+     dono em 2026-08-24: acima de 70% o motor afirma, entre 40% e 70% afirma
+     com ressalva na tela, abaixo de 40% não conclui e só mostra a cobertura.
+     Sem isto, "esta carteira não tem exposição a câmbio" é indistinguível de
+     "não sei classificar 60% desta carteira". */
+  coberturaAfirmaMin: 0.70,
+  coberturaRessalvaMin: 0.40,
+
+  /** Um único ativo >= 20% do PL. Acima do limiar de posição nova (3%) por
+      ordem de grandeza: 3% é movimento que redefine a carteira, 20% é
+      concentração que sobrevive à rotação. */
+  radarConcentracaoAtivoPct: 0.20,
+
+  /** Um único emissor >= 15% do PL, somando ativos de nomes diferentes. Mais
+      estrito que o de ativo porque é justamente o risco que não aparece na
+      tela de posições: três papéis distintos do mesmo banco. */
+  radarConcentracaoEmissorPct: 0.15,
+
+  /** Um único fator (indexador, moeda ou região) >= 50% do PL. É o caso da
+      carteira que parece diversificada em ativo e está inteira no mesmo
+      indexador. Metade do PL é o ponto em que o fator manda na carteira. */
+  radarConcentracaoFatorPct: 0.50,
+
+  /** Liquidez ABAIXO de 5% do PL. Espelho invertido de caixaParadoMinPct
+      (10%): lá o problema é dinheiro sobrando, aqui é dinheiro faltando. */
+  radarLiquidezMinPct: 0.05,
+
+  /** >= 20% do PL vencendo dentro da janela de vencimento concentrado. */
+  radarVencimentoConcentradoPct: 0.20,
+
+  /** Janela do vencimento concentrado, em dias corridos. Igual à janela de 30
+      de maturidadeJanelas: é o horizonte em que dá para reinvestir com calma. */
+  radarVencimentoJanelaDias: 30,
+
+  /** Queda de PL >= 10% contra o snapshot de comparação. Mesmo valor de
+      saqueGrandePct, e de propósito: a queda de um dia e a deterioração do mês
+      medem a mesma coisa em horizontes diferentes. */
+  radarDeterioracaoPct: 0.10,
+
+  /** Horizonte da deterioração, em dias corridos. Lê o snapshot mais próximo
+      de ref − 30 dias dentro da série, não o de exatamente 30 dias atrás, que
+      cai em fim de semana em dois de cada sete casos. */
+  radarDeterioracaoJanelaDias: 30,
+
   /** REVENUE_DROP: queda >= 5% da receita mensal da carteira (receita =
       PL x taxa anual / 12, taxa-map da instancia no normalize mensal).
       Percentual puro por decisao do dono (2026-08-14): sem piso absoluto —

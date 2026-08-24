@@ -51,6 +51,10 @@ import '../platform-caixa-parado-demo.js';
 /* 3g. Fallback sintético de QUEDA DE RECEITA (idem). */
 import '../platform-receita-drop-demo.js';
 
+/* 3h. Fallback sintético do RADAR DE CARTEIRAS (idem). Gerado pelo motor,
+   ver scripts/gerar-radar-demo.mjs — não editar à mão. */
+import '../platform-radar-demo.js';
+
 /* 4. Utilitários, ícones, gráficos, UI primitives */
 import '../platform-utils.jsx';
 
@@ -72,6 +76,7 @@ import '../platform-busca.jsx';
 import '../platform-import.jsx';
 import '../platform-usuarios.jsx';
 import '../platform-risco.jsx';
+import '../platform-radar.jsx';
 import '../platform-tendencia.jsx';
 
 /* 6. App shell — POR ÚLTIMO (monta o ReactDOM) */
