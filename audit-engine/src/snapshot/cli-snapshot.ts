@@ -272,19 +272,7 @@ async function main(): Promise<void> {
     // Lê o mapa CRU, não o saneado: preservar trabalho humano exige manter até
     // o que o motor ignora. Perder uma tarde de preenchimento de alguém porque
     // o gerador rodou de novo é o defeito que este bloco existe para impedir.
-    let existente: Record<string, Record<string, unknown>> = {};
-    if (fs.existsSync(saida)) {
-      try {
-        const cru = JSON.parse(fs.readFileSync(saida, 'utf8')) as { mappings?: Record<string, Record<string, unknown>> };
-        if (cru && typeof cru === 'object' && cru.mappings && typeof cru.mappings === 'object') {
-          existente = cru.mappings;
-        }
-      } catch {
-        throw new Error(
-          `${saida} existe e nao e JSON valido. Nada foi escrito: corrija ou mova o arquivo antes de regerar.`
-        );
-      }
-    }
+    const existente = lerMappings<Record<string, unknown>>(saida, 'ativo-map');
 
     const CAMPOS = [
       'classeCanonica', 'indexador', 'taxaContratada', 'emissorNome', 'emissorId',
@@ -297,6 +285,7 @@ async function main(): Promise<void> {
 
     const mappings: Record<string, Record<string, unknown>> = {};
     let novos = 0;
+    let voltaram = 0;
     let preenchidos = 0;
     let plDescoberto = 0;
 
@@ -322,9 +311,14 @@ async function main(): Promise<void> {
         entrada[campo] = campo === 'classeCanonica' ? classeCanonicaDe(info.classe) : null;
       }
       // Chave que o motor nao conhece (comentario do operador) tambem fica.
+      // `_ausenteDesde` NAO: este laco so roda para ativo que ESTA na base
+      // agora, entao a marca de ausencia mentiria para quem le o arquivo. Ate
+      // 24/08/2026 ela era copiada junto e ficava para sempre, mesmo com o
+      // papel de volta ha meses.
       if (anterior) {
+        if (anterior._ausenteDesde !== undefined) voltaram++;
         for (const [k, v] of Object.entries(anterior)) {
-          if (k !== '_nota' && entrada[k] === undefined) entrada[k] = v;
+          if (k !== '_nota' && k !== '_ausenteDesde' && entrada[k] === undefined) entrada[k] = v;
         }
       }
       if (entrada.emissorId || entrada.emissorNome) preenchidos++;
@@ -359,6 +353,7 @@ async function main(): Promise<void> {
     console.log(
       `[ativo-map] ${data}: ${ordenados.length} ativo(s) distinto(s), ${novos} novo(s), ` +
         `${preenchidos} com emissor, ${ordenados.length - preenchidos} sem` +
+        (voltaram ? `, ${voltaram} de volta a base` : '') +
         (ausentes ? `, ${ausentes} ausente(s) preservado(s)` : '') +
         ` → ${saida}`
     );
@@ -438,6 +433,45 @@ async function main(): Promise<void> {
 
   console.log(helpTexto());
   process.exit(1);
+}
+
+/**
+ * Lê a chave `mappings` de um mapa da instância, ou ABORTA.
+ *
+ * A trava óbvia (JSON ilegível) já existia. A que faltava, e é a que acontece na
+ * prática, é o arquivo que PARSEIA e perdeu a estrutura: até 24/08/2026 ele caía
+ * num `{}` silencioso, o comando regenerava tudo do zero, relatava "N novo(s)" e
+ * saía com SUCESSO. Horas de preenchimento humano iam embora com mensagem verde.
+ * Aconteceu de verdade durante a calibração da Entrega B.1, num mapa com 1.784
+ * entradas e 89,4% do PL da casa já classificado.
+ *
+ * "Não achei o que esperava" nunca pode significar "então começo do zero" num
+ * arquivo que representa trabalho humano.
+ */
+function lerMappings<T>(caminho: string, rotulo: string): Record<string, T> {
+  if (!fs.existsSync(caminho)) return {};
+  let cru: unknown;
+  try {
+    cru = JSON.parse(fs.readFileSync(caminho, 'utf8'));
+  } catch {
+    throw new Error(
+      `${caminho} existe e nao e JSON valido. Nada foi escrito: corrija ou mova o arquivo antes de regerar o ${rotulo}.`
+    );
+  }
+  const m = (cru as { mappings?: unknown } | null)?.mappings;
+  if (!cru || typeof cru !== 'object' || Array.isArray(cru) || m === undefined) {
+    throw new Error(
+      `${caminho} existe e e JSON valido, mas nao tem a chave "mappings". Nada foi escrito: ` +
+        `regerar sobre ele APAGARIA todo o preenchimento do ${rotulo}. Corrija ou mova o arquivo.`
+    );
+  }
+  if (!m || typeof m !== 'object' || Array.isArray(m)) {
+    throw new Error(
+      `${caminho} tem "mappings" que nao e objeto (${Array.isArray(m) ? 'array' : typeof m}). ` +
+        `Nada foi escrito: corrija ou mova o arquivo antes de regerar o ${rotulo}.`
+    );
+  }
+  return m as Record<string, T>;
 }
 
 /**
