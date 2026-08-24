@@ -47,6 +47,13 @@ import {
   type FaixaCobertura,
 } from './coverage.js';
 import {
+  estadoAgregado,
+  estadoTemporal,
+  PESO_ESTADO,
+  PESO_SEVERIDADE,
+  type EstadoTemporal,
+} from './estado.js';
+import {
   confiancaDe,
   idInsight,
   ordenarInsights,
@@ -71,6 +78,18 @@ export interface RadarSinal {
   /** rótulo do que concentrou ("Banco X", "CDI", "USD") */
   rotulo: string;
   /**
+   * Chave ESTÁVEL entre períodos, que é o que casa o sinal com o do mês
+   * passado. Não é o rótulo: rótulo é texto de tela e pode mudar quando o
+   * ativo-map ganha o nome bonito do emissor. Em DETERIORACAO_PL é vazia de
+   * propósito, porque é um sinal por carteira e a data da base muda todo mês
+   * (usar a data faria a deterioração nascer "nova" para sempre).
+   */
+  chave: string;
+  /** o que mudou desde o período anterior; sem base de comparação, tudo é 'novo' */
+  estado: EstadoTemporal;
+  /** R$ do mesmo sinal no período anterior; null quando o sinal é novo */
+  valorAnterior: number | null;
+  /**
    * Em CONCENTRACAO_FATOR, a dimensão em bruto. A tela precisa dela para
    * escrever "Classe" em vez de "classeCanonica": nome de campo interno não
    * aparece para o assessor. O motor entrega o dado, a tela decide a palavra.
@@ -94,9 +113,68 @@ export interface RadarCarteira {
   sinais: RadarSinal[];
   /** pior severidade entre os sinais; sem sinal = null */
   pior: Severidade | null;
+  /** estado mais urgente entre os sinais; sem sinal = null */
+  estado: EstadoTemporal | null;
   faixaCobertura: FaixaCobertura;
   /** maior R$ entre os sinais, usado como desempate do ranking */
   maiorExposicao: number;
+}
+
+/**
+ * Sinal que existia no período anterior e não existe mais.
+ *
+ * Sai na lista mesmo sem valor atual, pelo mesmo motivo do `encerrado` do
+ * crédito: é o único jeito de a tela dizer "aquilo que você estava
+ * acompanhando saiu". Item que some sem explicação é pior do que item que
+ * continua aparecendo, porque o assessor nunca vê o desfecho.
+ */
+export interface SinalEncerrado {
+  carteira: string;
+  tipo: SinalTipo;
+  chave: string;
+  rotulo: string;
+  severidadeAnterior: Severidade;
+  valorAnterior: number;
+  /** 'carteira-saiu' quando a carteira inteira sumiu da base; senão 'sinal-saiu' */
+  motivo: 'sinal-saiu' | 'carteira-saiu';
+}
+
+/** O que o período anterior precisa entregar para o estado ser derivado. */
+export interface RegistroSinalAnterior {
+  carteira: string;
+  tipo: SinalTipo;
+  chave: string;
+  rotulo: string;
+  severidade: Severidade;
+  valor: number;
+}
+
+/** Chave do sinal acompanhado entre períodos. */
+export function chaveSinal(carteira: string, tipo: SinalTipo, chave: string): string {
+  return `${carteira}|${tipo}|${chave}`;
+}
+
+/** Achata o radar do período anterior na forma que o estado precisa. */
+export function registrosDeSinais(
+  anterior: Pick<RadarResultado, 'carteiras'> | null | undefined
+): RegistroSinalAnterior[] {
+  const out: RegistroSinalAnterior[] = [];
+  for (const c of anterior?.carteiras ?? []) {
+    for (const s of c.sinais ?? []) {
+      out.push({
+        carteira: c.carteira,
+        tipo: s.tipo,
+        // radar.json gravado antes da Entrega B.2 não tem `chave`. Ausência vira
+        // string vazia: o sinal casa por (carteira, tipo), que é o melhor
+        // possível sem o campo, em vez de derrubar a leitura do arquivo antigo.
+        chave: s.chave ?? '',
+        rotulo: s.rotulo,
+        severidade: s.severidade,
+        valor: s.valor,
+      });
+    }
+  }
+  return out;
 }
 
 export interface RadarEmissor {
@@ -138,6 +216,10 @@ export interface RadarResultado {
   /** data do snapshot usado na comparação de deterioração; null = sem base */
   baseData: string | null;
   carteiras: RadarCarteira[];
+  /** sinais que sumiram desde o período anterior; nunca somem sem avisar */
+  encerrados: SinalEncerrado[];
+  /** houve radar anterior para comparar; false = tudo é 'novo' por definição */
+  temAnterior: boolean;
   emissores: RadarEmissor[];
   fatores: RadarFator[];
   deterioracao: RadarDeterioracao[];
@@ -165,7 +247,10 @@ export interface RadarFile extends RadarResultado {
     radarVencimentoJanelaDias: number;
     radarDeterioracaoPct: number;
     radarDeterioracaoJanelaDias: number;
+    radarVariacaoMaterialPct: number;
   };
+  /** data do radar.json usado como base do ESTADO; null = sem anterior */
+  baseEstado: string | null;
   /** null = rodou normal; 'serie-curta' = sem base para deterioração */
   motivo: 'serie-curta' | null;
 }
@@ -179,6 +264,9 @@ export interface OpcoesRadar {
   vencimentoJanelaDias?: number;
   deterioracaoPct?: number;
   deterioracaoJanelaDias?: number;
+  variacaoMaterialPct?: number;
+  /** radar do período anterior, para derivar estado. Ausente = tudo 'novo'. */
+  anterior?: Pick<RadarResultado, 'carteiras'> | null;
 }
 
 const CORTES = THRESHOLDS.severidade;
@@ -336,6 +424,8 @@ export function radarCruzado(serie: Snapshot[], opcoes: OpcoesRadar = {}): Radar
   const vazio: RadarResultado = {
     baseData: null,
     carteiras: [],
+    encerrados: [],
+    temAnterior: false,
     emissores: [],
     fatores: [],
     deterioracao: [],
@@ -354,12 +444,45 @@ export function radarCruzado(serie: Snapshot[], opcoes: OpcoesRadar = {}): Radar
   const deterPct = opcoes.deterioracaoPct ?? THRESHOLDS.radarDeterioracaoPct;
   const deterJanela = opcoes.deterioracaoJanelaDias ?? THRESHOLDS.radarDeterioracaoJanelaDias;
 
+  const variacaoMaterial = opcoes.variacaoMaterialPct ?? THRESHOLDS.radarVariacaoMaterialPct;
+
   const ref = serie[serie.length - 1];
   const tenantId = ref.tenantId ?? 'default';
   const insights: Insight[] = [];
   const carteiras: RadarCarteira[] = [];
 
   const ctx = { data: ref.data, fonte: ref.fonte, tenantId };
+
+  /* Estado temporal: o corte que faz esta tela valer a abertura.
+   *
+   * Medido sobre 37 meses de dado real em 2026-08-24: sem estado, o radar
+   * repetia 87% do conteúdo do mês anterior e acendia 97% das carteiras. Com o
+   * corte por novidade, os MESMOS limiares produzem 15,5 alertas por mês e 13%
+   * das carteiras acesas. */
+  const anteriores = registrosDeSinais(opcoes.anterior);
+  const temAnterior = anteriores.length > 0;
+  const porChave = new Map(anteriores.map((r) => [chaveSinal(r.carteira, r.tipo, r.chave), r]));
+  const vistos = new Set<string>();
+
+  /** Estado do sinal e o valor anterior, marcando a chave como vista. */
+  function acompanhar(
+    carteira: string,
+    tipo: SinalTipo,
+    chave: string,
+    severidade: Severidade,
+    valor: number
+  ): { estado: EstadoTemporal; valorAnterior: number | null } {
+    const k = chaveSinal(carteira, tipo, chave);
+    vistos.add(k);
+    // Sem período anterior nenhum, TUDO é 'novo' por definição, e é a verdade
+    // na estreia. Marcar como 'acompanhamento' fingiria um histórico que não
+    // existe, e a tela abriria vazia justamente no primeiro dia.
+    const ant = temAnterior ? porChave.get(k) : undefined;
+    return {
+      estado: estadoTemporal({ severidade, valor }, ant, variacaoMaterial),
+      valorAnterior: ant ? ant.valor : null,
+    };
+  }
 
   for (const c of ref.carteiras) {
     if (c.plTotal <= 0) continue;
@@ -372,6 +495,7 @@ export function radarCruzado(serie: Snapshot[], opcoes: OpcoesRadar = {}): Radar
     if (maior && maior.valor / c.plTotal >= concAtivo) {
       const fracao = maior.valor / c.plTotal;
       const sev = severidadeDe(fracao, CORTES);
+      const acomp = acompanhar(c.nome, 'CONCENTRACAO_ATIVO', maior.ativo, sev, maior.valor);
       const ins = novoInsight({
         ...ctx,
         carteira: c.nome,
@@ -384,6 +508,8 @@ export function radarCruzado(serie: Snapshot[], opcoes: OpcoesRadar = {}): Radar
           valor: maior.valor,
           plTotal: c.plTotal,
           fracaoPl: fracao,
+          estado: acomp.estado,
+          ...(acomp.valorAnterior !== null ? { valorAnterior: acomp.valorAnterior } : {}),
         },
         regra: { nome: 'radarConcentracaoAtivoPct', limiar: { radarConcentracaoAtivoPct: concAtivo } },
         calculo: `${brl(maior.valor)} / ${brl(c.plTotal)} = ${pct(fracao)}, limiar ${pct(concAtivo)}`,
@@ -394,6 +520,9 @@ export function radarCruzado(serie: Snapshot[], opcoes: OpcoesRadar = {}): Radar
         tipo: 'CONCENTRACAO_ATIVO',
         severidade: sev,
         rotulo: maior.ativo,
+        chave: maior.ativo,
+        estado: acomp.estado,
+        valorAnterior: acomp.valorAnterior,
         valor: maior.valor,
         fracaoPl: fracao,
         cobertura: 1,
@@ -422,6 +551,7 @@ export function radarCruzado(serie: Snapshot[], opcoes: OpcoesRadar = {}): Radar
         const fracao = dados.valor / c.plTotal;
         if (fracao < concEmissor) continue;
         const sev = severidadeDe(fracao, CORTES);
+        const acomp = acompanhar(c.nome, 'CONCENTRACAO_EMISSOR', emissorId, sev, dados.valor);
         const ins = novoInsight({
           ...ctx,
           carteira: c.nome,
@@ -435,6 +565,8 @@ export function radarCruzado(serie: Snapshot[], opcoes: OpcoesRadar = {}): Radar
             valor: dados.valor,
             plTotal: c.plTotal,
             fracaoPl: fracao,
+            estado: acomp.estado,
+            ...(acomp.valorAnterior !== null ? { valorAnterior: acomp.valorAnterior } : {}),
           },
           regra: {
             nome: 'radarConcentracaoEmissorPct',
@@ -448,6 +580,9 @@ export function radarCruzado(serie: Snapshot[], opcoes: OpcoesRadar = {}): Radar
           tipo: 'CONCENTRACAO_EMISSOR',
           severidade: sev,
           rotulo: dados.nome,
+          chave: emissorId,
+          estado: acomp.estado,
+          valorAnterior: acomp.valorAnterior,
           valor: dados.valor,
           fracaoPl: fracao,
           cobertura: covEmissor,
@@ -476,14 +611,24 @@ export function radarCruzado(serie: Snapshot[], opcoes: OpcoesRadar = {}): Radar
         const fracao = montante / c.plTotal;
         if (fracao < concFator) continue;
         const sev = severidadeDe(fracao, CORTES);
+        const chaveFator = `${fator}:${valor}`;
+        const acomp = acompanhar(c.nome, 'CONCENTRACAO_FATOR', chaveFator, sev, montante);
         const ins = novoInsight({
           ...ctx,
           carteira: c.nome,
           tipo: 'CONCENTRACAO_FATOR',
-          chave: `${fator}:${valor}`,
+          chave: chaveFator,
           severidade: sev,
           afirmacao: `${pct(fracao)} do patrimônio responde ao mesmo fator (${fator} = ${valor}), mesmo com ativos diferentes.`,
-          evidencias: { fator, valor, montante, plTotal: c.plTotal, fracaoPl: fracao },
+          evidencias: {
+            fator,
+            valor,
+            montante,
+            plTotal: c.plTotal,
+            fracaoPl: fracao,
+            estado: acomp.estado,
+            ...(acomp.valorAnterior !== null ? { valorAnterior: acomp.valorAnterior } : {}),
+          },
           regra: {
             nome: 'radarConcentracaoFatorPct',
             limiar: { radarConcentracaoFatorPct: concFator },
@@ -496,6 +641,9 @@ export function radarCruzado(serie: Snapshot[], opcoes: OpcoesRadar = {}): Radar
           tipo: 'CONCENTRACAO_FATOR',
           severidade: sev,
           rotulo: valor,
+          chave: chaveFator,
+          estado: acomp.estado,
+          valorAnterior: acomp.valorAnterior,
           fator,
           valor: montante,
           fracaoPl: fracao,
@@ -516,6 +664,7 @@ export function radarCruzado(serie: Snapshot[], opcoes: OpcoesRadar = {}): Radar
       if (fracao < liqMin) {
         const deficit = (liqMin - fracao) / liqMin;
         const sev = severidadeDe(deficit, CORTES);
+        const acomp = acompanhar(c.nome, 'LIQUIDEZ_BAIXA', '', sev, liq);
         const ins = novoInsight({
           ...ctx,
           carteira: c.nome,
@@ -528,6 +677,8 @@ export function radarCruzado(serie: Snapshot[], opcoes: OpcoesRadar = {}): Radar
             plTotal: c.plTotal,
             fracaoPl: fracao,
             deficitRelativo: deficit,
+            estado: acomp.estado,
+            ...(acomp.valorAnterior !== null ? { valorAnterior: acomp.valorAnterior } : {}),
           },
           regra: { nome: 'radarLiquidezMinPct', limiar: { radarLiquidezMinPct: liqMin } },
           calculo: `déficit = (${pct(liqMin)} − ${pct(fracao)}) / ${pct(liqMin)} = ${pct(deficit)}`,
@@ -538,6 +689,9 @@ export function radarCruzado(serie: Snapshot[], opcoes: OpcoesRadar = {}): Radar
           tipo: 'LIQUIDEZ_BAIXA',
           severidade: sev,
           rotulo: 'liquidez',
+          chave: '',
+          estado: acomp.estado,
+          valorAnterior: acomp.valorAnterior,
           valor: liq,
           fracaoPl: fracao,
           cobertura: covClasse,
@@ -565,6 +719,7 @@ export function radarCruzado(serie: Snapshot[], opcoes: OpcoesRadar = {}): Radar
       const fracao = vencendo / c.plTotal;
       if (fracao >= vencPct) {
         const sev = severidadeDe(fracao, CORTES);
+        const acomp = acompanhar(c.nome, 'VENCIMENTO_CONCENTRADO', String(vencJanela), sev, vencendo);
         const ins = novoInsight({
           ...ctx,
           carteira: c.nome,
@@ -578,6 +733,8 @@ export function radarCruzado(serie: Snapshot[], opcoes: OpcoesRadar = {}): Radar
             fracaoPl: fracao,
             titulos: ativos.length,
             janelaDias: vencJanela,
+            estado: acomp.estado,
+            ...(acomp.valorAnterior !== null ? { valorAnterior: acomp.valorAnterior } : {}),
           },
           regra: {
             nome: 'radarVencimentoConcentradoPct',
@@ -594,6 +751,9 @@ export function radarCruzado(serie: Snapshot[], opcoes: OpcoesRadar = {}): Radar
           tipo: 'VENCIMENTO_CONCENTRADO',
           severidade: sev,
           rotulo: `${vencJanela} dias`,
+          chave: String(vencJanela),
+          estado: acomp.estado,
+          valorAnterior: acomp.valorAnterior,
           valor: vencendo,
           fracaoPl: fracao,
           cobertura: covVenc,
@@ -608,6 +768,7 @@ export function radarCruzado(serie: Snapshot[], opcoes: OpcoesRadar = {}): Radar
       plTotal: c.plTotal,
       sinais,
       pior: piorSeveridade(sinais.map((s) => s.severidade)),
+      estado: estadoAgregado(sinais.map((s) => s.estado)),
       faixaCobertura: covCarteira.faixaGlobal,
       maiorExposicao: sinais.reduce((m, s) => Math.max(m, s.valor), 0),
     });
@@ -627,6 +788,10 @@ export function radarCruzado(serie: Snapshot[], opcoes: OpcoesRadar = {}): Radar
       const deltaPct = delta / ant.plTotal;
       if (-deltaPct < deterPct) continue;
       const sev = severidadeDe(deltaPct, CORTES);
+      // Chave vazia de propósito: é um sinal por carteira, e usar a data da
+      // base (que muda todo período) faria a deterioração nascer 'nova' para
+      // sempre, que é o mesmo que não ter estado.
+      const acomp = acompanhar(c.nome, 'DETERIORACAO_PL', '', sev, Math.abs(delta));
       const ins = novoInsight({
         ...ctx,
         carteira: c.nome,
@@ -641,6 +806,8 @@ export function radarCruzado(serie: Snapshot[], opcoes: OpcoesRadar = {}): Radar
           deltaPct,
           baseData: base.data,
           diasEntre: diasCorridos(base.data, ref.data),
+          estado: acomp.estado,
+          ...(acomp.valorAnterior !== null ? { quedaAnterior: acomp.valorAnterior } : {}),
         },
         regra: {
           nome: 'radarDeterioracaoPct',
@@ -669,12 +836,16 @@ export function radarCruzado(serie: Snapshot[], opcoes: OpcoesRadar = {}): Radar
           tipo: 'DETERIORACAO_PL',
           severidade: sev,
           rotulo: `desde ${base.data}`,
+          chave: '',
+          estado: acomp.estado,
+          valorAnterior: acomp.valorAnterior,
           valor: Math.abs(delta),
           fracaoPl: deltaPct,
           cobertura: 1,
           insightId: ins.id,
         });
         alvo.pior = piorSeveridade(alvo.sinais.map((s) => s.severidade));
+        alvo.estado = estadoAgregado(alvo.sinais.map((s) => s.estado));
         alvo.maiorExposicao = Math.max(alvo.maiorExposicao, Math.abs(delta));
       }
     }
@@ -688,23 +859,67 @@ export function radarCruzado(serie: Snapshot[], opcoes: OpcoesRadar = {}): Radar
   const emissores = agregarEmissores(ref, plCasa, concEmissor);
   const fatores = agregarFatores(ref, plCasa, concFator);
 
-  /* ── 8. Ranking ────────────────────────────────────────────────────────────
+  /* ── 8. Encerrados ────────────────────────────────────────────────────────
+     Sinal que existia no período anterior e não existe mais. Sai na lista mesmo
+     sem valor atual: é o único jeito de a tela mostrar o desfecho do que o
+     assessor estava acompanhando. Mesma regra do `encerrado` do crédito. */
+  const nomesAtuais = new Set(carteiras.map((c) => c.carteira));
+  const encerrados: SinalEncerrado[] = [];
+  for (const r of anteriores) {
+    if (vistos.has(chaveSinal(r.carteira, r.tipo, r.chave))) continue;
+    encerrados.push({
+      carteira: r.carteira,
+      tipo: r.tipo,
+      chave: r.chave,
+      rotulo: r.rotulo,
+      severidadeAnterior: r.severidade,
+      valorAnterior: r.valor,
+      motivo: nomesAtuais.has(r.carteira) ? 'sinal-saiu' : 'carteira-saiu',
+    });
+  }
+  encerrados.sort(
+    (a, b) =>
+      PESO_SEVERIDADE[b.severidadeAnterior] - PESO_SEVERIDADE[a.severidadeAnterior] ||
+      b.valorAnterior - a.valorAnterior ||
+      a.carteira.localeCompare(b.carteira) ||
+      a.tipo.localeCompare(b.tipo)
+  );
+
+  /* ── 9. Ranking ────────────────────────────────────────────────────────────
      Sem score 0 a 100: a escala do score de materialidade ainda é decisão
-     aberta do dono, e já existe um 0 a 100 no sistema onde 100 é BOM. Ordem
-     por fato observável: pior severidade, depois quantidade de sinais, depois
-     maior R$ exposto, depois nome. Ordem total e reproduzível. */
+     aberta do dono, e já existe um 0 a 100 no sistema onde 100 é BOM.
+
+     O corte PRIMÁRIO é o ESTADO, não a severidade, e isso mudou na Entrega B.2
+     por medição: com ordem por severidade, a lista de segunda-feira era idêntica
+     à de sexta (87% dos alertas repetidos, 97% das carteiras acesas nos 37 meses
+     de dado real). Severidade continua ordenando dentro do estado, que é onde
+     ela informa. Ordem total e reproduzível. */
   const pesoSev: Record<Severidade, number> = { alta: 3, media: 2, baixa: 1 };
   carteiras.sort(
     (a, b) =>
+      (b.estado ? PESO_ESTADO[b.estado] : 0) - (a.estado ? PESO_ESTADO[a.estado] : 0) ||
       (b.pior ? pesoSev[b.pior] : 0) - (a.pior ? pesoSev[a.pior] : 0) ||
       b.sinais.length - a.sinais.length ||
       b.maiorExposicao - a.maiorExposicao ||
       a.carteira.localeCompare(b.carteira)
   );
+  // Dentro da carteira, o que mudou primeiro, pelo mesmo motivo.
+  for (const c of carteiras) {
+    c.sinais.sort(
+      (a, b) =>
+        PESO_ESTADO[b.estado] - PESO_ESTADO[a.estado] ||
+        pesoSev[b.severidade] - pesoSev[a.severidade] ||
+        b.valor - a.valor ||
+        a.tipo.localeCompare(b.tipo) ||
+        a.rotulo.localeCompare(b.rotulo)
+    );
+  }
 
   return {
     baseData: base?.data ?? null,
     carteiras,
+    encerrados,
+    temAnterior,
     emissores,
     fatores,
     deterioracao,

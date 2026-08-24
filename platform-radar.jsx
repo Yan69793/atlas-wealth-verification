@@ -33,6 +33,26 @@ import React from 'react';
 
   const ROTULO_SEV = { alta: 'Alta', media: 'Media', baixa: 'Baixa' };
 
+  /* Estado temporal do sinal. A tela abre pelo que MUDOU, nao pela severidade.
+     Medido no dado real da casa em 24/08/2026: com ordem por severidade, 87%
+     dos achados de cada mes eram os mesmos do mes anterior e 97% das carteiras
+     ficavam acesas. Lista que nao muda ensina o assessor a nao abrir. */
+  const ROTULO_ESTADO = {
+    novo: 'Novo',
+    agravado: 'Agravou',
+    acompanhamento: 'Em acompanhamento',
+    melhorado: 'Melhorou',
+    encerrado: 'Encerrado',
+  };
+  const COR_ESTADO = {
+    novo: 'amber',
+    agravado: 'red',
+    acompanhamento: 'slate',
+    melhorado: 'green',
+    encerrado: 'slate',
+  };
+  const MUDOU = ['novo', 'agravado'];
+
   /* Faixa de cobertura vira linguagem de negocio: o assessor nao precisa saber
      que existe um limiar chamado coberturaAfirmaMin. */
   const ROTULO_FAIXA = {
@@ -255,6 +275,12 @@ import React from 'react';
     const DATA = window.ATLAS_RADAR_DATA;
     const [aba, setAba] = useState('carteiras');
     const [aberto, setAberto] = useState(null);
+    /* Filtro de novidade, ligado por padrao QUANDO ha base de comparacao. Sem
+       base, tudo e "novo" por definicao: o filtro nao filtraria nada e so
+       esconderia o fato de que ainda nao existe historico. Hook aqui em cima,
+       antes de qualquer retorno antecipado. */
+    const temAnterior = !!(DATA && DATA.temAnterior === true);
+    const [soMudou, setSoMudou] = useState(temAnterior);
 
     const porId = useMemo(() => {
       const m = new Map();
@@ -278,9 +304,27 @@ import React from 'react';
       );
     }
 
-    const carteiras = DATA.carteiras;
-    const comSinal = carteiras.filter((c) => c.sinais.length > 0);
-    const criticas = carteiras.filter((c) => c.pior === 'alta');
+    const todasCarteiras = DATA.carteiras;
+    const encerrados = DATA.encerrados || [];
+
+    const carteiras = soMudou
+      ? todasCarteiras
+          .map((c) => ({ ...c, sinais: c.sinais.filter((s) => MUDOU.indexOf(s.estado) >= 0) }))
+          .filter((c) => c.sinais.length > 0)
+      : todasCarteiras;
+
+    const totalSinais = todasCarteiras.reduce((s, c) => s + c.sinais.length, 0);
+    const porEstado = {};
+    for (const c of todasCarteiras) {
+      for (const s of c.sinais) porEstado[s.estado] = (porEstado[s.estado] || 0) + 1;
+    }
+    const nMudou = (porEstado.novo || 0) + (porEstado.agravado || 0);
+
+    /* Os KPI descrevem a CASA, sempre, e a tabela descreve o corte escolhido.
+       Misturar os dois faria o cabecalho dizer "3 carteiras" quando a casa tem
+       6, e quem le concluiria que sumiram tres clientes. */
+    const comSinal = todasCarteiras.filter((c) => c.sinais.length > 0);
+    const criticas = todasCarteiras.filter((c) => c.pior === 'alta');
     const plSobSinal = comSinal.reduce((s, c) => s + c.plTotal, 0);
     const totalInsights = (DATA.insights || []).length;
     const coberturaMedia = DATA.coberturaCasa && DATA.coberturaCasa.atributos.length
@@ -302,9 +346,11 @@ import React from 'react';
             Assessor: nomeAssessor(assessorDe(c.carteira)),
             'PL da carteira': c.plTotal,
             Sinal: ROTULO_TIPO[s.tipo] || s.tipo,
+            Situacao: ROTULO_ESTADO[s.estado] || s.estado || '',
             Severidade: ROTULO_SEV[s.severidade] || s.severidade,
             Item: rotuloSinal(s),
             Valor: s.valor,
+            'Valor anterior': typeof s.valorAnterior === 'number' ? s.valorAnterior : '',
             '% do PL': Math.round(s.fracaoPl * 1000) / 10,
             Cobertura: Math.round(s.cobertura * 1000) / 10,
             Afirmacao: ins ? ins.afirmacao : '',
@@ -319,6 +365,7 @@ import React from 'react';
 
     const ABAS = [
       ['carteiras', 'Carteiras', carteiras.length],
+      ['encerrados', 'Encerrados', encerrados.length],
       ['emissores', 'Emissores', (DATA.emissores || []).length],
       ['fatores', 'Fatores', (DATA.fatores || []).length],
       ['deterioracao', 'Deterioracao', (DATA.deterioracao || []).length],
@@ -332,7 +379,7 @@ import React from 'react';
           <h1 className="page-title">Radar de Carteiras</h1>
           <div className="page-subtitle" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
             <span>
-              {carteiras.length} carteiras · {totalInsights} achados · posicao de {DATA.data}
+              {todasCarteiras.length} carteiras · {totalInsights} achados · posicao de {DATA.data}
               {DATA.baseData
                 ? ' · comparado com ' + DATA.baseData
                 : ' · sem base de comparacao (serie curta)'}
@@ -346,11 +393,51 @@ import React from 'react';
         <BannerCobertura casa={DATA.coberturaCasa} limiares={DATA.limiares} porCarteira={DATA.cobertura} />
 
         <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+          <KPITile
+            label="O que mudou"
+            value={nMudou}
+            sub={temAnterior ? 'de ' + totalSinais + ' achados, contra ' + (DATA.baseEstado || 'o periodo anterior') : 'primeira apuracao: tudo e novo'}
+            variant={nMudou ? 'amber' : 'navy'}
+          />
           <KPITile label="Carteiras criticas" value={criticas.length} sub="Com achado de severidade alta" variant={criticas.length ? 'red' : 'navy'} />
-          <KPITile label="Carteiras com achado" value={comSinal.length} sub={'de ' + carteiras.length + ' analisadas'} variant="navy" />
           <KPITile label="Patrimonio sob achado" value={fmtCompactBRL(plSobSinal)} sub="PL das carteiras com algum achado" variant="navy" />
           <KPITile label="Cobertura media" value={fmtPct(coberturaMedia, 0)} sub="Do patrimonio da casa classificado" />
         </div>
+
+        {/* O corte de novidade fica ACIMA das abas, porque ele muda o que todas
+            elas mostram. Sem base de comparacao o botao some: oferecer um filtro
+            que nao filtra nada e pior do que nao oferecer. */}
+        {temAnterior && (
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', margin: '18px 0 0' }}>
+            <button
+              type="button"
+              className={'chip' + (soMudou ? ' active' : '')}
+              onClick={() => { setSoMudou(true); setAberto(null); }}
+            >
+              So o que mudou ({nMudou})
+            </button>
+            <button
+              type="button"
+              className={'chip' + (soMudou ? '' : ' active')}
+              onClick={() => { setSoMudou(false); setAberto(null); }}
+            >
+              Tudo ({totalSinais})
+            </button>
+            <span style={{ fontSize: '0.714rem', color: 'var(--muted)' }}>
+              novo {porEstado.novo || 0} · agravou {porEstado.agravado || 0} · em acompanhamento {porEstado.acompanhamento || 0} · melhorou {porEstado.melhorado || 0} · encerrado {encerrados.length}
+            </span>
+          </div>
+        )}
+
+        {soMudou && !carteiras.length && (
+          <div style={{ margin: '18px 0 0' }}>
+            <EmptyState
+              title="Nada mudou desde a apuracao anterior"
+              sub={'Os ' + totalSinais + ' achados ja estavam na lista de ' + (DATA.baseEstado || 'antes') + '. Clique em "Tudo" para revê-los.'}
+              icon="check"
+            />
+          </div>
+        )}
 
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '18px 0 12px' }}>
           {ABAS.map(([id, label, n]) => (
@@ -385,6 +472,11 @@ import React from 'react';
                       <td>
                         <div style={{ fontWeight: 600, fontSize: '0.857rem' }}>{c.carteira}</div>
                         <div style={{ fontSize: '0.714rem', color: 'var(--muted)' }}>{nomeCarteira(c.carteira)}</div>
+                        {c.estado && (
+                          <div style={{ marginTop: 4 }}>
+                            <Pill cor={COR_ESTADO[c.estado]}>{ROTULO_ESTADO[c.estado]}</Pill>
+                          </div>
+                        )}
                       </td>
                       <td style={{ fontSize: '0.786rem', color: 'var(--muted)' }}>{nomeAssessor(assessorDe(c.carteira))}</td>
                       <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>{fmtCompactBRL(c.plTotal)}</td>
@@ -400,9 +492,15 @@ import React from 'react';
                       <React.Fragment key={s.insightId}>
                         <tr style={{ background: 'var(--bg-subtle, #f8fafc)' }}>
                           <td style={{ paddingLeft: 24, fontSize: '0.786rem' }} colSpan={2}>
+                            <Pill cor={COR_ESTADO[s.estado]}>{ROTULO_ESTADO[s.estado] || s.estado}</Pill>{' '}
                             <Pill cor={COR_SEV[s.severidade]}>{ROTULO_SEV[s.severidade]}</Pill>{' '}
                             {ROTULO_TIPO[s.tipo] || s.tipo}
                             <span style={{ color: 'var(--muted)' }}> · {rotuloSinal(s)}</span>
+                            {typeof s.valorAnterior === 'number' && s.valorAnterior > 0 && (
+                              <span style={{ color: 'var(--muted)' }}>
+                                {' '}· era {fmtCompactBRL(s.valorAnterior)}
+                              </span>
+                            )}
                           </td>
                           <td style={{ textAlign: 'right', whiteSpace: 'nowrap', fontSize: '0.786rem' }}>{fmtCompactBRL(s.valor)}</td>
                           {/* Queda de patrimonio mede variacao contra a base, nao
@@ -439,6 +537,57 @@ import React from 'react';
               </tbody>
             </table>
           </div>
+        )}
+
+        {/* Encerrados: o achado que existia antes e nao existe mais. Sai em aba
+            propria e nao some da tela, pelo mesmo motivo do encerrado da tela de
+            Eventos: item que desaparece sem explicacao e pior do que item que
+            continua aparecendo, porque o assessor nunca ve o desfecho. */}
+        {aba === 'encerrados' && (
+          encerrados.length === 0 ? (
+            <EmptyState
+              title="Nenhum achado encerrado neste periodo"
+              sub={temAnterior
+                ? 'Tudo que estava na lista de ' + (DATA.baseEstado || 'antes') + ' continua la.'
+                : 'Primeira apuracao: nao ha periodo anterior para comparar.'}
+              icon="check"
+            />
+          ) : (
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th style={{ minWidth: 150 }}>Carteira</th>
+                    <th>Achado que saiu</th>
+                    <th>Severidade que tinha</th>
+                    <th style={{ textAlign: 'right' }}>Valor anterior</th>
+                    <th>Por que saiu</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {encerrados.map((e, i) => (
+                    <tr key={e.carteira + '|' + e.tipo + '|' + e.chave + '|' + i}>
+                      <td>
+                        <div style={{ fontWeight: 600, fontSize: '0.857rem' }}>{e.carteira}</div>
+                        <div style={{ fontSize: '0.714rem', color: 'var(--muted)' }}>{nomeCarteira(e.carteira)}</div>
+                      </td>
+                      <td style={{ fontSize: '0.786rem' }}>
+                        {ROTULO_TIPO[e.tipo] || e.tipo}
+                        <span style={{ color: 'var(--muted)' }}> · {e.rotulo}</span>
+                      </td>
+                      <td><Pill cor={COR_SEV[e.severidadeAnterior]}>{ROTULO_SEV[e.severidadeAnterior]}</Pill></td>
+                      <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>{fmtCompactBRL(e.valorAnterior)}</td>
+                      <td style={{ fontSize: '0.786rem', color: 'var(--muted)' }}>
+                        {e.motivo === 'carteira-saiu'
+                          ? 'A carteira saiu da base'
+                          : 'O achado deixou de passar do limiar'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )
         )}
 
         {aba === 'emissores' && (

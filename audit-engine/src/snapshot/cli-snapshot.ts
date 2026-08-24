@@ -210,7 +210,10 @@ async function main(): Promise<void> {
             desde: adicionarDias(data, -(THRESHOLDS.radarDeterioracaoJanelaDias * 2)),
           })
         : [carregarSnapshot(root, data)];
-    const resultado = radarCruzado(serie);
+    // Estado temporal precisa do radar.json anterior. Sem ele, todo sinal sai
+    // como 'novo', que e a verdade na estreia.
+    const { anterior: radarAnt, baseData: baseEstado } = radarAnterior(root, data);
+    const resultado = radarCruzado(serie, { anterior: radarAnt });
     const arquivo = path.join(root, 'audits', data, 'radar.json');
     fs.mkdirSync(path.dirname(arquivo), { recursive: true });
     const saida: RadarFile = {
@@ -234,16 +237,32 @@ async function main(): Promise<void> {
         radarVencimentoJanelaDias: THRESHOLDS.radarVencimentoJanelaDias,
         radarDeterioracaoPct: THRESHOLDS.radarDeterioracaoPct,
         radarDeterioracaoJanelaDias: THRESHOLDS.radarDeterioracaoJanelaDias,
+        radarVariacaoMaterialPct: THRESHOLDS.radarVariacaoMaterialPct,
       },
+      baseEstado,
       motivo: resultado.baseData === null ? 'serie-curta' : null,
       ...resultado,
     };
     fs.writeFileSync(arquivo, JSON.stringify(saida, null, 2), 'utf8');
+
+    const porEstado = new Map<string, number>();
+    for (const c of resultado.carteiras) {
+      for (const s of c.sinais) porEstado.set(s.estado, (porEstado.get(s.estado) ?? 0) + 1);
+    }
+    const mudou = (porEstado.get('novo') ?? 0) + (porEstado.get('agravado') ?? 0);
+    const total = [...porEstado.values()].reduce((a, b) => a + b, 0);
     console.log(
       `[radar] ${data}: ${resultado.insights.length} insight(s) em ${resultado.carteiras.length} carteira(s)` +
         `, cobertura da casa ${(coberturaMedia(resultado) * 100).toFixed(1)}% (${resultado.coberturaCasa.faixaGlobal})` +
         (resultado.baseData ? `, base ${resultado.baseData}` : ', sem base de comparacao') +
         ` → ${arquivo}`
+    );
+    console.log(
+      `  o que MUDOU: ${mudou} de ${total} sinal(is)` +
+        ` (novo ${porEstado.get('novo') ?? 0}, agravado ${porEstado.get('agravado') ?? 0}, ` +
+        `acompanhamento ${porEstado.get('acompanhamento') ?? 0}, melhorado ${porEstado.get('melhorado') ?? 0}, ` +
+        `encerrado ${resultado.encerrados.length})` +
+        (baseEstado ? `, base de estado ${baseEstado}` : ', sem base de estado (tudo novo)')
     );
     return;
   }
@@ -370,13 +389,13 @@ async function main(): Promise<void> {
     const root = resolverRoot(args);
     const saida = path.join(root, typeof args.saida === 'string' ? args.saida : 'name-map.local.json');
 
-    /* A serie INTEIRA numa passada so, de proposito.
+    /* A série INTEIRA numa passada só, de propósito.
      *
      * Construir por data e ir mesclando produz CICLO: se a grafia A tem mais R$
-     * num mes e a B noutro, o mapa acaba com A→B e B→A, e o normalize apenas
+     * num mês e a B noutro, o mapa acaba com A→B e B→A, e o normalize apenas
      * troca as duas de lugar, para sempre. O vencedor tem que ser eleito uma vez
-     * so, por R$ somado em toda a serie. Foi assim que a Entrega B.1 descobriu
-     * o problema: a primeira tentativa, mes a mes, nao convergia. */
+     * só, por R$ somado em toda a série. Foi assim que a Entrega B.1 descobriu
+     * o problema: a primeira tentativa, mês a mês, não convergia. */
     const valorPorNome = new Map<string, number>();
     const carteiras = new Set<string>();
     const dirAudits = path.join(root, 'audits');
@@ -404,9 +423,9 @@ async function main(): Promise<void> {
     const recusadas: string[] = [];
     let redirecionadas = 0;
     for (const nomes of grupos.values()) {
-      /* Grupo em que alguem JA tem mapeamento humano fica inteiro de fora. Se
-       * mapeassemos o resto, o mapa viraria corrente (X→Y humano, Y→Z nosso) e
-       * o normalize, que faz uma consulta so, pararia no meio do caminho. */
+      /* Grupo em que alguém JÁ tem mapeamento humano fica inteiro de fora. Se
+       * mapeássemos o resto, o mapa viraria corrente (X→Y humano, Y→Z nosso) e
+       * o normalize, que faz uma consulta só, pararia no meio do caminho. */
       if (nomes.some((n) => existente[n] !== undefined)) {
         jaMapeados.push(nomes[0]);
         continue;
@@ -417,8 +436,8 @@ async function main(): Promise<void> {
       for (const n of nomes) {
         if (n === canonico) continue;
         /* O normalize aplica o MESMO mapa a nome de carteira e a nome de ativo.
-         * Renomear carteira de cliente em silencio e o pior desfecho possivel
-         * deste comando, entao a chave que for nome de carteira e recusada. */
+         * Renomear carteira de cliente em silêncio é o pior desfecho possível
+         * deste comando, então a chave que for nome de carteira é recusada. */
         if (carteiras.has(n)) {
           recusadas.push(n);
           continue;
@@ -536,8 +555,8 @@ async function main(): Promise<void> {
  * prática, é o arquivo que PARSEIA e perdeu a estrutura: até 24/08/2026 ele caía
  * num `{}` silencioso, o comando regenerava tudo do zero, relatava "N novo(s)" e
  * saía com SUCESSO. Horas de preenchimento humano iam embora com mensagem verde.
- * Aconteceu de verdade durante a calibração da Entrega B.1, num mapa com 1.784
- * entradas e 89,4% do PL da casa já classificado.
+ * Aconteceu de verdade durante a calibração da Entrega B.1, com um editor que
+ * reescreveu o arquivo com outra estrutura.
  *
  * "Não achei o que esperava" nunca pode significar "então começo do zero" num
  * arquivo que representa trabalho humano.
@@ -566,6 +585,31 @@ function lerMappings<T>(caminho: string, rotulo: string): Record<string, T> {
     );
   }
   return m as Record<string, T>;
+}
+
+/**
+ * radar.json mais recente ANTES da data pedida. Mesmo desenho de
+ * `creditoAnterior`: varre para trás pelos nomes de diretório e abre só o que
+ * precisa. Artefato ilegível é pulado, não derruba a execução.
+ */
+function radarAnterior(
+  root: string,
+  data: string
+): { anterior: { carteiras: RadarFile['carteiras'] } | null; baseData: string | null } {
+  const datas = listarDatasDiarias(root, data)
+    .filter((d) => d < data)
+    .sort((a, b) => b.localeCompare(a));
+  for (const d of datas) {
+    const p = path.join(root, 'audits', d, 'radar.json');
+    if (!fs.existsSync(p)) continue;
+    try {
+      const cru = JSON.parse(fs.readFileSync(p, 'utf8')) as RadarFile;
+      if (Array.isArray(cru?.carteiras)) return { anterior: { carteiras: cru.carteiras }, baseData: d };
+    } catch {
+      // arquivo ilegivel: segue para o anterior
+    }
+  }
+  return { anterior: null, baseData: null };
 }
 
 /**

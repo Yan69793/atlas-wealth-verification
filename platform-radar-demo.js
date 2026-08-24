@@ -38,113 +38,13 @@
     "radarVencimentoConcentradoPct": 0.2,
     "radarVencimentoJanelaDias": 30,
     "radarDeterioracaoPct": 0.1,
-    "radarDeterioracaoJanelaDias": 30
+    "radarDeterioracaoJanelaDias": 30,
+    "radarVariacaoMaterialPct": 0.2
   },
+  "baseEstado": "2026-07-25",
   "motivo": null,
   "baseData": "2026-07-25",
   "carteiras": [
-    {
-      "carteira": "CEDRO_HLD",
-      "plTotal": 7960000,
-      "sinais": [
-        {
-          "tipo": "CONCENTRACAO_ATIVO",
-          "severidade": "media",
-          "rotulo": "CDB OMEGA VENCE SET",
-          "valor": 1800000,
-          "fracaoPl": 0.22613065326633167,
-          "cobertura": 1,
-          "insightId": "2026-08-24|CEDRO_HLD|CONCENTRACAO_ATIVO|CDB OMEGA VENCE SET"
-        },
-        {
-          "tipo": "CONCENTRACAO_EMISSOR",
-          "severidade": "alta",
-          "rotulo": "Banco Omega",
-          "valor": 2700000,
-          "fracaoPl": 0.3391959798994975,
-          "cobertura": 1,
-          "insightId": "2026-08-24|CEDRO_HLD|CONCENTRACAO_EMISSOR|banco-omega"
-        },
-        {
-          "tipo": "CONCENTRACAO_FATOR",
-          "severidade": "alta",
-          "rotulo": "IPCA",
-          "fator": "indexador",
-          "valor": 4000000,
-          "fracaoPl": 0.5025125628140703,
-          "cobertura": 1,
-          "insightId": "2026-08-24|CEDRO_HLD|CONCENTRACAO_FATOR|indexador:IPCA"
-        },
-        {
-          "tipo": "CONCENTRACAO_FATOR",
-          "severidade": "alta",
-          "rotulo": "credito-privado",
-          "fator": "classeCanonica",
-          "valor": 6700000,
-          "fracaoPl": 0.8417085427135679,
-          "cobertura": 1,
-          "insightId": "2026-08-24|CEDRO_HLD|CONCENTRACAO_FATOR|classeCanonica:credito-privado"
-        },
-        {
-          "tipo": "LIQUIDEZ_BAIXA",
-          "severidade": "alta",
-          "rotulo": "liquidez",
-          "valor": 260000,
-          "fracaoPl": 0.032663316582914576,
-          "cobertura": 1,
-          "insightId": "2026-08-24|CEDRO_HLD|LIQUIDEZ_BAIXA|"
-        },
-        {
-          "tipo": "VENCIMENTO_CONCENTRADO",
-          "severidade": "alta",
-          "rotulo": "30 dias",
-          "valor": 2700000,
-          "fracaoPl": 0.3391959798994975,
-          "cobertura": 1,
-          "insightId": "2026-08-24|CEDRO_HLD|VENCIMENTO_CONCENTRADO|30"
-        }
-      ],
-      "pior": "alta",
-      "faixaCobertura": "afirma",
-      "maiorExposicao": 6700000
-    },
-    {
-      "carteira": "ALPHA_01",
-      "plTotal": 4050000,
-      "sinais": [
-        {
-          "tipo": "CONCENTRACAO_EMISSOR",
-          "severidade": "media",
-          "rotulo": "Banco Zeta",
-          "valor": 760000,
-          "fracaoPl": 0.18765432098765433,
-          "cobertura": 1,
-          "insightId": "2026-08-24|ALPHA_01|CONCENTRACAO_EMISSOR|banco-zeta"
-        },
-        {
-          "tipo": "CONCENTRACAO_FATOR",
-          "severidade": "alta",
-          "rotulo": "credito-privado",
-          "fator": "classeCanonica",
-          "valor": 3560000,
-          "fracaoPl": 0.8790123456790123,
-          "cobertura": 1,
-          "insightId": "2026-08-24|ALPHA_01|CONCENTRACAO_FATOR|classeCanonica:credito-privado"
-        },
-        {
-          "tipo": "DETERIORACAO_PL",
-          "severidade": "media",
-          "rotulo": "desde 2026-07-25",
-          "valor": 1134000,
-          "fracaoPl": -0.21875,
-          "cobertura": 1,
-          "insightId": "2026-08-24|ALPHA_01|DETERIORACAO_PL|2026-07-25"
-        }
-      ],
-      "pior": "alta",
-      "faixaCobertura": "afirma",
-      "maiorExposicao": 3560000
-    },
     {
       "carteira": "FAROL_INV",
       "plTotal": 4300000,
@@ -152,17 +52,10 @@
         {
           "tipo": "CONCENTRACAO_FATOR",
           "severidade": "alta",
-          "rotulo": "USD",
-          "fator": "moeda",
-          "valor": 3200000,
-          "fracaoPl": 0.7441860465116279,
-          "cobertura": 1,
-          "insightId": "2026-08-24|FAROL_INV|CONCENTRACAO_FATOR|moeda:USD"
-        },
-        {
-          "tipo": "CONCENTRACAO_FATOR",
-          "severidade": "alta",
           "rotulo": "eua",
+          "chave": "regiao:eua",
+          "estado": "agravado",
+          "valorAnterior": 2580000,
           "fator": "regiao",
           "valor": 3200000,
           "fracaoPl": 0.7441860465116279,
@@ -173,16 +66,164 @@
           "tipo": "CONCENTRACAO_FATOR",
           "severidade": "alta",
           "rotulo": "internacional",
+          "chave": "classeCanonica:internacional",
+          "estado": "agravado",
+          "valorAnterior": 2580000,
           "fator": "classeCanonica",
           "valor": 3200000,
           "fracaoPl": 0.7441860465116279,
           "cobertura": 1,
           "insightId": "2026-08-24|FAROL_INV|CONCENTRACAO_FATOR|classeCanonica:internacional"
+        },
+        {
+          "tipo": "CONCENTRACAO_FATOR",
+          "severidade": "alta",
+          "rotulo": "USD",
+          "chave": "moeda:USD",
+          "estado": "agravado",
+          "valorAnterior": 2580000,
+          "fator": "moeda",
+          "valor": 3200000,
+          "fracaoPl": 0.7441860465116279,
+          "cobertura": 1,
+          "insightId": "2026-08-24|FAROL_INV|CONCENTRACAO_FATOR|moeda:USD"
         }
       ],
       "pior": "alta",
+      "estado": "agravado",
       "faixaCobertura": "afirma",
       "maiorExposicao": 3200000
+    },
+    {
+      "carteira": "CEDRO_HLD",
+      "plTotal": 7960000,
+      "sinais": [
+        {
+          "tipo": "VENCIMENTO_CONCENTRADO",
+          "severidade": "alta",
+          "rotulo": "30 dias",
+          "chave": "30",
+          "estado": "novo",
+          "valorAnterior": null,
+          "valor": 2700000,
+          "fracaoPl": 0.3391959798994975,
+          "cobertura": 1,
+          "insightId": "2026-08-24|CEDRO_HLD|VENCIMENTO_CONCENTRADO|30"
+        },
+        {
+          "tipo": "CONCENTRACAO_FATOR",
+          "severidade": "alta",
+          "rotulo": "credito-privado",
+          "chave": "classeCanonica:credito-privado",
+          "estado": "acompanhamento",
+          "valorAnterior": 6700000,
+          "fator": "classeCanonica",
+          "valor": 6700000,
+          "fracaoPl": 0.8417085427135679,
+          "cobertura": 1,
+          "insightId": "2026-08-24|CEDRO_HLD|CONCENTRACAO_FATOR|classeCanonica:credito-privado"
+        },
+        {
+          "tipo": "CONCENTRACAO_FATOR",
+          "severidade": "alta",
+          "rotulo": "IPCA",
+          "chave": "indexador:IPCA",
+          "estado": "acompanhamento",
+          "valorAnterior": 4000000,
+          "fator": "indexador",
+          "valor": 4000000,
+          "fracaoPl": 0.5025125628140703,
+          "cobertura": 1,
+          "insightId": "2026-08-24|CEDRO_HLD|CONCENTRACAO_FATOR|indexador:IPCA"
+        },
+        {
+          "tipo": "CONCENTRACAO_EMISSOR",
+          "severidade": "alta",
+          "rotulo": "Banco Omega",
+          "chave": "banco-omega",
+          "estado": "acompanhamento",
+          "valorAnterior": 2700000,
+          "valor": 2700000,
+          "fracaoPl": 0.3391959798994975,
+          "cobertura": 1,
+          "insightId": "2026-08-24|CEDRO_HLD|CONCENTRACAO_EMISSOR|banco-omega"
+        },
+        {
+          "tipo": "LIQUIDEZ_BAIXA",
+          "severidade": "alta",
+          "rotulo": "liquidez",
+          "chave": "",
+          "estado": "acompanhamento",
+          "valorAnterior": 260000,
+          "valor": 260000,
+          "fracaoPl": 0.032663316582914576,
+          "cobertura": 1,
+          "insightId": "2026-08-24|CEDRO_HLD|LIQUIDEZ_BAIXA|"
+        },
+        {
+          "tipo": "CONCENTRACAO_ATIVO",
+          "severidade": "media",
+          "rotulo": "CDB OMEGA VENCE SET",
+          "chave": "CDB OMEGA VENCE SET",
+          "estado": "acompanhamento",
+          "valorAnterior": 1800000,
+          "valor": 1800000,
+          "fracaoPl": 0.22613065326633167,
+          "cobertura": 1,
+          "insightId": "2026-08-24|CEDRO_HLD|CONCENTRACAO_ATIVO|CDB OMEGA VENCE SET"
+        }
+      ],
+      "pior": "alta",
+      "estado": "novo",
+      "faixaCobertura": "afirma",
+      "maiorExposicao": 6700000
+    },
+    {
+      "carteira": "ALPHA_01",
+      "plTotal": 4050000,
+      "sinais": [
+        {
+          "tipo": "DETERIORACAO_PL",
+          "severidade": "media",
+          "rotulo": "desde 2026-07-25",
+          "chave": "",
+          "estado": "novo",
+          "valorAnterior": null,
+          "valor": 1134000,
+          "fracaoPl": -0.21875,
+          "cobertura": 1,
+          "insightId": "2026-08-24|ALPHA_01|DETERIORACAO_PL|2026-07-25"
+        },
+        {
+          "tipo": "CONCENTRACAO_FATOR",
+          "severidade": "alta",
+          "rotulo": "credito-privado",
+          "chave": "classeCanonica:credito-privado",
+          "estado": "melhorado",
+          "valorAnterior": 4556800,
+          "fator": "classeCanonica",
+          "valor": 3560000,
+          "fracaoPl": 0.8790123456790123,
+          "cobertura": 1,
+          "insightId": "2026-08-24|ALPHA_01|CONCENTRACAO_FATOR|classeCanonica:credito-privado"
+        },
+        {
+          "tipo": "CONCENTRACAO_EMISSOR",
+          "severidade": "media",
+          "rotulo": "Banco Zeta",
+          "chave": "banco-zeta",
+          "estado": "melhorado",
+          "valorAnterior": 972800,
+          "valor": 760000,
+          "fracaoPl": 0.18765432098765433,
+          "cobertura": 1,
+          "insightId": "2026-08-24|ALPHA_01|CONCENTRACAO_EMISSOR|banco-zeta"
+        }
+      ],
+      "pior": "alta",
+      "estado": "novo",
+      "faixaCobertura": "afirma",
+      "maiorExposicao": 3560000
     },
     {
       "carteira": "BRAVO_PV",
@@ -192,6 +233,9 @@
           "tipo": "CONCENTRACAO_FATOR",
           "severidade": "alta",
           "rotulo": "CDI",
+          "chave": "indexador:CDI",
+          "estado": "acompanhamento",
+          "valorAnterior": 4600000,
           "fator": "indexador",
           "valor": 4600000,
           "fracaoPl": 0.9583333333333334,
@@ -202,6 +246,9 @@
           "tipo": "CONCENTRACAO_FATOR",
           "severidade": "alta",
           "rotulo": "credito-privado",
+          "chave": "classeCanonica:credito-privado",
+          "estado": "acompanhamento",
+          "valorAnterior": 4200000,
           "fator": "classeCanonica",
           "valor": 4200000,
           "fracaoPl": 0.875,
@@ -210,6 +257,7 @@
         }
       ],
       "pior": "alta",
+      "estado": "acompanhamento",
       "faixaCobertura": "afirma",
       "maiorExposicao": 4600000
     },
@@ -221,6 +269,9 @@
           "tipo": "CONCENTRACAO_FATOR",
           "severidade": "alta",
           "rotulo": "IPCA",
+          "chave": "indexador:IPCA",
+          "estado": "acompanhamento",
+          "valorAnterior": 3610000,
           "fator": "indexador",
           "valor": 3610000,
           "fracaoPl": 0.9116161616161617,
@@ -229,6 +280,7 @@
         }
       ],
       "pior": "alta",
+      "estado": "acompanhamento",
       "faixaCobertura": "afirma",
       "maiorExposicao": 3610000
     },
@@ -240,6 +292,9 @@
           "tipo": "CONCENTRACAO_ATIVO",
           "severidade": "media",
           "rotulo": "ESTRUTURADO XPTO I",
+          "chave": "ESTRUTURADO XPTO I",
+          "estado": "acompanhamento",
+          "valorAnterior": 900000,
           "valor": 900000,
           "fracaoPl": 0.2571428571428571,
           "cobertura": 1,
@@ -247,10 +302,41 @@
         }
       ],
       "pior": "media",
+      "estado": "acompanhamento",
       "faixaCobertura": "insuficiente",
       "maiorExposicao": 900000
     }
   ],
+  "encerrados": [
+    {
+      "carteira": "FAROL_INV",
+      "tipo": "CONCENTRACAO_FATOR",
+      "chave": "indexador:BOLSA",
+      "rotulo": "BOLSA",
+      "severidadeAnterior": "alta",
+      "valorAnterior": 2100000,
+      "motivo": "sinal-saiu"
+    },
+    {
+      "carteira": "FAROL_INV",
+      "tipo": "CONCENTRACAO_ATIVO",
+      "chave": "ETF EUA FAROL CONCENTRADO",
+      "rotulo": "ETF EUA FAROL CONCENTRADO",
+      "severidadeAnterior": "alta",
+      "valorAnterior": 1200000,
+      "motivo": "sinal-saiu"
+    },
+    {
+      "carteira": "FAROL_INV",
+      "tipo": "CONCENTRACAO_EMISSOR",
+      "chave": "gestora-etf-eua-farol-concentrado",
+      "rotulo": "Gestora etf-eua-farol-concentrado",
+      "severidadeAnterior": "alta",
+      "valorAnterior": 1200000,
+      "motivo": "sinal-saiu"
+    }
+  ],
+  "temAnterior": true,
   "emissores": [
     {
       "emissorId": "banco-omega",
@@ -1866,7 +1952,9 @@
         "valor": "credito-privado",
         "montante": 3560000,
         "plTotal": 4050000,
-        "fracaoPl": 0.8790123456790123
+        "fracaoPl": 0.8790123456790123,
+        "estado": "melhorado",
+        "valorAnterior": 4556800
       },
       "regra": {
         "nome": "radarConcentracaoFatorPct",
@@ -1896,7 +1984,9 @@
         "valor": "credito-privado",
         "montante": 4200000,
         "plTotal": 4800000,
-        "fracaoPl": 0.875
+        "fracaoPl": 0.875,
+        "estado": "acompanhamento",
+        "valorAnterior": 4200000
       },
       "regra": {
         "nome": "radarConcentracaoFatorPct",
@@ -1926,7 +2016,9 @@
         "valor": "CDI",
         "montante": 4600000,
         "plTotal": 4800000,
-        "fracaoPl": 0.9583333333333334
+        "fracaoPl": 0.9583333333333334,
+        "estado": "acompanhamento",
+        "valorAnterior": 4600000
       },
       "regra": {
         "nome": "radarConcentracaoFatorPct",
@@ -1956,7 +2048,9 @@
         "emissorNome": "Banco Omega",
         "valor": 2700000,
         "plTotal": 7960000,
-        "fracaoPl": 0.3391959798994975
+        "fracaoPl": 0.3391959798994975,
+        "estado": "acompanhamento",
+        "valorAnterior": 2700000
       },
       "regra": {
         "nome": "radarConcentracaoEmissorPct",
@@ -1986,7 +2080,9 @@
         "valor": "credito-privado",
         "montante": 6700000,
         "plTotal": 7960000,
-        "fracaoPl": 0.8417085427135679
+        "fracaoPl": 0.8417085427135679,
+        "estado": "acompanhamento",
+        "valorAnterior": 6700000
       },
       "regra": {
         "nome": "radarConcentracaoFatorPct",
@@ -2016,7 +2112,9 @@
         "valor": "IPCA",
         "montante": 4000000,
         "plTotal": 7960000,
-        "fracaoPl": 0.5025125628140703
+        "fracaoPl": 0.5025125628140703,
+        "estado": "acompanhamento",
+        "valorAnterior": 4000000
       },
       "regra": {
         "nome": "radarConcentracaoFatorPct",
@@ -2045,7 +2143,9 @@
         "liquidez": 260000,
         "plTotal": 7960000,
         "fracaoPl": 0.032663316582914576,
-        "deficitRelativo": 0.34673366834170855
+        "deficitRelativo": 0.34673366834170855,
+        "estado": "acompanhamento",
+        "valorAnterior": 260000
       },
       "regra": {
         "nome": "radarLiquidezMinPct",
@@ -2075,7 +2175,8 @@
         "plTotal": 7960000,
         "fracaoPl": 0.3391959798994975,
         "titulos": 2,
-        "janelaDias": 30
+        "janelaDias": 30,
+        "estado": "novo"
       },
       "regra": {
         "nome": "radarVencimentoConcentradoPct",
@@ -2106,7 +2207,9 @@
         "valor": "IPCA",
         "montante": 3610000,
         "plTotal": 3960000,
-        "fracaoPl": 0.9116161616161617
+        "fracaoPl": 0.9116161616161617,
+        "estado": "acompanhamento",
+        "valorAnterior": 3610000
       },
       "regra": {
         "nome": "radarConcentracaoFatorPct",
@@ -2136,7 +2239,9 @@
         "valor": "internacional",
         "montante": 3200000,
         "plTotal": 4300000,
-        "fracaoPl": 0.7441860465116279
+        "fracaoPl": 0.7441860465116279,
+        "estado": "agravado",
+        "valorAnterior": 2580000
       },
       "regra": {
         "nome": "radarConcentracaoFatorPct",
@@ -2166,7 +2271,9 @@
         "valor": "USD",
         "montante": 3200000,
         "plTotal": 4300000,
-        "fracaoPl": 0.7441860465116279
+        "fracaoPl": 0.7441860465116279,
+        "estado": "agravado",
+        "valorAnterior": 2580000
       },
       "regra": {
         "nome": "radarConcentracaoFatorPct",
@@ -2196,7 +2303,9 @@
         "valor": "eua",
         "montante": 3200000,
         "plTotal": 4300000,
-        "fracaoPl": 0.7441860465116279
+        "fracaoPl": 0.7441860465116279,
+        "estado": "agravado",
+        "valorAnterior": 2580000
       },
       "regra": {
         "nome": "radarConcentracaoFatorPct",
@@ -2226,7 +2335,9 @@
         "emissorNome": "Banco Zeta",
         "valor": 760000,
         "plTotal": 4050000,
-        "fracaoPl": 0.18765432098765433
+        "fracaoPl": 0.18765432098765433,
+        "estado": "melhorado",
+        "valorAnterior": 972800
       },
       "regra": {
         "nome": "radarConcentracaoEmissorPct",
@@ -2257,7 +2368,8 @@
         "delta": -1134000,
         "deltaPct": -0.21875,
         "baseData": "2026-07-25",
-        "diasEntre": 30
+        "diasEntre": 30,
+        "estado": "novo"
       },
       "regra": {
         "nome": "radarDeterioracaoPct",
@@ -2291,7 +2403,9 @@
         "ativo": "CDB OMEGA VENCE SET",
         "valor": 1800000,
         "plTotal": 7960000,
-        "fracaoPl": 0.22613065326633167
+        "fracaoPl": 0.22613065326633167,
+        "estado": "acompanhamento",
+        "valorAnterior": 1800000
       },
       "regra": {
         "nome": "radarConcentracaoAtivoPct",
@@ -2320,7 +2434,9 @@
         "ativo": "ESTRUTURADO XPTO I",
         "valor": 900000,
         "plTotal": 3500000,
-        "fracaoPl": 0.2571428571428571
+        "fracaoPl": 0.2571428571428571,
+        "estado": "acompanhamento",
+        "valorAnterior": 900000
       },
       "regra": {
         "nome": "radarConcentracaoAtivoPct",

@@ -1850,7 +1850,97 @@ ok('R$ × dias não é formatado como moeda',
       alarmeBase.length === 0, alarmeBase.map((i) => i.id).join(' | '));
 
     ok('demo do radar nao carrega carimbo de producao', R.geradoEm === null);
+
+    /* ── Entrega B.2: a tela abre pelo que MUDOU ────────────────────────────
+       Medido no dado real da casa em 24/08/2026: sem estado, o radar repetia
+       87% dos achados do mes anterior e acendia 97% das carteiras. Uma tela que
+       nao muda ensina o assessor a nao abrir. Estes checks travam o corte por
+       novidade no payload e na tela. */
+    const ESTADOS = ['novo', 'acompanhamento', 'agravado', 'melhorado', 'encerrado'];
+    const PESO_ESTADO = { agravado: 5, novo: 4, acompanhamento: 3, melhorado: 2, encerrado: 1 };
+
+    const semEstado = sinais.filter((s) => ESTADOS.indexOf(s.estado) < 0);
+    ok('todo achado carrega estado temporal valido', semEstado.length === 0,
+      semEstado.map((s) => s.tipo + '/' + s.rotulo + ': ' + s.estado).join(' | '));
+
+    ok('todo achado carrega chave estavel para casar com o periodo anterior',
+      sinais.every((s) => typeof s.chave === 'string'));
+
+    // A chave da deterioracao e vazia de proposito: usar a data da base faria o
+    // sinal nascer 'novo' todo periodo, que e o mesmo que nao ter estado.
+    const deterComChave = sinais.filter((s) => s.tipo === 'DETERIORACAO_PL' && s.chave !== '');
+    ok('chave da deterioracao e vazia, senao o sinal renasce todo periodo',
+      deterComChave.length === 0);
+
+    ok('payload declara se houve periodo anterior', R.temAnterior === true || R.temAnterior === false);
+    ok('demo do radar tem base de estado', R.temAnterior === true && !!R.baseEstado);
+    ok('limiar de variacao material esta no payload',
+      typeof lim.radarVariacaoMaterialPct === 'number' && lim.radarVariacaoMaterialPct > 0);
+
+    // Os cinco estados precisam aparecer, senao a entrega nao esta demonstrada.
+    const estadosDemo = new Set(sinais.map((s) => s.estado));
+    ok('demo tem achado novo', estadosDemo.has('novo'));
+    ok('demo tem achado que agravou', estadosDemo.has('agravado'));
+    ok('demo tem achado em acompanhamento', estadosDemo.has('acompanhamento'));
+    ok('demo tem achado que melhorou', estadosDemo.has('melhorado'));
+    ok('demo tem achado encerrado', (R.encerrados || []).length > 0);
+    ok('encerrado declara por que saiu',
+      (R.encerrados || []).every((e) => e.motivo === 'sinal-saiu' || e.motivo === 'carteira-saiu'));
+    ok('encerrado leva o que tinha antes, para a tela mostrar o desfecho',
+      (R.encerrados || []).every((e) => typeof e.valorAnterior === 'number' && !!e.severidadeAnterior));
+
+    // Invariante: o estado da carteira e o mais urgente dos sinais dela.
+    const estadoErrado = (R.carteiras || []).filter((c) => {
+      const ss = c.sinais || [];
+      if (!ss.length) return c.estado !== null && c.estado !== undefined;
+      const maior = ss.reduce((a, s) => (PESO_ESTADO[s.estado] > PESO_ESTADO[a] ? s.estado : a), ss[0].estado);
+      return c.estado !== maior;
+    });
+    ok('estado da carteira e o mais urgente dos achados dela',
+      estadoErrado.length === 0, estadoErrado.map((c) => c.carteira).join(' | '));
+
+    // Invariante: 'acompanhamento' nao pode esconder movimento material.
+    const acompMaterial = sinais.filter((s) => {
+      if (s.estado !== 'acompanhamento') return false;
+      if (typeof s.valorAnterior !== 'number' || s.valorAnterior <= 0) return false;
+      return Math.abs(s.valor - s.valorAnterior) / s.valorAnterior >= lim.radarVariacaoMaterialPct;
+    });
+    ok('acompanhamento nunca esconde variacao acima do limiar',
+      acompMaterial.length === 0,
+      acompMaterial.map((s) => s.tipo + '/' + s.rotulo).join(' | '));
+
+    // Invariante: encerrado nunca duplica um sinal ativo do mesmo periodo.
+    const ativos = new Set(
+      (R.carteiras || []).flatMap((c) => (c.sinais || []).map((s) => c.carteira + '|' + s.tipo + '|' + s.chave))
+    );
+    const encerradoDuplicado = (R.encerrados || []).filter(
+      (e) => ativos.has(e.carteira + '|' + e.tipo + '|' + e.chave)
+    );
+    ok('achado encerrado nunca aparece tambem como ativo',
+      encerradoDuplicado.length === 0,
+      encerradoDuplicado.map((e) => e.carteira + '/' + e.tipo).join(' | '));
+
+    // A ordenacao e a entrega: quem mudou vem primeiro.
+    const comSinal = (R.carteiras || []).filter((c) => (c.sinais || []).length > 0);
+    const foraDeOrdem = comSinal.filter(
+      (c, i) => i > 0 && PESO_ESTADO[c.estado] > PESO_ESTADO[comSinal[i - 1].estado]
+    );
+    ok('a lista abre pelo que mudou, nao pela severidade',
+      foraDeOrdem.length === 0, foraDeOrdem.map((c) => c.carteira).join(' | '));
   }
+
+  // A tela precisa mostrar o corte, nao so recebe-lo no payload.
+  ok('tela do radar oferece o corte "so o que mudou"',
+    radarPage.includes('So o que mudou') && radarPage.includes('MUDOU'));
+  ok('tela do radar traduz o estado, sem nome de enum na tela',
+    radarPage.includes('ROTULO_ESTADO')
+    && radarPage.includes("agravado: 'Agravou'")
+    && !/>\s*\{s\.estado\}\s*</.test(radarPage));
+  ok('tela do radar tem bloco de encerrados', radarPage.includes("aba === 'encerrados'"));
+  ok('tela do radar so oferece o filtro quando ha base de comparacao',
+    radarPage.includes('temAnterior') && radarPage.includes('{temAnterior && ('));
+  ok('demo do radar e gerado com DUAS datas, senao os estados nao existiriam',
+    fs.readFileSync(path.join(ROOT, 'scripts', 'gerar-radar-demo.mjs'), 'utf8').includes('radarCruzado([snapBase])'));
 }
 
 

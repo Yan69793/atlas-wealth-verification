@@ -146,11 +146,30 @@ export const estrelaPv = () =>
   ]);
 
 /* ── FAROL_INV: exposição cambial concentrada, que É alarme ─────────────────
-   Ao contrário de BRL e Brasil, que são a linha de base e não viram sinal.   */
-export const farolInv = () =>
+   Ao contrário de BRL e Brasil, que são a linha de base e não viram sinal.
+
+   É também a carteira que MEXEU entre as duas datas, e é ela que faz os cinco
+   estados aparecerem na tela. Duas mudanças de propósito:
+
+   - a posição única grande de ETF foi PULVERIZADA. O alerta de concentração em
+     ativo existia na base e não existe mais: vira `encerrado`, e a tela tem que
+     mostrar o desfecho em vez de simplesmente parar de mostrar a linha.
+   - o bloco em dólar CRESCEU 24%, acima do limiar de variação material. O
+     alerta de concentração por moeda já existia e passa a `agravado`, que é o
+     topo da ordenação. Sem um caso assim, a demo não mostra a diferença entre
+     "piorou" e "continua igual", que é a razão de ser desta entrega.          */
+const usdBolsa = { classeCanonica: 'internacional', indexador: 'BOLSA', moeda: 'USD', regiao: 'eua', prazoAnos: 0, liquidezDias: 3 };
+const usdBond = { classeCanonica: 'internacional', indexador: 'CAMBIO', moeda: 'USD', regiao: 'eua', prazoAnos: 4, liquidezDias: 5 };
+
+export const farolInv = (fase = 'ref') =>
   carteira('FAROL_INV', [
-    ...pulverizado('ETF EUA FAROL', 5, 400_000, { classeCanonica: 'internacional', indexador: 'BOLSA', moeda: 'USD', regiao: 'eua', prazoAnos: 0, liquidezDias: 3 }),
-    ...pulverizado('BOND USD FAROL', 4, 300_000, { classeCanonica: 'internacional', indexador: 'CAMBIO', moeda: 'USD', regiao: 'eua', prazoAnos: 4, liquidezDias: 5 }),
+    ...(fase === 'base'
+      ? [
+          pos('ETF EUA FAROL CONCENTRADO', 1_200_000, gest('etf-eua-farol-concentrado', usdBolsa)),
+          ...pulverizado('ETF EUA FAROL', 3, 300_000, usdBolsa),
+        ]
+      : pulverizado('ETF EUA FAROL', 5, 400_000, usdBolsa)),
+    ...pulverizado('BOND USD FAROL', 4, fase === 'base' ? 120_000 : 300_000, usdBond),
     ...pulverizado('CDB FAROL', 4, 200_000),
     pos('CAIXA', 300_000, gest('cx-farol', { ...cx })),
   ]);
@@ -166,8 +185,8 @@ export const REF = '2026-08-24';
 
 export function serieDemo() {
   return [
-    snap(BASE, [alpha01(1.28), bravoPv(), cedroHld(), dunasCap(), estrelaPv(), farolInv()]),
-    snap(REF, [alpha01(1), bravoPv(), cedroHld(), dunasCap(), estrelaPv(), farolInv()]),
+    snap(BASE, [alpha01(1.28), bravoPv(), cedroHld(), dunasCap(), estrelaPv(), farolInv('base')]),
+    snap(REF, [alpha01(1), bravoPv(), cedroHld(), dunasCap(), estrelaPv(), farolInv('ref')]),
   ];
 }
 

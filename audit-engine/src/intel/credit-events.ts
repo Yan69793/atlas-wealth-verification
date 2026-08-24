@@ -40,6 +40,13 @@ import { THRESHOLDS } from '../snapshot/thresholds.js';
 import type { Severidade, Snapshot, SnapshotCarteira } from '../snapshot/types.js';
 import { coberturaDoAtributo, faixaDeCobertura } from './coverage.js';
 import {
+  estadoAgregado,
+  estadoTemporal,
+  PESO_ESTADO,
+  PESO_SEVERIDADE as PESO_SEV,
+  type EstadoTemporal,
+} from './estado.js';
+import {
   confiancaDe,
   idInsight,
   ordenarInsights,
@@ -86,8 +93,12 @@ export type TipoEventoCredito =
 /** Como o tipo é tratado: define a escada de severidade e o piso de exposição. */
 export type ClasseEvento = 'perdaConfirmada' | 'sinalizacao' | 'observacao';
 
-/** Estado do par (evento, carteira) contra o período anterior. */
-export type EstadoEvento = 'novo' | 'acompanhamento' | 'agravado' | 'melhorado' | 'encerrado';
+/**
+ * Estado do par (evento, carteira) contra o período anterior.
+ * Alias de `EstadoTemporal` (intel/estado.ts): o nome local sobrevive porque é
+ * o vocabulário desta tela, mas a máquina de estado é uma só na camada.
+ */
+export type EstadoEvento = EstadoTemporal;
 
 /** Evento já saneado e com chave de emissor resolvida. */
 export interface EventoCreditoNormalizado {
@@ -170,7 +181,6 @@ export function confiancaFonteDe(v: number): Confianca {
 }
 
 const ORDEM_CONFIANCA: Record<Confianca, number> = { baixa: 0, media: 1, alta: 2 };
-const PESO_SEV: Record<Severidade, number> = { baixa: 1, media: 2, alta: 3 };
 
 /** A menor das duas. Confiança nunca sobe por combinação. */
 export function menorConfianca(a: Confianca, b: Confianca): Confianca {
@@ -295,24 +305,22 @@ export function registrosDe(anterior: Pick<CreditoResultado, 'impactos'> | null 
 /**
  * Estado do par contra o anterior.
  *
- * A severidade manda: ela é o julgamento do motor e muda de faixa por razões
- * que o assessor entende. A exposição só decide quando a severidade empata,
- * e só além do limiar de variação material, senão oscilação de marcação a
- * mercado marcaria tudo como agravado todo dia.
+ * Adaptador de nome de campo sobre `estadoTemporal` (intel/estado.ts), que é a
+ * máquina de estado única da camada. A regra saiu daqui na Entrega B.2, quando
+ * o radar passou a precisar da mesma: duas cópias divergem sozinhas, e o dia em
+ * que divergirem a tela de eventos vai chamar de "agravado" o que a tela do
+ * radar chama de "acompanhamento" sobre o mesmo movimento.
  */
 export function estadoDoPar(
   atual: { severidade: Severidade; exposicao: number },
   anterior: { severidadeImpacto: Severidade; exposicao: number } | undefined,
   variacaoMaterial: number
 ): EstadoEvento {
-  if (!anterior) return 'novo';
-  if (PESO_SEV[atual.severidade] > PESO_SEV[anterior.severidadeImpacto]) return 'agravado';
-  if (PESO_SEV[atual.severidade] < PESO_SEV[anterior.severidadeImpacto]) return 'melhorado';
-  if (anterior.exposicao <= 0) return 'acompanhamento';
-  const variacao = (atual.exposicao - anterior.exposicao) / anterior.exposicao;
-  if (variacao >= variacaoMaterial) return 'agravado';
-  if (variacao <= -variacaoMaterial) return 'melhorado';
-  return 'acompanhamento';
+  return estadoTemporal(
+    { severidade: atual.severidade, valor: atual.exposicao },
+    anterior ? { severidade: anterior.severidadeImpacto, valor: anterior.exposicao } : undefined,
+    variacaoMaterial
+  );
 }
 
 /* ── Cruzamento ──────────────────────────────────────────────────────────── */
@@ -413,15 +421,6 @@ function pct(v: number): string {
 function brl(v: number): string {
   return 'R$ ' + Math.round(v).toLocaleString('pt-BR');
 }
-
-/** Ordem de urgência do estado, usada no agregado e na ordenação da tela. */
-const PESO_ESTADO: Record<EstadoEvento, number> = {
-  agravado: 5,
-  novo: 4,
-  acompanhamento: 3,
-  melhorado: 2,
-  encerrado: 1,
-};
 
 /**
  * Cruza eventos com o snapshot de referência.
@@ -654,11 +653,6 @@ function piorDe(sevs: Severidade[]): Severidade | null {
   if (sevs.includes('alta')) return 'alta';
   if (sevs.includes('media')) return 'media';
   return 'baixa';
-}
-
-function estadoAgregado(estados: EstadoEvento[]): EstadoEvento | null {
-  if (!estados.length) return null;
-  return estados.reduce((a, b) => (PESO_ESTADO[b] > PESO_ESTADO[a] ? b : a));
 }
 
 /** Artefato gravado pelo CLI. Mesmo desenho de RadarFile. */

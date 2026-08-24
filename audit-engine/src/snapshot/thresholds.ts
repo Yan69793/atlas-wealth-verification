@@ -113,6 +113,16 @@ export const THRESHOLDS = {
       cai em fim de semana em dois de cada sete casos. */
   radarDeterioracaoJanelaDias: 30,
 
+  /** Variação relativa do sinal que separa "agravado"/"melhorado" de
+      "acompanhamento" no radar. Mesmo papel e mesmo valor do equivalente do
+      crédito, e o valor NÃO é chute: a calibração de 2026-08-24 mediu 36.897
+      comparações de exposição entre meses consecutivos no dado real da casa e
+      achou 84,3% variando menos de 5% e só 6,4% passando de 20%. Com 20%,
+      `acompanhamento` é o estado dominante e `agravado` fica reservado para
+      movimento de verdade. Um corte mais baixo faria todo sinal trocar de
+      estado todo mês, que é o mesmo que não ter estado. */
+  radarVariacaoMaterialPct: 0.20,
+
   /* ── Eventos de crédito (Entrega B, 2026-08-24) ───────────────────────────
      Perda confirmada e sinalização de risco não se medem na mesma régua.
      Num calote o dinheiro já foi; num rebaixamento nada foi perdido ainda.

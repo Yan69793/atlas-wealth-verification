@@ -34,13 +34,19 @@ const { THRESHOLDS } = await import('file://' + path.join(DIST, 'snapshot', 'thr
 /* Carteiras, emissores e a serie vem do modulo comum, para o Radar e a tela de
    Eventos & Impacto mostrarem a MESMA casa. Duas copias de fixture divergem
    sozinhas e ninguem percebe. */
-const { serieDemo, REF, cabecalhoDemo } = await import(
+const { serieDemo, BASE, REF, cabecalhoDemo } = await import(
   'file://' + path.join(__dirname, 'demo-carteiras.mjs')
 );
 
 const serie = serieDemo();
 
-const resultado = radarCruzado(serie);
+/* Roda DUAS datas de propósito, igual ao demo de crédito. Sem o período
+   anterior todo sinal sairia como 'novo' e a tela demonstraria exatamente o
+   problema que a Entrega B.2 corrigiu: lista que não distingue o que mudou do
+   que já estava lá. */
+const [snapBase] = serie;
+const resultadoBase = radarCruzado([snapBase]);
+const resultado = radarCruzado(serie, { anterior: resultadoBase });
 
 const payload = {
   sintetico: true,
@@ -61,7 +67,9 @@ const payload = {
     radarVencimentoJanelaDias: THRESHOLDS.radarVencimentoJanelaDias,
     radarDeterioracaoPct: THRESHOLDS.radarDeterioracaoPct,
     radarDeterioracaoJanelaDias: THRESHOLDS.radarDeterioracaoJanelaDias,
+    radarVariacaoMaterialPct: THRESHOLDS.radarVariacaoMaterialPct,
   },
+  baseEstado: BASE,
   motivo: resultado.baseData === null ? 'serie-curta' : null,
   ...resultado,
 };
@@ -95,6 +103,14 @@ for (const i of resultado.insights) porTipo.set(i.tipo, (porTipo.get(i.tipo) ?? 
 console.log(`[radar-demo] ${resultado.insights.length} insight(s) em ${resultado.carteiras.length} carteira(s) -> ${path.basename(SAIDA)}`);
 for (const [tipo, n] of [...porTipo].sort()) console.log(`  ${tipo}: ${n}`);
 console.log(`  base de comparacao: ${resultado.baseData}`);
+
+const porEstado = new Map();
+for (const c of resultado.carteiras) {
+  for (const s of c.sinais) porEstado.set(s.estado, (porEstado.get(s.estado) ?? 0) + 1);
+}
+console.log(`  base de estado: ${BASE}`);
+for (const [estado, n] of [...porEstado].sort()) console.log(`  estado ${estado}: ${n}`);
+console.log(`  encerrados: ${resultado.encerrados.length}`);
 for (const c of resultado.cobertura) {
   console.log(`  cobertura ${c.carteira}: ${(c.fracaoMedia * 100).toFixed(1)}% (${c.faixaGlobal})`);
 }
