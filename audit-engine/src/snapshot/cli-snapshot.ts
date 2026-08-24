@@ -22,8 +22,8 @@ import { radarCruzado, type RadarFile } from '../intel/cross-portfolio.js';
 import { caixaParado, inicioDaJanela, type CaixaParadoFile } from '../intel/idle-cash.js';
 import { vencimentosProximos, type VencimentosFile } from '../intel/maturities.js';
 import { adicionarDias } from '../opportunities/generator.js';
-import { ingestSnapshot } from './ingest.js';
-import { classeCanonicaDe } from './normalize.js';
+import { carregarSnapshotDoDisco, ingestSnapshot } from './ingest.js';
+import { classeCanonicaDe, colisoesDeGrafia } from './normalize.js';
 import { tenantDe } from './pipeline.js';
 import { listarDatasDiarias, listarSnapshotsDiarios } from './series.js';
 import { carregarSnapshot } from './state.js';
@@ -362,6 +362,100 @@ async function main(): Promise<void> {
         `  falta emissor em ${((plDescoberto / plCasa) * 100).toFixed(1)}% do PL da casa. ` +
           `Sem isso o alerta de credito nao acha nada.`
       );
+    }
+    return;
+  }
+
+  if (comando === 'name-map') {
+    const root = resolverRoot(args);
+    const saida = path.join(root, typeof args.saida === 'string' ? args.saida : 'name-map.local.json');
+
+    /* A serie INTEIRA numa passada so, de proposito.
+     *
+     * Construir por data e ir mesclando produz CICLO: se a grafia A tem mais R$
+     * num mes e a B noutro, o mapa acaba com A→B e B→A, e o normalize apenas
+     * troca as duas de lugar, para sempre. O vencedor tem que ser eleito uma vez
+     * so, por R$ somado em toda a serie. Foi assim que a Entrega B.1 descobriu
+     * o problema: a primeira tentativa, mes a mes, nao convergia. */
+    const valorPorNome = new Map<string, number>();
+    const carteiras = new Set<string>();
+    const dirAudits = path.join(root, 'audits');
+    let periodos = 0;
+    const nomesDir = fs.existsSync(dirAudits) ? fs.readdirSync(dirAudits) : [];
+    for (const nome of nomesDir.sort()) {
+      if (!/^\d{4}-\d{2}(-\d{2})?$/.test(nome)) continue;
+      const snap = carregarSnapshotDoDisco(root, nome);
+      if (!snap) continue;
+      periodos++;
+      for (const c of snap.carteiras) {
+        carteiras.add(c.nome);
+        for (const p of c.posicoes) {
+          valorPorNome.set(p.ativo, (valorPorNome.get(p.ativo) ?? 0) + p.valor);
+        }
+      }
+    }
+    if (!periodos) throw new Error(`Nenhum snapshot em ${dirAudits}. Ingira antes de gerar o name-map.`);
+
+    const existente = lerMappings<string>(saida, 'name-map');
+    const grupos = colisoesDeGrafia(valorPorNome.keys());
+
+    const propostas: Record<string, string> = {};
+    const jaMapeados: string[] = [];
+    const recusadas: string[] = [];
+    let redirecionadas = 0;
+    for (const nomes of grupos.values()) {
+      /* Grupo em que alguem JA tem mapeamento humano fica inteiro de fora. Se
+       * mapeassemos o resto, o mapa viraria corrente (X→Y humano, Y→Z nosso) e
+       * o normalize, que faz uma consulta so, pararia no meio do caminho. */
+      if (nomes.some((n) => existente[n] !== undefined)) {
+        jaMapeados.push(nomes[0]);
+        continue;
+      }
+      const canonico = [...nomes].sort(
+        (a, b) => (valorPorNome.get(b) ?? 0) - (valorPorNome.get(a) ?? 0) || a.localeCompare(b)
+      )[0];
+      for (const n of nomes) {
+        if (n === canonico) continue;
+        /* O normalize aplica o MESMO mapa a nome de carteira e a nome de ativo.
+         * Renomear carteira de cliente em silencio e o pior desfecho possivel
+         * deste comando, entao a chave que for nome de carteira e recusada. */
+        if (carteiras.has(n)) {
+          recusadas.push(n);
+          continue;
+        }
+        propostas[n] = canonico;
+        redirecionadas++;
+      }
+    }
+
+    const plSerie = [...valorPorNome.values()].reduce((s, v) => s + v, 0);
+    const plAfetado = [...grupos.values()]
+      .flat()
+      .reduce((s, n) => s + (valorPorNome.get(n) ?? 0), 0);
+
+    if (!args['dry-run']) {
+      const conteudo = {
+        _leia:
+          'Fusao de grafias do mesmo papel, gerada por `snapshot name-map` sobre a serie inteira. ' +
+          'Criterio: sequencia alfanumerica identica, nunca semelhanca. Entrada existente SEMPRE vence, ' +
+          'e grupo que ja tem mapeamento humano fica inteiro de fora para o mapa nao virar corrente. ' +
+          'Chave que e nome de carteira e recusada: o normalize aplica este mapa aos dois.',
+        _geradoDe: `${periodos} periodo(s)`,
+        mappings: { ...propostas, ...existente },
+      };
+      fs.writeFileSync(saida, JSON.stringify(conteudo, null, 2) + '\n', 'utf8');
+    }
+
+    console.log(
+      `[name-map] ${periodos} periodo(s), ${valorPorNome.size} nome(s) distinto(s): ` +
+        `${grupos.size} papel(is) com grafia dupla (${plSerie > 0 ? ((plAfetado / plSerie) * 100).toFixed(1) : '0.0'}% do R$ da serie), ` +
+        `${redirecionadas} grafia(s) redirecionada(s)` +
+        (jaMapeados.length ? `, ${jaMapeados.length} grupo(s) preservado(s) por ja ter mapeamento humano` : '') +
+        (recusadas.length ? `, ${recusadas.length} recusada(s) por ser nome de carteira` : '') +
+        (args['dry-run'] ? ' (dry run, nada escrito)' : ` → ${saida}`)
+    );
+    if (recusadas.length) {
+      console.warn(`  RECUSADAS (nome de carteira): ${recusadas.join(', ')}`);
     }
     return;
   }

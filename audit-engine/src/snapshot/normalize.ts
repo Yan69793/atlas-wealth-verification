@@ -35,6 +35,52 @@ export function normalizarIdentificador(s: string): string {
   return s.normalize('NFC').replace(/\s+/g, ' ').trim();
 }
 
+/**
+ * Chave de identidade de grafia: só os caracteres significativos, em maiúscula
+ * e sem acento. Dois nomes com a MESMA chave são o mesmo papel escrito de dois
+ * jeitos.
+ *
+ * Existe por causa de um defeito medido no dado real em 2026-08-24: o extrator
+ * do book PDF ora cola as palavras, ora preserva os espaços. Para o motor viram
+ * dois ativos e dois emissores, e o efeito é sempre o mesmo, CONCENTRAÇÃO
+ * SUBESTIMADA, porque metade da posição fica com outro nome. Na série real, 783
+ * grafias duplicadas para 617 papéis; num único mês, 60 papéis somando 29% do PL
+ * da casa, sendo que o maior deles aparecia como 7,58% numa grafia e 1,54% na
+ * outra em vez dos 9,12% verdadeiros.
+ *
+ * NÃO é semelhança. Ou os dois nomes têm exatamente os mesmos caracteres
+ * significativos na mesma ordem, ou não são o mesmo papel. Casamento aproximado
+ * aqui fundiria papéis distintos do mesmo emissor com vencimentos parecidos, e
+ * fundir errado é pior do que não fundir.
+ */
+export function chaveDeGrafia(nome: string): string {
+  return nome
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, '');
+}
+
+/**
+ * Grupos de nomes que são o mesmo papel escrito diferente. Só devolve grupo com
+ * mais de uma grafia; nome cujo conteúdo significativo é vazio fica de fora.
+ */
+export function colisoesDeGrafia(nomes: Iterable<string>): Map<string, string[]> {
+  const grupos = new Map<string, string[]>();
+  for (const nome of nomes) {
+    const k = chaveDeGrafia(nome);
+    if (!k) continue;
+    const g = grupos.get(k);
+    if (g) {
+      if (!g.includes(nome)) g.push(nome);
+    } else {
+      grupos.set(k, [nome]);
+    }
+  }
+  for (const [k, g] of grupos) if (g.length < 2) grupos.delete(k);
+  return grupos;
+}
+
 /** name-map: name-map.local.json (instância) sobre name-map.json (produto, vazio). */
 export function loadNameMapping(root: string): Record<string, string> {
   for (const rel of ['name-map.local.json', 'name-map.json']) {

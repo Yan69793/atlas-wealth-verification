@@ -16,6 +16,7 @@ import path from 'node:path';
 import { adaptar, detectFormato } from './adapters/index.js';
 import { protegerRoot, tipoPeriodo, validarData } from './args.js';
 import {
+  colisoesDeGrafia,
   loadAtivoMapping,
   loadClassMapping,
   loadNameMapping,
@@ -35,6 +36,37 @@ export interface IngestResult {
   status: 'criado' | 'skip' | 'reingerido';
   hash: string;
   caminhos: { ingestion: string; snapshot: string };
+}
+
+/**
+ * Avisa quando o mesmo papel chegou com mais de uma grafia.
+ *
+ * AVISO, nunca erro: mês válido não pode ser bloqueado por defeito de extração,
+ * mesma política do "EXTRACAO PARCIAL" em parsers/pdf-v1.ts. Mas também não pode
+ * passar calado, porque o efeito é silencioso e sempre na mesma direção: a
+ * posição fica partida entre duas linhas menores e toda regra de concentração
+ * SUBESTIMA. O operador não tem como perceber olhando a tela.
+ */
+function avisarGrafiaDuplicada(snapshot: Snapshot): void {
+  const nomes = new Set<string>();
+  for (const c of snapshot.carteiras) for (const p of c.posicoes) nomes.add(p.ativo);
+  const grupos = colisoesDeGrafia(nomes);
+  if (!grupos.size) return;
+
+  const afetados = new Set<string>();
+  for (const g of grupos.values()) for (const n of g) afetados.add(n);
+  let plAfetado = 0;
+  let plTotal = 0;
+  for (const c of snapshot.carteiras) {
+    plTotal += c.plTotal;
+    for (const p of c.posicoes) if (afetados.has(p.ativo)) plAfetado += p.valor;
+  }
+  const pct = plTotal > 0 ? ((plAfetado / plTotal) * 100).toFixed(1) : '0,0';
+  console.warn(
+    `[audit-engine] GRAFIA DUPLICADA: ${grupos.size} papel(is) chegaram com mais de uma grafia, ` +
+      `envolvendo ${pct}% do PL. Concentracao por ativo e por emissor esta SUBESTIMADA ate isto ` +
+      `ser resolvido. Rode \`snapshot name-map --root <root>\` e reingira.`
+  );
 }
 
 /**
@@ -104,6 +136,7 @@ export async function ingestSnapshot(opts: {
   );
   snapshot.tenantId = tenant;
   validarSnapshot(snapshot);
+  avisarGrafiaDuplicada(snapshot);
 
   const dir = path.join(root, 'audits', data);
   const caminhos = {
