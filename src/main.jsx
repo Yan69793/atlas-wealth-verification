@@ -55,6 +55,10 @@ import '../platform-receita-drop-demo.js';
    ver scripts/gerar-radar-demo.mjs — não editar à mão. */
 import '../platform-radar-demo.js';
 
+/* 3i. Fallback sintético de EVENTOS DE CRÉDITO (idem). Gerado pelo motor,
+   ver scripts/gerar-credito-demo.mjs — não editar à mão. */
+import '../platform-credito-demo.js';
+
 /* 4. Utilitários, ícones, gráficos, UI primitives */
 import '../platform-utils.jsx';
 
@@ -77,6 +81,7 @@ import '../platform-import.jsx';
 import '../platform-usuarios.jsx';
 import '../platform-risco.jsx';
 import '../platform-radar.jsx';
+import '../platform-eventos.jsx';
 import '../platform-tendencia.jsx';
 
 /* 6. App shell — POR ÚLTIMO (monta o ReactDOM) */

@@ -248,6 +248,255 @@ import React from 'react';
   /* ============================================================
      TAB — HISTÓRICO
   ============================================================ */
+  /* ── Inteligência da carteira (Entrega B) ──────────────────────────────────
+     O Radar responde "qual carteira olhar primeiro". Esta aba responde "e
+     dentro dela, o quê".
+
+     NÃO EXISTE MOTOR NOVO AQUI. Os achados, a cobertura e os eventos de
+     crédito já saem prontos dos overlays que o radar e a tela de eventos
+     consomem. Esta aba filtra pela carteira aberta e mostra. Recalcular
+     qualquer coisa aqui criaria um segundo lugar decidindo o mesmo número,
+     que foi exatamente o defeito do score da fila corrigido na Onda 3.
+  ────────────────────────────────────────────────────────────────────────── */
+
+  const ROTULO_SEV_INTEL = { alta: 'Alta', media: 'Media', baixa: 'Baixa' };
+  const COR_SEV_INTEL = {
+    alta: 'var(--red, #b91c1c)',
+    media: 'var(--amber, #b45309)',
+    baixa: 'var(--navy, #1e3a5f)',
+  };
+  const ROTULO_ATRIBUTO_INTEL = {
+    classeCanonica: 'Classe', indexador: 'Indexador', emissorId: 'Emissor',
+    moeda: 'Moeda', regiao: 'Região', prazoAnos: 'Prazo', liquidezDias: 'Liquidez',
+  };
+  const ROTULO_TIPO_INTEL = {
+    CONCENTRACAO_ATIVO: 'Concentração em um ativo',
+    CONCENTRACAO_EMISSOR: 'Concentração em um emissor',
+    CONCENTRACAO_FATOR: 'Fator comum',
+    LIQUIDEZ_BAIXA: 'Liquidez abaixo do piso',
+    VENCIMENTO_CONCENTRADO: 'Vencimento concentrado',
+    DETERIORACAO_PL: 'Queda de patrimônio',
+  };
+  /* Nome de enum do motor nao aparece para o assessor. Espelha o rotulo da
+     tela de Eventos & Impacto, para o mesmo evento se chamar igual nas duas. */
+  const ROTULO_EVENTO_INTEL = {
+    DEFAULT: 'Calote',
+    RECUPERACAO_JUDICIAL: 'Recuperação judicial',
+    REBAIXAMENTO_RATING: 'Rebaixamento de rating',
+    ATRASO_PAGAMENTO: 'Atraso de pagamento',
+    COVENANT_QUEBRADO: 'Covenant quebrado',
+    SUSPENSAO_NEGOCIACAO: 'Suspensão de negociação',
+    NOTICIA_NEGATIVA: 'Notícia negativa',
+    OUTRO: 'Outro',
+  };
+
+  /** Sinais do radar + eventos de crédito desta carteira. Sem recálculo. */
+  function intelDaCarteira(code) {
+    const R = window.ATLAS_RADAR_DATA;
+    const C = window.ATLAS_CREDITO_DATA;
+    const alvo = R && R.carteiras ? R.carteiras.find(c => c.carteira === code) : null;
+    const cobertura = R && R.cobertura ? R.cobertura.find(c => c.carteira === code) : null;
+    const insights = new Map(((R && R.insights) || []).concat((C && C.insights) || []).map(i => [i.id, i]));
+    const creditos = [];
+    for (const imp of (C && C.impactos) || []) {
+      for (const a of imp.atingidas || []) {
+        if (a.carteira === code) creditos.push({ evento: imp.evento, a });
+      }
+    }
+    /* Carteira que o motor de crédito não consegue avaliar não está limpa. A
+       aba precisa dizer isso, senão a ausência de evento vira falsa calmaria. */
+    const noEscuro = !!(C && (C.impactos || []).some(i => (i.naoAvaliaveis || []).includes(code)));
+    return { sinais: (alvo && alvo.sinais) || [], cobertura, insights, creditos, noEscuro };
+  }
+
+  function contarIntel(code) {
+    const { sinais, creditos } = intelDaCarteira(code);
+    return sinais.length + creditos.length;
+  }
+
+  function PillIntel({ children, cor }) {
+    return (
+      <span style={{
+        display: 'inline-block', padding: '2px 8px', borderRadius: 999,
+        fontSize: '0.714rem', fontWeight: 600, color: cor,
+        border: '1px solid ' + cor, whiteSpace: 'nowrap',
+      }}>{children}</span>
+    );
+  }
+
+  function TabInteligencia({ code }) {
+    const { fmtCompactBRL, fmtPct, navigate } = window.AtlasUtils;
+    const { sinais, cobertura, insights, creditos, noEscuro } = intelDaCarteira(code);
+    const [aberto, setAberto] = React.useState(null);
+
+    function linhaExplicacao(id) {
+      const i = insights.get(id);
+      if (!i) return null;
+      return (
+        <tr>
+          <td colSpan={5} style={{ padding: '0 12px 12px 20px' }}>
+            <div style={{
+              background: 'var(--bg-subtle, #f8fafc)', border: '1px solid var(--border, #e2e8f0)',
+              borderRadius: 8, padding: '12px 14px', fontSize: '0.786rem',
+            }}>
+              <div style={{ fontWeight: 600, marginBottom: 6 }}>{i.afirmacao}</div>
+              <div style={{ fontFamily: 'ui-monospace, monospace', fontSize: '0.75rem', marginBottom: 4 }}>{i.calculo}</div>
+              <div style={{ color: 'var(--muted)' }}>
+                regra {i.regra && i.regra.nome} · cobertura {fmtPct(i.cobertura, 1)} · confiança {i.confianca}
+              </div>
+            </div>
+          </td>
+        </tr>
+      );
+    }
+
+    /* Os indicadores no topo da pagina vem do EXTRATO MENSAL; esta aba vem da
+       POSICAO DIARIA. Sao periodos diferentes, e o PL de um nao bate com o do
+       outro por desenho, nao por erro. Sem esta linha, o leitor ve dois
+       patrimonios diferentes para a mesma carteira na mesma tela e conclui,
+       com razao, que o sistema esta errado. */
+    const dataApuracao =
+      (window.ATLAS_RADAR_DATA && window.ATLAS_RADAR_DATA.data) ||
+      (window.ATLAS_CREDITO_DATA && window.ATLAS_CREDITO_DATA.data) ||
+      null;
+
+    return (
+      <div>
+        {dataApuracao && (
+          <div style={{ fontSize: '0.786rem', color: 'var(--muted)', marginBottom: 14 }}>
+            Apurado sobre a posição diária de <strong>{dataApuracao}</strong>. Os indicadores no
+            topo da página são do extrato mensal, que é outro período: os dois patrimônios não
+            batem por desenho.
+          </div>
+        )}
+
+        {noEscuro && (
+          <div style={{
+            border: '1px solid var(--amber, #b45309)', borderLeft: '4px solid var(--amber, #b45309)',
+            borderRadius: 8, padding: '12px 14px', marginBottom: 16, background: 'var(--bg-subtle, #f8fafc)',
+          }}>
+            <strong style={{ fontSize: '0.857rem' }}>Esta carteira não pôde ser avaliada para crédito</strong>
+            <div style={{ fontSize: '0.786rem', color: 'var(--muted)', marginTop: 4 }}>
+              Não está limpa, está no escuro: falta cadastro de emissor nos ativos dela. Ausência de
+              evento abaixo não quer dizer ausência de exposição.
+            </div>
+          </div>
+        )}
+
+        {cobertura && (
+          <div style={{ marginBottom: 18 }}>
+            <div style={{ fontSize: '0.786rem', color: 'var(--muted)', marginBottom: 8 }}>
+              O que o motor consegue ler desta carteira, em % do patrimônio dela.
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {cobertura.atributos.map(a => (
+                <PillIntel key={a.atributo} cor={a.faixa === 'afirma' ? 'var(--green, #15803d)' : a.faixa === 'ressalva' ? 'var(--amber, #b45309)' : 'var(--red, #b91c1c)'}>
+                  {ROTULO_ATRIBUTO_INTEL[a.atributo] || a.atributo} {fmtPct(a.fracao, 0)}
+                </PillIntel>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {creditos.length > 0 && (
+          <>
+            <h3 style={{ fontSize: '0.929rem', margin: '0 0 8px' }}>Eventos de crédito que atingem esta carteira</h3>
+            <div className="table-wrap" style={{ marginBottom: 20 }}>
+              <table>
+                <thead>
+                  <tr>
+                    <th style={{ minWidth: 150 }}>Emissor</th>
+                    <th>Evento</th>
+                    <th style={{ textAlign: 'right' }}>Exposição</th>
+                    <th>Impacto</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {creditos.map(({ evento, a }) => (
+                    <React.Fragment key={a.insightId}>
+                      <tr>
+                        <td style={{ fontWeight: 600, fontSize: '0.857rem' }}>{evento.emissorNome}</td>
+                        <td style={{ fontSize: '0.786rem' }}>
+                          {ROTULO_EVENTO_INTEL[evento.tipo] || evento.tipo} · {evento.data}
+                        </td>
+                        <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                          {fmtCompactBRL(a.valor)}
+                          <div style={{ fontSize: '0.714rem', color: 'var(--muted)' }}>{fmtPct(a.fracaoPl, 1)} do PL</div>
+                        </td>
+                        <td><PillIntel cor={COR_SEV_INTEL[a.severidadeImpacto]}>{ROTULO_SEV_INTEL[a.severidadeImpacto]}</PillIntel></td>
+                        <td>
+                          <button type="button" className="btn btn--ghost" style={{ fontSize: '0.714rem', padding: '4px 10px' }}
+                            onClick={() => setAberto(aberto === a.insightId ? null : a.insightId)}>
+                            {aberto === a.insightId ? 'Fechar' : 'Por que estou vendo isso?'}
+                          </button>
+                        </td>
+                      </tr>
+                      {aberto === a.insightId && linhaExplicacao(a.insightId)}
+                    </React.Fragment>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+
+        {sinais.length > 0 && (
+          <>
+            <h3 style={{ fontSize: '0.929rem', margin: '0 0 8px' }}>Achados do radar nesta carteira</h3>
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th style={{ minWidth: 190 }}>Achado</th>
+                    <th>Item</th>
+                    <th style={{ textAlign: 'right' }}>Valor</th>
+                    <th>Severidade</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sinais.map(s => (
+                    <React.Fragment key={s.insightId}>
+                      <tr>
+                        <td style={{ fontSize: '0.857rem' }}>{ROTULO_TIPO_INTEL[s.tipo] || s.tipo}</td>
+                        <td style={{ fontSize: '0.786rem', color: 'var(--muted)' }}>
+                          {s.fator ? (ROTULO_ATRIBUTO_INTEL[s.fator] || s.fator) + ': ' + s.rotulo : s.rotulo}
+                        </td>
+                        <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                          {fmtCompactBRL(s.valor)}
+                          <div style={{ fontSize: '0.714rem', color: 'var(--muted)' }}>
+                            {s.tipo === 'DETERIORACAO_PL' ? fmtPct(s.fracaoPl, 1) + ' de variação' : fmtPct(s.fracaoPl, 1) + ' do PL'}
+                          </div>
+                        </td>
+                        <td><PillIntel cor={COR_SEV_INTEL[s.severidade]}>{ROTULO_SEV_INTEL[s.severidade]}</PillIntel></td>
+                        <td>
+                          <button type="button" className="btn btn--ghost" style={{ fontSize: '0.714rem', padding: '4px 10px' }}
+                            onClick={() => setAberto(aberto === s.insightId ? null : s.insightId)}>
+                            {aberto === s.insightId ? 'Fechar' : 'Por que estou vendo isso?'}
+                          </button>
+                        </td>
+                      </tr>
+                      {aberto === s.insightId && linhaExplicacao(s.insightId)}
+                    </React.Fragment>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+
+        <div style={{ fontSize: '0.714rem', color: 'var(--muted)', marginTop: 14 }}>
+          Os mesmos achados aparecem no{' '}
+          <a href="#/radar" onClick={(e) => { e.preventDefault(); navigate('#/radar'); }}>Radar de Carteiras</a>
+          {' '}e em{' '}
+          <a href="#/eventos" onClick={(e) => { e.preventDefault(); navigate('#/eventos'); }}>Eventos &amp; Impacto</a>,
+          no contexto da casa inteira. Aqui estão filtrados por esta carteira, sem recálculo.
+        </div>
+      </div>
+    );
+  }
+
   function TabHistorico({ code, month }) {
     const p = useMemo(() => D.CATALOG.find(x => x.code === code), [code]);
     const inception = p ? (p.inception || D.MONTHS[0]) : D.MONTHS[0];
@@ -725,13 +974,19 @@ import React from 'react';
     // R$ 0 / Var % 0 contraditorios. plPrevTrue e o PL real do mes anterior.
     const hasPrior = !!(row && row.plPrevTrue > 0);
 
+    /* A aba de inteligencia so aparece quando ha o que mostrar nela para ESTA
+       carteira. Aba vazia em carteira sem achado ensina o usuario que a aba
+       nao serve para nada, e ele para de abrir onde ela tem conteudo. */
+    const nIntel = contarIntel(code);
+
     const TABS = useMemo(() => [
       { key: 'composicao',    label: 'Composição' },
       { key: 'achados',       label: `Achados${row && row.nAchados > 0 ? ` (${row.nAchados})` : ''}` },
+      ...(nIntel > 0 ? [{ key: 'inteligencia', label: `Inteligência (${nIntel})` }] : []),
       { key: 'historico',     label: 'Histórico' },
       { key: 'receita',       label: 'Receita' },
       { key: 'contacorrente', label: 'Conta Corrente' },
-    ], [row && row.nAchados]);
+    ], [row && row.nAchados, nIntel]);
 
     // N0.3: export bloqueado enquanto houver CORRIGIR aberto/em analise na fila
     // de excecao. Override exige motivo (fica registrado na propria excecao,
@@ -906,6 +1161,7 @@ import React from 'react';
         {/* Tab content */}
         {activeTab === 'composicao'    && <TabComposicao code={code} month={selectedMonth} row={row} />}
         {activeTab === 'achados'       && <TabAchados row={row} />}
+        {activeTab === 'inteligencia'  && <TabInteligencia code={code} />}
         {activeTab === 'historico'     && <TabHistorico code={code} month={selectedMonth} />}
         {activeTab === 'receita'       && <TabReceita code={code} month={selectedMonth} />}
         {activeTab === 'contacorrente' && <TabContaCorrente code={code} month={selectedMonth} />}

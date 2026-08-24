@@ -11,12 +11,13 @@ aqui, trate este arquivo como suspeito e rode o refresh do fim da página.
 ## Portão de verificação, medido hoje
 
 ```
-515/515 checks OK — todos os checks passaram
-ℹ tests 206   ℹ suites 56   ℹ pass 205   ℹ fail 0   ℹ skipped 1
+580/580 checks OK — todos os checks passaram
+ℹ tests 243   ℹ suites 63   ℹ pass 242   ℹ fail 0   ℹ skipped 1
 ```
 
-Medido em 2026-08-24, depois da Entrega A da camada de inteligência. Antes dela era
-469/469 checks e 143 testes; a entrega somou 46 checks e 63 testes.
+Medido em 2026-08-24, depois das Entregas A e B da camada de inteligência. Antes
+delas era 469/469 checks e 143 testes. A crescida: A somou 51 checks e 63 testes,
+B somou mais 60 checks e 37 testes.
 
 A contagem de testes desceu de 131 para 129 de propósito: o corte de 90 dias no caixa parado
 substituiu cinco testes do contrato antigo por três do contrato novo. Os checks subiram de 460
@@ -427,6 +428,89 @@ R$ exposto, nome.
    Acao.
 5. **Fonte para Ibovespa, Nasdaq, spreads e petroleo.** Bloqueia quatro dos oito
    cenarios da Entrega C. Petroleo tem a armadilha conhecida do contrato continuo.
+
+## Camada de inteligencia, Entrega B (2026-08-24)
+
+Eventos de credito, bootstrap do cadastro de ativos e a inteligencia dentro da
+carteira. Entrega C (mercado, materialidade, cenario, Central de Acao) nao iniciada.
+
+**Correcao de escopo registrada:** o plano original punha "Portfolio Intelligence"
+em B, mas concentracao por emissor, classe, indexador, moeda e regiao, fator comum
+escondido e liquidez ja tinham sido entregues em A pelo radar. O que sobrou de B foi
+o adapter de credito, a visao por carteira e a tela de eventos.
+
+**Decisoes do dono em 24/08 sobre B:**
+
+1. **VIX Radar: so o formato, com dado ficticio.** A fonte e injetada por quem chama.
+   Integracao real fica como entrega curta separada.
+2. **Escada propria para perda confirmada**, mais sensivel que os cortes genericos:
+   10% do PL ja e impacto alto num calote, contra 30% no resto do motor. 2% a 10% e
+   medio. Abaixo de 2%, piso em REAIS decide (R$ 50.000, mesmo valor de
+   `saqueGrandeMinAbs`). Sem piso minimo de exposicao.
+3. **Piso de exposicao por tipo de evento:** sem piso em perda confirmada, 0,5% em
+   sinalizacao, 1% em observacao.
+4. **Estado temporal do evento** (`novo`, `acompanhamento`, `agravado`, `melhorado`,
+   `encerrado`), com a tela abrindo pelo que mudou.
+5. **`economicGroupId` no ativo-map**, sempre null, nunca inferido, preservado em toda
+   regeneracao. Rollup por grupo NAO construido nesta entrega.
+6. **Bootstrap do ativo-map entra em B**, gerando esqueleto preenchivel sem adivinhar
+   emissor.
+
+### O que entrou
+
+- **`src/intel/credit-events.ts`.** Contrato `issuer/event/severity/date/source/confidence`
+  na fronteira, saneamento dentro. Duas escadas de severidade, tres pisos, estado
+  temporal por par evento-carteira.
+- **`snapshot credito --eventos arq.json`.** Le o `credito.json` do periodo anterior
+  para derivar estado, grava `audits/<data>/credito.json`.
+- **`snapshot ativo-map`.** Esqueleto ordenado por R$ decrescente com valor e % do PL
+  em `_nota`. Regerar preserva tudo que foi preenchido a mao, inclusive `false`, `0` e
+  chave que o motor nem conhece. Ativo fora da base fica com `_ausenteDesde`.
+- **Tela `Eventos & Impacto`** (`#/eventos`), abrindo pelo que mudou.
+- **Aba `Inteligencia` na carteira**, sem motor novo: filtra os overlays do radar e do
+  credito pela carteira aberta.
+- **`scripts/demo-carteiras.mjs`**, casa sintetica unica. Radar e credito leem a MESMA
+  casa; duas copias de fixture divergem sozinhas.
+- **`scripts/gerar-credito-demo.mjs`**, payload gerado pelo motor sobre duas datas.
+
+### As quatro regras que sustentam o modulo
+
+1. **"Sem exposicao" e "nao sei" sao respostas diferentes.** Carteira sem cobertura de
+   emissor vai para `naoAvaliaveis`, nunca para `semExposicao`. Travado em teste com
+   carteira que TEM a exposicao e mesmo assim nao e reportada como atingida.
+2. **A severidade do evento nao e a severidade do impacto**, e perda confirmada nao se
+   mede na mesma regua de sinalizacao.
+3. **Confianca nunca sobe:** menor entre a da fonte e a da cobertura.
+4. **O piso filtra ruido NOVO, nao esconde movimento no que ja se acompanha.** Par que
+   existia no periodo anterior aparece mesmo sob o piso, porque cair abaixo do piso E
+   a noticia. `encerrado` sai na lista mesmo sem exposicao atual, com o motivo separado.
+
+### Achado de tela que vale registrar
+
+A aba de inteligencia da carteira mostrava exposicao da posicao DIARIA logo abaixo dos
+indicadores do extrato MENSAL. Dois patrimonios diferentes para a mesma carteira na
+mesma tela, o que qualquer leitor conclui ser erro. Nao e: sao periodos diferentes por
+desenho. A aba passou a declarar a data de apuracao e a dizer isso em uma linha.
+
+### Limiares novos de B (thresholds.ts)
+
+`creditoPerdaConfirmada` altaMin 0,10 e mediaMin 0,02 ·
+`creditoPerdaConfirmadaMinAbs` R$ 50.000 ·
+`creditoPisoExposicao` perdaConfirmada 0, sinalizacao 0,005, observacao 0,01 ·
+`creditoVariacaoMaterialPct` 0,20.
+
+**Nao calibrados pelo dono**, junto com os oito de A.
+
+### Pendencias abertas desta camada
+
+1. **Quem preenche o ativo-map.** A ferramenta gera o esqueleto; alguem tem que
+   completar. Enquanto nao completar, o alerta de credito nao acha nada em producao.
+   Medido no root sintetico: sem mapa, 100% do PL sem emissor e zero carteira avaliavel.
+2. **Calibrar os limiares** de A e de B com o dono.
+3. **Integracao real do VIX Radar**, quando o dono quiser.
+4. **Rollup por grupo economico**, com o campo ja existindo e preservado.
+5. Nome e escala do score de materialidade, limite de linguagem em "o que revisar", e
+   fonte para Ibovespa/Nasdaq/spreads/petroleo. Todos de C.
 
 ## Pendências, ordenadas por prioridade acordada com o dono em 17/ago
 

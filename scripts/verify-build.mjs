@@ -31,6 +31,7 @@ const NUNCA = [
   /^platform-vencimentos(\.min)?\.js$/i,
   /^platform-caixa-parado(\.min)?\.js$/i,
   /^platform-radar(\.min)?\.js$/i,
+  /^platform-credito(\.min)?\.js$/i,
   /^platform-receita-drop(\.min)?\.js$/i,
   /^data\.js(on)?$/i,
   /^historico\.js(on)?$/i,
@@ -55,7 +56,7 @@ export function verificarDist(dir) {
   const indexHtml = path.join(dir, 'index.html');
   if (fs.existsSync(indexHtml)) {
     const html = fs.readFileSync(indexHtml, 'utf8');
-    if (/platform-data-real\.js|platform-data-audit\.js|platform-historico\.js|platform-oportunidades\.js|platform-vencimentos\.js|platform-caixa-parado\.js|platform-radar\.js|platform-receita-drop\.js/.test(html)) {
+    if (/platform-data-real\.js|platform-data-audit\.js|platform-historico\.js|platform-oportunidades\.js|platform-vencimentos\.js|platform-caixa-parado\.js|platform-radar\.js|platform-credito\.js|platform-receita-drop\.js/.test(html)) {
       suspeitos.push('index.html (tag de overlay presente no HTML buildado)');
     }
   }

@@ -111,6 +111,7 @@ platform-oportunidades.js
 platform-vencimentos.js
 platform-caixa-parado.js
 platform-radar.js
+platform-credito.js
 platform-receita-drop.js
 data.js
 data.json

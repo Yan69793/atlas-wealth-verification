@@ -168,6 +168,7 @@ import ReactDOM from 'react-dom/client';
     { id:'dashboard',   label:'Dashboard',          icon:'dashboard',  path:'#/dashboard'   },
     { id:'risco',       label:'Radar de Risco',      icon:'alert',      path:'#/risco'       },
     { id:'radar',       label:'Radar de Carteiras',  icon:'trend',      path:'#/radar'       },
+    { id:'eventos',     label:'Eventos & Impacto',   icon:'findings',   path:'#/eventos'     },
     { id:'comparativo', label:'Comparativo',         icon:'compare',    path:'#/comparativo' },
     { id:'achados',     label:'Achados & Exceções',  icon:'findings',   path:'#/achados'     },
     { id:'oportunidades', label:'Oportunidades',      icon:'portfolios', path:'#/oportunidades' },
@@ -204,6 +205,7 @@ import ReactDOM from 'react-dom/client';
     vencimentos: 'ATLAS_VENCIMENTOS_DATA',
     'caixa-parado': 'ATLAS_CAIXA_PARADO_DATA',
     radar: 'ATLAS_RADAR_DATA',
+    eventos: 'ATLAS_CREDITO_DATA',
   };
 
   function faseDisponivel(id) {
@@ -414,6 +416,7 @@ import ReactDOM from 'react-dom/client';
     if (path === '/busca') return 'busca';
     if (path === '/risco') return 'risco';
     if (path === '/radar') return 'radar';
+    if (path === '/eventos') return 'eventos';
     if (path === '/tendencia') return 'tendencia';
     if (path === '/importar') return 'importar';
     if (path === '/usuarios') return 'usuarios';
@@ -436,6 +439,7 @@ import ReactDOM from 'react-dom/client';
     busca:      'Busca por Ativo',
     risco:      'Radar de Risco',
     radar:      'Radar de Carteiras',
+    eventos:    'Eventos & Impacto',
     tendencia:  'Tendência do Ciclo',
     custos:     'Transparência de Custos',
     importar:   'Importar Extratos',
@@ -626,6 +630,12 @@ import ReactDOM from 'react-dom/client';
         return pages.Radar
           ? React.createElement(pages.Radar)
           : <PlaceholderPage title="Radar de Carteiras" etapa="radar" />;
+
+      case 'eventos':
+        if (!faseDisponivel('eventos')) return <FaseSemDado title="Eventos & Impacto" />;
+        return pages.Eventos
+          ? React.createElement(pages.Eventos)
+          : <PlaceholderPage title="Eventos & Impacto" etapa="eventos" />;
 
       case 'importar':
         return pages.Importar

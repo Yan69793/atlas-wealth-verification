@@ -179,6 +179,7 @@ const CONTRATO = [
   'platform-caixa-parado-demo.js',
   'platform-receita-drop-demo.js',
   'platform-radar-demo.js',
+  'platform-credito-demo.js',
   'platform-utils.jsx',
   'platform-dashboard.jsx',
   'platform-carteira.jsx',
@@ -198,6 +199,7 @@ const CONTRATO = [
   'platform-usuarios.jsx',
   'platform-risco.jsx',
   'platform-radar.jsx',
+  'platform-eventos.jsx',
   'platform-tendencia.jsx',
   'platform-app.jsx',
 ];
@@ -1059,7 +1061,7 @@ const verifyBuildSrc = fs.readFileSync(path.join(ROOT, 'scripts', 'verify-build.
 // prefixo, 'platform-radar' casaria com 'platform-radar-demo.js', que é o
 // arquivo sintético e justamente o que PODE ser publicado.
 const deployCfSrc = fs.readFileSync(path.join(ROOT, 'scripts', 'deploy-cf.ps1'), 'utf8');
-for (const f of ['platform-oportunidades.js', 'platform-vencimentos.js', 'platform-caixa-parado.js', 'platform-receita-drop.js', 'platform-radar.js']) {
+for (const f of ['platform-oportunidades.js', 'platform-vencimentos.js', 'platform-caixa-parado.js', 'platform-receita-drop.js', 'platform-radar.js', 'platform-credito.js']) {
   const base = f.replace(/\.js$/, '');
   ok('build-deploy.mjs proíbe o overlay ' + f, buildDeploySrc.includes(base));
   ok('verify-build.mjs proíbe o overlay ' + f, verifyBuildSrc.includes(base));
@@ -1849,6 +1851,178 @@ ok('R$ × dias não é formatado como moeda',
 
     ok('demo do radar nao carrega carimbo de producao', R.geradoEm === null);
   }
+}
+
+
+// --- 31. Entrega B - Eventos & Impacto (credito) -----------------------------
+//
+// O check mais importante deste bloco nao e nenhum dos de estrutura: e o que
+// prova que "sem exposicao" e "nao avaliavel" saem SEPARADOS e nunca se
+// somam. Num dia de calote, dizer "esta limpa" sobre carteira que o motor nao
+// consegue ler e o pior erro que este produto pode cometer.
+
+{
+  const credDemoPath = path.join(ROOT, 'platform-credito-demo.js');
+  const evPagePath = path.join(ROOT, 'platform-eventos.jsx');
+  const credDemo = fs.existsSync(credDemoPath) ? fs.readFileSync(credDemoPath, 'utf8') : '';
+  const evPage = fs.existsSync(evPagePath) ? fs.readFileSync(evPagePath, 'utf8') : '';
+
+  ok('platform-credito-demo.js existe', fs.existsSync(credDemoPath));
+  ok('platform-eventos.jsx existe', fs.existsSync(evPagePath));
+  ok('sem mojibake: platform-credito-demo.js', !MOJIBAKE.test(credDemo));
+  ok('sem mojibake: platform-eventos.jsx', !MOJIBAKE.test(evPage));
+
+  ok('demo de credito publica window.ATLAS_CREDITO_DATA',
+    credDemo.includes('window.ATLAS_CREDITO_DATA'));
+  ok('demo de credito e sintetico (geradoEm null)', /"geradoEm":\s*null/.test(credDemo));
+  ok('demo de credito nao popula quando ha dado real na instancia',
+    credDemo.includes('window._AtlasRealData'));
+  ok('demo de credito e gerado pelo motor, nao escrito a mao',
+    credDemo.includes('scripts/gerar-credito-demo.mjs')
+    && fs.existsSync(path.join(ROOT, 'scripts', 'gerar-credito-demo.mjs')));
+  ok('radar e credito leem a MESMA casa sintetica',
+    fs.existsSync(path.join(ROOT, 'scripts', 'demo-carteiras.mjs'))
+    && fs.readFileSync(path.join(ROOT, 'scripts', 'gerar-radar-demo.mjs'), 'utf8').includes('demo-carteiras.mjs')
+    && fs.readFileSync(path.join(ROOT, 'scripts', 'gerar-credito-demo.mjs'), 'utf8').includes('demo-carteiras.mjs'));
+
+  ok('pagina registra AtlasPages.Eventos', evPage.includes('AtlasPages.Eventos'));
+  ok('rota /eventos em platform-app.jsx', appContent.includes("path === '/eventos'"));
+  ok('navegacao contem Eventos & Impacto em platform-app.jsx',
+    appContent.includes("label:'Eventos & Impacto'"));
+  ok('eventos passa por faseDisponivel (link salvo nao contorna o filtro)',
+    appContent.includes("eventos: 'ATLAS_CREDITO_DATA'")
+    && appContent.includes("faseDisponivel('eventos')"));
+
+  ok('pagina de eventos nao usa primitiva de envio (dado fica no navegador)',
+    !/fetch\s*\(|XMLHttpRequest|sendBeacon|WebSocket|EventSource/.test(evPage));
+  ok('.gitignore nega o overlay real platform-credito.js',
+    gitignore.split(/\r?\n/).some((l) => l.trim() === 'platform-credito.js'));
+  ok('pagina de eventos resolve nome de gestor por D.MANAGERS',
+    evPage.includes('D.MANAGERS') && !/\bD\.managers\b/.test(evPage));
+
+  // A tela mostra as tres listas separadas e com o mesmo peso.
+  ok('tela separa atingidas, sem exposicao e nao avaliaveis',
+    evPage.includes('ATINGIDAS') && evPage.includes('SEM EXPOSICAO') && evPage.includes('NAO AVALIAVEIS'));
+  ok('tela explica que carteira nao avaliavel nao esta limpa',
+    /nao estao limpas|Nao estao limpas/.test(evPage));
+
+  // Explicabilidade: le o rastro do motor, nao redige.
+  ok('tela de eventos oferece "Por que estou vendo isso?"',
+    evPage.includes('Por que estou vendo isso?'));
+  for (const campo of ['insight.calculo', 'insight.regra', 'insight.evidencias', 'insight.cobertura', 'insight.afirmacao', 'insight.confianca']) {
+    ok('tela de eventos renderiza ' + campo + ' vindo do motor', evPage.includes(campo));
+  }
+
+  // Payload.
+  const winCred = {};
+  winCred.window = winCred;
+  try { new Function('window', 'globalThis', credDemo)(winCred, winCred); } catch { /* vira falha no check */ }
+  const C = winCred.ATLAS_CREDITO_DATA;
+
+  ok('demo de credito carrega e tem schema credito/v1', !!C && C.schema === 'credito/v1');
+
+  if (C) {
+    const impactos = C.impactos || [];
+    const insights = C.insights || [];
+    const porId = new Map(insights.map((i) => [i.id, i]));
+    const pares = impactos.flatMap((i) => (i.atingidas || []).map((a) => ({ i, a })));
+
+    ok('demo de credito tem eventos e pares carteira-evento', impactos.length > 0 && pares.length > 0);
+
+    // O invariante central: nenhuma carteira aparece em semExposicao E em
+    // naoAvaliaveis do mesmo evento, e nenhuma nao-avaliavel e dada como limpa.
+    const cruzadas = [];
+    for (const i of impactos) {
+      const semExp = new Set(i.semExposicao || []);
+      for (const n of i.naoAvaliaveis || []) if (semExp.has(n)) cruzadas.push(i.evento.emissorId + '/' + n);
+    }
+    ok('carteira nao avaliavel NUNCA aparece como sem exposicao', cruzadas.length === 0, cruzadas.join(' | '));
+
+    // Nenhuma carteira atingida pode estar tambem em nao avaliavel.
+    const atingidasEmEscuro = [];
+    for (const i of impactos) {
+      const escuro = new Set(i.naoAvaliaveis || []);
+      for (const a of i.atingidas || []) if (escuro.has(a.carteira)) atingidasEmEscuro.push(a.carteira);
+    }
+    ok('carteira no escuro nao vira atingida', atingidasEmEscuro.length === 0, atingidasEmEscuro.join(' | '));
+
+    ok('demo tem carteira nao avaliavel, senao a regra nao esta demonstrada',
+      impactos.some((i) => (i.naoAvaliaveis || []).length > 0));
+    ok('demo tem evento sobre emissor que ninguem carrega',
+      impactos.some((i) => (i.atingidas || []).length === 0 && (i.semExposicao || []).length > 0));
+
+    // Rastro completo em todo insight.
+    const semRastro = insights.filter((i) =>
+      !i.regra || !i.regra.nome || !i.calculo || !i.evidencias
+      || typeof i.cobertura !== 'number' || !i.faixaCobertura || !i.confianca || !i.afirmacao);
+    ok('todo insight de credito carrega regra, conta, evidencia e cobertura',
+      semRastro.length === 0, semRastro.map((i) => i.id).join(' | '));
+
+    const orfaos = pares.filter(({ a }) => !porId.has(a.insightId));
+    ok('todo par carteira-evento tem insight correspondente', orfaos.length === 0);
+
+    // Os cinco estados.
+    const estados = new Set(pares.map(({ a }) => a.estado));
+    ok('demo tem evento novo', estados.has('novo'));
+    ok('demo tem evento em acompanhamento', estados.has('acompanhamento'));
+    ok('demo tem evento agravado', estados.has('agravado'));
+    ok('demo tem evento melhorado', estados.has('melhorado'));
+    ok('demo tem evento encerrado', (C.encerrados || []).length > 0);
+    ok('encerrado declara por que saiu',
+      (C.encerrados || []).every((e) => e.motivo === 'evento-saiu-da-fonte' || e.motivo === 'exposicao-zerada'));
+    ok('demo tem base de comparacao, senao os estados nao existiriam', !!C.baseData && C.temAnterior === true);
+
+    // Evento de credito critico: o caso que faltava na Entrega A.
+    ok('demo tem evento de credito critico (perda confirmada com impacto alto)',
+      pares.some(({ i, a }) =>
+        (i.evento.classe === 'perdaConfirmada') && a.severidadeImpacto === 'alta'));
+
+    // A regra explicita da ultima faixa da escada de perda confirmada.
+    const lim = C.limiares || {};
+    ok('limiares de credito no payload sao os acordados',
+      lim.creditoPerdaConfirmada && lim.creditoPerdaConfirmada.altaMin === 0.1
+      && lim.creditoPerdaConfirmada.mediaMin === 0.02
+      && lim.creditoPerdaConfirmadaMinAbs === 50000
+      && lim.creditoPisoExposicao && lim.creditoPisoExposicao.perdaConfirmada === 0
+      && lim.creditoPisoExposicao.sinalizacao === 0.005
+      && lim.creditoPisoExposicao.observacao === 0.01);
+    ok('demo tem perda confirmada abaixo de 2% do PL promovida pelo piso em reais',
+      pares.some(({ i, a }) =>
+        i.evento.classe === 'perdaConfirmada'
+        && a.fracaoPl < lim.creditoPerdaConfirmada.mediaMin
+        && a.valor >= lim.creditoPerdaConfirmadaMinAbs
+        && a.severidadeImpacto === 'media'));
+
+    // Confianca nunca sobe.
+    const confSubiu = pares.filter(({ i, a }) => {
+      const ordem = { baixa: 0, media: 1, alta: 2 };
+      return ordem[a.confianca] > ordem[i.evento.confiancaFonte];
+    });
+    ok('confianca do impacto nunca supera a da fonte', confSubiu.length === 0,
+      confSubiu.map(({ i, a }) => i.evento.emissorId + '/' + a.carteira).join(' | '));
+    ok('demo tem fonte fraca sobre carteira bem coberta, provando que a confianca nao sobe',
+      pares.some(({ a }) => a.cobertura >= 0.99 && a.confianca === 'baixa'));
+
+    ok('demo de credito nao carrega carimbo de producao', C.geradoEm === null);
+    ok('registro imprestavel e contado, nao engolido', typeof C.descartados === 'number' && C.descartados > 0);
+  }
+
+  // A aba de inteligencia da carteira LE os overlays, nunca recalcula: um
+  // segundo lugar decidindo o mesmo numero foi o defeito do score da fila
+  // corrigido na Onda 3. E ela declara o periodo, porque os indicadores do
+  // topo da pagina vem do extrato MENSAL e a aba vem da posicao DIARIA.
+  const cartPage = fs.readFileSync(path.join(ROOT, 'platform-carteira.jsx'), 'utf8');
+  ok('carteira tem aba de inteligencia', cartPage.includes("key: 'inteligencia'"));
+  ok('aba de inteligencia le os overlays do radar e do credito',
+    cartPage.includes('window.ATLAS_RADAR_DATA') && cartPage.includes('window.ATLAS_CREDITO_DATA'));
+  ok('aba de inteligencia declara o periodo apurado, para os dois PL nao parecerem erro',
+    cartPage.includes('extrato mensal') && cartPage.includes('posição diária'));
+  ok('aba de inteligencia avisa quando a carteira esta no escuro para credito',
+    cartPage.includes('nao pode ser avaliada') || cartPage.includes('não pôde ser avaliada'));
+  ok('aba de inteligencia nao usa primitiva de envio',
+    !/fetch\s*\(|XMLHttpRequest|sendBeacon|WebSocket|EventSource/.test(cartPage));
+  ok('aba de inteligencia traduz o tipo do evento, sem nome de enum na tela',
+    cartPage.includes('ROTULO_EVENTO_INTEL'));
 }
 
 // ─── Resultado ──────────────────────────────────────────────────────────────
