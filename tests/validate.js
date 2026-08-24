@@ -1052,10 +1052,18 @@ ok('.gitignore nega o overlay real platform-caixa-parado.js',
 // publicacao recusa em vez de subir dado de cliente.
 const buildDeploySrc = fs.readFileSync(path.join(ROOT, 'scripts', 'build-deploy.mjs'), 'utf8');
 const verifyBuildSrc = fs.readFileSync(path.join(ROOT, 'scripts', 'verify-build.mjs'), 'utf8');
+// Terceira lista, esquecida até 2026-08-24: deploy-cf.ps1 carrega a própria
+// rede de segurança, com os nomes escritos à mão. Ela não conhecia o overlay
+// do radar. As três listas precisam andar juntas, e este laço é o que garante.
+// Aqui o casamento é pelo nome COMPLETO entre aspas, não pelo prefixo: com
+// prefixo, 'platform-radar' casaria com 'platform-radar-demo.js', que é o
+// arquivo sintético e justamente o que PODE ser publicado.
+const deployCfSrc = fs.readFileSync(path.join(ROOT, 'scripts', 'deploy-cf.ps1'), 'utf8');
 for (const f of ['platform-oportunidades.js', 'platform-vencimentos.js', 'platform-caixa-parado.js', 'platform-receita-drop.js', 'platform-radar.js']) {
   const base = f.replace(/\.js$/, '');
   ok('build-deploy.mjs proíbe o overlay ' + f, buildDeploySrc.includes(base));
   ok('verify-build.mjs proíbe o overlay ' + f, verifyBuildSrc.includes(base));
+  ok('deploy-cf.ps1 proíbe o overlay ' + f, deployCfSrc.includes("'" + f + "'"));
 }
 
 // ─── 22. Fase 5 — Queda de receita ──────────────────────────────────────────
