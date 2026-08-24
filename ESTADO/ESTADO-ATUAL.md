@@ -11,13 +11,13 @@ aqui, trate este arquivo como suspeito e rode o refresh do fim da página.
 ## Portão de verificação, medido hoje
 
 ```
-580/580 checks OK — todos os checks passaram
-ℹ tests 243   ℹ suites 63   ℹ pass 242   ℹ fail 0   ℹ skipped 1
+602/602 checks OK — todos os checks passaram
+ℹ tests 278   ℹ suites 73   ℹ pass 278   ℹ fail 0   ℹ skipped 0
 ```
 
-Medido em 2026-08-24, depois das Entregas A e B da camada de inteligência. Antes
-delas era 469/469 checks e 143 testes. A crescida: A somou 51 checks e 63 testes,
-B somou mais 60 checks e 37 testes.
+Medido em 2026-08-24, depois das Entregas A, B e B.2 da camada de inteligência.
+Antes delas era 469/469 checks e 143 testes. A crescida: A somou 51 checks e 63
+testes, B mais 60 checks e 37 testes, B.2 mais 22 checks e 35 testes.
 
 A contagem de testes desceu de 131 para 129 de propósito: o corte de 90 dias no caixa parado
 substituiu cinco testes do contrato antigo por três do contrato novo. Os checks subiram de 460
@@ -27,8 +27,11 @@ novos do caminho multi-cliente (tenantId, fila de exceção, reconciliação).
 Contagem subiu de 352/101 (início do dia) com as correções das Ondas 1 a 5, cada uma trazendo
 o teste que pegaria o próprio defeito. Ver a seção das cinco fases, abaixo.
 
-O único pulado é o de parity, que só roda com `ATLAS_FIXTURES` e `ATLAS_BOOKS` apontando
-para dado de instância. Pular é o comportamento correto no repo do produto.
+**Zero pulados desde 24/08, e a mudança conta uma história.** O teste que ficava pulado era
+a parity de PDF contra Excel, que se auto-desliga quando `pdfplumber` não está no Python da
+máquina. O pacote havia sumido do ambiente, então o portão vinha relatando "todos os testes
+passaram" com um teste a menos, sem avisar. Reinstalado, ele roda e passa. Dependência de
+ambiente que some sem quebrar nada é a forma mais barata de perder cobertura de teste.
 
 ## Cadeia de gitlink, fechada em 17/ago
 
@@ -511,6 +514,132 @@ desenho. A aba passou a declarar a data de apuracao e a dizer isso em uma linha.
 4. **Rollup por grupo economico**, com o campo ja existindo e preservado.
 5. Nome e escala do score de materialidade, limite de linguagem em "o que revisar", e
    fonte para Ibovespa/Nasdaq/spreads/petroleo. Todos de C.
+
+## Camada de inteligencia, Entrega B.1 (2026-08-24)
+
+Cobertura real do ativo-map e calibracao dos 12 limiares sobre o historico REAL da
+casa: 37 meses (jun/2023 a jun/2026), 105 carteiras no ultimo mes, R$ 2,04 bi.
+**Nenhum limiar foi alterado.** `thresholds.ts` esta como estava; a recomendacao
+completa, com a tabela de 12 linhas, esta em `docs/calibracao-limiares-2026-08.md`.
+
+### Resultado
+
+- **Emissor preenchido em 89,4% do PL** (87,0% dos ativos vivos), contra 0% antes.
+  Meta era 85%, ideal 90%. Cobertura entre 78% e 94% em todos os 37 meses.
+- **98 de 105 carteiras avaliaveis** num evento de credito. Antes: zero.
+- Mapas gravados na instancia (`ativo-map.local.json`, `name-map.local.json`), os
+  dois negados no `.gitignore` da instancia. Preenchimento humano preservado,
+  provado com marca de teste que sobreviveu a regeneracao.
+- **Um unico ativo responde por 88% do buraco que sobrou** (9,34% do PL). Resolvido
+  ele, a cobertura vai a 98,7%. E a pergunta de maior retorno para o dono.
+
+### Tres defeitos achados no caminho, NAO corrigidos
+
+1. **Mesmo papel escrito de dois jeitos pelo extrator do book.** 783 grafias
+   duplicadas na serie, 617 papeis canonicos; no ultimo mes, 60 papeis somando 29%
+   do PL. Efeito: **concentracao SUBESTIMADA**. Contornado na calibracao pelo
+   name-map (que o normalize ja aplica a nome de ativo), sem tocar codigo.
+2. **`ativo-map` reseta em silencio** quando o arquivo existe, parseia, e nao tem a
+   chave `mappings`. Ele relata "N novo(s)" e sai com sucesso, com o preenchimento
+   inteiro perdido. A trava existente so cobre JSON ilegivel. Descoberto por
+   acidente durante esta entrega, e foi exatamente assim que aconteceu.
+3. **`_ausenteDesde` nunca e limpo** quando o ativo volta a base.
+
+### O que a calibracao mostrou do radar
+
+292,9 alertas/mes, **97% das carteiras acesas, e so 13% dos alertas sao novos**.
+70% do volume de concentracao por emissor e fundo de caixa, nao risco de credito.
+`CONCENTRACAO_FATOR` produziu **2.974 alertas e todos "alta"**: a regra so dispara
+acima de 50% e a severidade usa cortes de 10%/30%, entao e impossivel sair outra
+coisa. Com os limiares propostos + exclusao da classe liquidez + corte por
+novidade: **15,5 alertas/mes e 13% das carteiras acesas**. O corte por novidade
+sozinho vale mais que todos os limiares somados.
+
+`radarDeterioracaoPct` e `creditoVariacaoMaterialPct` foram medidos e **confirmados
+como estao**: a deterioracao acende, resolve e nao repete; a variacao de 20% deixa
+`acompanhamento` ser o estado dominante (84,3% dos pares variam menos de 5% ao mes).
+
+### Ponte de calibracao, fora do produto
+
+**Correcao registrada no mesmo dia:** a primeira versao desta secao dizia que o
+pipeline nao tinha adaptador para o book em PDF. Errado. `adapters/pdf.ts` existe e
+esta registrado; o que faltava era `pdfplumber` no Python da maquina.
+
+Sobra a ponte para o HISTORICO: so ha PDF de dois meses no disco, e os 37 meses
+existem como `audit.json` do fluxo mensal. A ponte converte esse artefato em
+snapshot, datado no ultimo dia do mes para as regras diarias funcionarem, e usa o
+`normalize()` do produto importado do dist. Ela nao e produto e nao entra em build.
+
+## Camada de inteligencia, Entrega B.2 (2026-08-24)
+
+Executada na ordem de prioridade acordada com o dono. Corrige os dois defeitos de
+dado que a B.1 encontrou e da ao radar o corte por novidade que a medicao provou
+valer mais que qualquer ajuste de limiar. **Nenhum limiar existente foi alterado.**
+
+### Prioridade 1 nao era o que eu disse que era
+
+Eu afirmei ao dono que o adaptador de PDF nao existia e que era a maior distancia
+entre "pronto" e "funciona". **Estava errado.** `audit-engine/src/snapshot/adapters/pdf.ts`
+existe desde antes, registrado no dispatcher, reusando o extrator Python do fluxo
+mensal. O que estava quebrado era `pdfplumber`, ausente nos tres interpretadores
+Python da maquina apesar de o `CLAUDE.md` registrar a instalacao em 14/08.
+
+Reinstalado, o caminho real foi provado ponta a ponta contra os books do cliente:
+
+```
+[criado] tenant=szuchmacher 2026-04-30: 111 carteiras, hash 60d8ff52.
+[criado] tenant=szuchmacher 2026-05-31: 108 carteiras, hash 1306992c.
+[cobertura] 2026-05-31 — casa: 108 carteira(s)
+  emissorId   87.5%  afirma
+```
+
+**Efeito colateral que vale registrar:** a suite tinha 1 teste PULADO havia tempo,
+e era a parity de PDF contra Excel, que se auto-desliga quando `pdfplumber` falta.
+O portao relatava "todos os testes passaram" com um teste a menos. Agora sao 0
+pulados. Dependencia de ambiente que some sem quebrar nada e a forma mais barata
+de perder cobertura de teste.
+
+### O que entrou
+
+- **`intel/estado.ts`.** A maquina de estado temporal saiu de dentro do adapter de
+  credito e virou modulo. `estadoDoPar` continua existindo como adaptador de nome
+  de campo. Duas copias da mesma regra divergem sozinhas, e o dia em que
+  divergirem a tela de eventos chamaria de "agravado" o que o radar chama de
+  "acompanhamento" sobre o mesmo movimento.
+- **Estado no radar.** `novo`, `acompanhamento`, `agravado`, `melhorado` por sinal,
+  mais a lista de `encerrados`. Chave estavel por tipo, e vazia em
+  `DETERIORACAO_PL` de proposito: usar a data da base faria o sinal renascer todo
+  periodo. A ordenacao passa a ser por ESTADO antes de severidade.
+- **`snapshot name-map`.** Funde as grafias diferentes do mesmo papel. Le a serie
+  inteira numa passada; construir por data produzia ciclo A→B, B→A.
+- **Aviso de grafia duplicada na ingestao.** Aviso, nunca erro, mesma politica do
+  "EXTRACAO PARCIAL". No book real de maio: 57 papeis, 16,8% do PL.
+- **Guarda contra reset silencioso do `ativo-map`**, agora compartilhada com o
+  `name-map` em `lerMappings`.
+- **`_ausenteDesde` limpo** quando o ativo volta a base.
+- **Tela do radar abre pelo que mudou**, com filtro "So o que mudou", aba de
+  encerrados, o estado em cada linha e o valor anterior ao lado do atual.
+- **`radarVariacaoMaterialPct: 0.20`**, limiar NOVO. Nao e chute: 36.897
+  comparacoes no dado real, 84,3% dos pares variando menos de 5% e so 6,4%
+  passando de 20%.
+
+### O numero que justifica a entrega
+
+No dado real da casa, maio contra abril: **349 sinais, 19 mudaram**. Novo 17,
+agravado 2, acompanhamento 318, melhorado 12, encerrado 26. A tela abre com 19
+itens em vez de 349.
+
+### Pendencias que continuam abertas
+
+1. **O ativo de 9,34% do PL sem identificacao.** So o dono responde. Resolvido,
+   a cobertura vai de 89,4% para 98,7%.
+2. **Os 12 limiares.** A recomendacao esta em `docs/calibracao-limiares-2026-08.md`.
+   Nada foi aplicado.
+3. **`liquidezDias` nao sai do book.** Precisa do regulamento do fundo ou do campo
+   D+ do custodiante.
+4. **`pdfplumber` sem versao presa.** Vale um `requirements.txt` e falhar em vez de
+   pular quando faltar.
+5. Rollup por grupo economico, VIX Radar real, e os itens de C.
 
 ## Pendências, ordenadas por prioridade acordada com o dono em 17/ago
 
