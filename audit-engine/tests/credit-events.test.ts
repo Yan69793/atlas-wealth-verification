@@ -172,7 +172,7 @@ describe('duas escadas de severidade', () => {
     assert.equal(severidadeDoImpacto(perda, 0.015, 300_000), 'media');
     // R$ 10 mil na mesma fracao nao e chamada telefonica.
     assert.equal(severidadeDoImpacto(perda, 0.015, 10_000), 'baixa');
-    assert.equal(THRESHOLDS.creditoPerdaConfirmadaMinAbs, 50_000);
+    assert.equal(THRESHOLDS.creditoPerdaConfirmadaMinAbs, 250_000);
   });
 
   it('a escada de perda confirmada e MAIS SENSIVEL que a de sinalizacao', () => {
@@ -243,22 +243,24 @@ describe('sem exposicao nao e a mesma coisa que nao sei', () => {
 });
 
 describe('piso por tipo de evento', () => {
-  // PL 10 mi; exposicao de R$ 70 mil = 0,7% do PL.
+  // PL 10 mi; exposicao de R$ 300 mil = 3,0% do PL. Calibrado em 2026-08-24:
+  // com o piso antigo (0,5%) 70 mil bastava; com o novo (2%) precisa passar
+  // dessa marca para o teste continuar provando o que o nome diz.
   const c = () =>
     carteira('ALFA', [
-      comEmissor('CDB ZETA', 70_000, 'banco-zeta', 'Banco Zeta'),
-      comEmissor('OUTROS', 9_930_000, 'banco-omega', 'Banco Omega'),
+      comEmissor('CDB ZETA', 300_000, 'banco-zeta', 'Banco Zeta'),
+      comEmissor('OUTROS', 9_700_000, 'banco-omega', 'Banco Omega'),
     ]);
 
-  it('notícia com 0,7% do PL fica sob o piso de 1% e nao vira achado', () => {
+  it('notícia com 3,0% do PL fica sob o piso de 5% e nao vira achado', () => {
     const r = impactoDeCredito(snap([c()]), [evento({ event: 'noticia negativa', severity: 'media' })]);
     assert.equal(r.impactos[0].atingidas.length, 0);
   });
 
-  it('rebaixamento com a MESMA exposicao passa, porque o piso dele e 0,5%', () => {
+  it('rebaixamento com a MESMA exposicao passa, porque o piso dele e 2%', () => {
     const r = impactoDeCredito(snap([c()]), [evento({ event: 'downgrade', severity: 'media' })]);
     assert.equal(r.impactos[0].atingidas.length, 1);
-    assert.ok(Math.abs(r.impactos[0].atingidas[0].fracaoPl - 0.007) < 1e-9);
+    assert.ok(Math.abs(r.impactos[0].atingidas[0].fracaoPl - 0.03) < 1e-9);
   });
 
   it('perda confirmada nao tem piso: exposicao minima e reportada', () => {
@@ -273,8 +275,8 @@ describe('piso por tipo de evento', () => {
 
   it('os tres pisos estao em thresholds e sao os acordados', () => {
     assert.equal(THRESHOLDS.creditoPisoExposicao.perdaConfirmada, 0);
-    assert.equal(THRESHOLDS.creditoPisoExposicao.sinalizacao, 0.005);
-    assert.equal(THRESHOLDS.creditoPisoExposicao.observacao, 0.01);
+    assert.equal(THRESHOLDS.creditoPisoExposicao.sinalizacao, 0.02);
+    assert.equal(THRESHOLDS.creditoPisoExposicao.observacao, 0.05);
   });
 });
 

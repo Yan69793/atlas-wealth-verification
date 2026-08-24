@@ -149,8 +149,11 @@ describe('estado do sinal contra o período anterior', () => {
   });
 
   it('severidade sobe: agravado', () => {
-    // 0,25 do PL = média (>= 10%, < 30%); 0,45 = alta (>= 30%).
-    const r = doisPeriodos([comConcentracao('A', 0.25)], [comConcentracao('A', 0.45)]);
+    // Severidade e relativa ao proprio limiar (30%) desde 2026-08-24: base em
+    // 0,35 da excesso (0,35-0,30)/0,30=16,7%='media'; ref em 0,45 da excesso
+    // (0,45-0,30)/0,30=50%='alta'. Precisa ficar >=0,30 nos dois periodos,
+    // senao o sinal de ATIVO nem dispara na base.
+    const r = doisPeriodos([comConcentracao('A', 0.35)], [comConcentracao('A', 0.45)]);
     const s = sinal(r, 'A', 'CONCENTRACAO_ATIVO');
     assert.equal(s?.severidade, 'alta');
     assert.equal(s?.estado, 'agravado');
@@ -158,7 +161,9 @@ describe('estado do sinal contra o período anterior', () => {
   });
 
   it('severidade desce: melhorado', () => {
-    const r = doisPeriodos([comConcentracao('A', 0.45)], [comConcentracao('A', 0.25)]);
+    // Ref precisa continuar >=0,30 (novo limiar de ATIVO), senao o sinal some
+    // para encerrados em vez de melhorar.
+    const r = doisPeriodos([comConcentracao('A', 0.45)], [comConcentracao('A', 0.35)]);
     assert.equal(sinal(r, 'A', 'CONCENTRACAO_ATIVO')?.estado, 'melhorado');
   });
 
@@ -182,13 +187,17 @@ describe('estado do sinal contra o período anterior', () => {
 
 describe('encerrados: o achado que sumiu não some da tela', () => {
   it('sinal deixa de passar do limiar: encerrado com motivo sinal-saiu', () => {
-    const r = doisPeriodos([comConcentracao('A', 0.35)], [comConcentracao('A', 0.05)]);
+    // Base em 0,45 para severidade 'alta' sob a formula relativa ao limiar
+    // ((0,45-0,30)/0,30=50%): em 0,35 ainda dispara mas cairia para 'media'
+    // ((0,35-0,30)/0,30=16,7%), o que rebaixaria o valor esperado em vez de
+    // preservar o caso original.
+    const r = doisPeriodos([comConcentracao('A', 0.45)], [comConcentracao('A', 0.05)]);
     const enc = r.encerrados.find((e) => e.tipo === 'CONCENTRACAO_ATIVO');
     assert.ok(enc, 'o sinal que saiu precisa aparecer');
     assert.equal(enc?.carteira, 'A');
     assert.equal(enc?.motivo, 'sinal-saiu');
     assert.equal(enc?.severidadeAnterior, 'alta');
-    assert.equal(enc?.valorAnterior, 350_000);
+    assert.equal(enc?.valorAnterior, 450_000);
   });
 
   it('carteira inteira sai da base: encerrado com motivo carteira-saiu', () => {

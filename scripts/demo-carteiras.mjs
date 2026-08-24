@@ -86,13 +86,15 @@ function pulverizado(prefixo, quantidade, valorCada, base = {}) {
 }
 
 /* ── ALPHA_01: concentração ESCONDIDA por emissor ────────────────────────────
-   Três papéis de nomes diferentes, mesmo banco, somando 19% do PL. Nenhum dos
-   três passa de 20% sozinho, então a tela de posições não acusa nada.        */
+   Três papéis de nomes diferentes, mesmo banco, somando 33% do PL. Nenhum dos
+   três passa de 30% sozinho, então a tela de posições não acusa nada.
+   Valores recalibrados em 2026-08-24 junto com radarConcentracaoEmissorPct
+   (15%→25%): a soma zeta precisa clarear o novo limiar com folga real. */
 export const alpha01 = (fator = 1) =>
   carteira('ALPHA_01', [
-    pos('CDB ZETA 2027', 260_000 * fator, zeta({ ...rf, indexador: 'CDI', taxaContratada: '110% CDI', cobertoFGC: true })),
-    pos('LCI ZETA 2028', 250_000 * fator, zeta({ ...rf, indexador: 'CDI', taxaContratada: '96% CDI', cobertoFGC: true })),
-    pos('LF ZETA 2029', 250_000 * fator, zeta({ ...rf, indexador: 'IPCA', taxaContratada: 'IPCA+6,2%' })),
+    pos('CDB ZETA 2027', 600_000 * fator, zeta({ ...rf, indexador: 'CDI', taxaContratada: '110% CDI', cobertoFGC: true })),
+    pos('LCI ZETA 2028', 550_000 * fator, zeta({ ...rf, indexador: 'CDI', taxaContratada: '96% CDI', cobertoFGC: true })),
+    pos('LF ZETA 2029', 500_000 * fator, zeta({ ...rf, indexador: 'IPCA', taxaContratada: 'IPCA+6,2%' })),
     pos('FUNDO DI ALFA', 250_000 * fator, gest('di-alfa', { ...cx })),
     pos('FUNDO MULTI BETA', 240_000 * fator, gest('multi-beta', { classeCanonica: 'multimercado', indexador: 'MULTI', prazoAnos: 0, liquidezDias: 30 })),
     ...pulverizado('DEB ALPHA', 8, 200_000 * fator, { indexador: 'IPCA' }),
@@ -111,10 +113,12 @@ export const bravoPv = () =>
     pos('NTN-B BRAVO', 200_000, gest('ntnb-bravo', { classeCanonica: 'renda-fixa', indexador: 'IPCA', prazoAnos: 9, liquidezDias: 1 })),
   ]);
 
-/* ── CEDRO_HLD: liquidez seca e vencimento concentrado ─────────────────────── */
+/* ── CEDRO_HLD: liquidez seca, vencimento concentrado e concentração de ativo,
+   emissor e vencimento no mesmo par de posições. Valor recalibrado em
+   2026-08-24 junto com radarConcentracaoAtivoPct (20%→30%). ──────────────── */
 export const cedroHld = () =>
   carteira('CEDRO_HLD', [
-    pos('CDB OMEGA VENCE SET', 1_800_000, omega({ ...rf, indexador: 'CDI', prazoAnos: 0.05, liquidezDias: 18 }), '2026-09-11'),
+    pos('CDB OMEGA VENCE SET', 3_600_000, omega({ ...rf, indexador: 'CDI', prazoAnos: 0.05, liquidezDias: 18 }), '2026-09-11'),
     pos('LCA OMEGA VENCE SET', 900_000, omega({ ...rf, indexador: 'CDI', prazoAnos: 0.07, liquidezDias: 25 }), '2026-09-18'),
     ...pulverizado('DEB CEDRO', 10, 400_000, { indexador: 'IPCA', prazoAnos: 6, liquidezDias: 2190 }),
     pos('FII TIJOLO CEDRO', 1_000_000, gest('fii-cedro', { classeCanonica: 'imobiliario', indexador: 'MULTI', prazoAnos: 0, liquidezDias: 3 })),
@@ -122,14 +126,18 @@ export const cedroHld = () =>
   ]);
 
 /* ── DUNAS_CAP: risco macro comum com ALPHA_01 e BRAVO_PV (IPCA) ────────────
-   Carrega também a posição minúscula da Metalurgica Aurora: 1,5% do PL, que é
-   o caso que prova a regra do piso em REAIS num calote. Ver gerar-credito-demo. */
+   Carrega também a posição minúscula da Metalurgica Aurora: ~1,7% do PL, que
+   é o caso que prova a regra do piso em REAIS num calote. Ver
+   gerar-credito-demo. Valores recalibrados em 2026-08-24: o piso em reais
+   subiu 5x (R$ 50 mil → R$ 250 mil) e a fração de Aurora precisa continuar
+   abaixo do teto de 2% do PL — a carteira inteira precisou crescer junto
+   para os dois se sustentarem ao mesmo tempo. */
 export const dunasCap = () =>
   carteira('DUNAS_CAP', [
-    ...pulverizado('NTN-B DUNAS', 6, 300_000, { classeCanonica: 'renda-fixa', indexador: 'IPCA', prazoAnos: 9, liquidezDias: 1 }),
-    ...pulverizado('DEB IPCA DUNAS', 7, 250_000, { indexador: 'IPCA', prazoAnos: 5 }),
-    pos('DEB AURORA 2029', 60_000, nomeado('metalurgica-aurora', 'Metalurgica Aurora', { ...rf, indexador: 'IPCA', prazoAnos: 3 })),
-    pos('FUNDO DI DUNAS', 350_000, gest('di-dunas', { ...cx })),
+    ...pulverizado('NTN-B DUNAS', 6, 1_200_000, { classeCanonica: 'renda-fixa', indexador: 'IPCA', prazoAnos: 9, liquidezDias: 1 }),
+    ...pulverizado('DEB IPCA DUNAS', 7, 1_000_000, { indexador: 'IPCA', prazoAnos: 5 }),
+    pos('DEB AURORA 2029', 280_000, nomeado('metalurgica-aurora', 'Metalurgica Aurora', { ...rf, indexador: 'IPCA', prazoAnos: 3 })),
+    pos('FUNDO DI DUNAS', 2_000_000, gest('di-dunas', { ...cx })),
   ]);
 
 /* ── ESTRELA_PV: cobertura BAIXA de propósito ────────────────────────────────
@@ -170,7 +178,14 @@ export const farolInv = (fase = 'ref') =>
         ]
       : pulverizado('ETF EUA FAROL', 5, 400_000, usdBolsa)),
     ...pulverizado('BOND USD FAROL', 4, fase === 'base' ? 120_000 : 300_000, usdBond),
-    ...pulverizado('CDB FAROL', 4, 200_000),
+    // Preenchimento reduzido em 2026-08-24, junto com radarConcentracaoFatorPct
+    // (50%→70%): a fatia USD na BASE folgava só 0,11pp sobre o limiar antigo,
+    // a mais apertada de todo o fixture set. CDB FAROL e CAIXA são as únicas
+    // posições NÃO controladas por `fase`, então encolher o preenchimento
+    // reduz o PL igualmente nas duas datas sem tocar nos valores absolutos de
+    // USD — preserva o crescimento de 24% entre BASE e REF que sustenta a
+    // transição `agravado`.
+    ...pulverizado('CDB FAROL', 4, 50_000),
     pos('CAIXA', 300_000, gest('cx-farol', { ...cx })),
   ]);
 

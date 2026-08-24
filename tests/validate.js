@@ -2072,10 +2072,10 @@ ok('R$ × dias não é formatado como moeda',
     ok('limiares de credito no payload sao os acordados',
       lim.creditoPerdaConfirmada && lim.creditoPerdaConfirmada.altaMin === 0.1
       && lim.creditoPerdaConfirmada.mediaMin === 0.02
-      && lim.creditoPerdaConfirmadaMinAbs === 50000
+      && lim.creditoPerdaConfirmadaMinAbs === 250000
       && lim.creditoPisoExposicao && lim.creditoPisoExposicao.perdaConfirmada === 0
-      && lim.creditoPisoExposicao.sinalizacao === 0.005
-      && lim.creditoPisoExposicao.observacao === 0.01);
+      && lim.creditoPisoExposicao.sinalizacao === 0.02
+      && lim.creditoPisoExposicao.observacao === 0.05);
     ok('demo tem perda confirmada abaixo de 2% do PL promovida pelo piso em reais',
       pares.some(({ i, a }) =>
         i.evento.classe === 'perdaConfirmada'

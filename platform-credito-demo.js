@@ -37,11 +37,11 @@
       "altaMin": 0.1,
       "mediaMin": 0.02
     },
-    "creditoPerdaConfirmadaMinAbs": 50000,
+    "creditoPerdaConfirmadaMinAbs": 250000,
     "creditoPisoExposicao": {
       "perdaConfirmada": 0,
-      "sinalizacao": 0.005,
-      "observacao": 0.01
+      "sinalizacao": 0.02,
+      "observacao": 0.05
     },
     "creditoVariacaoMaterialPct": 0.2,
     "coberturaAfirmaMin": 0.7,
@@ -69,9 +69,9 @@
       "atingidas": [
         {
           "carteira": "ALPHA_01",
-          "valor": 760000,
-          "fracaoPl": 0.18765432098765433,
-          "plTotal": 4050000,
+          "valor": 1650000,
+          "fracaoPl": 0.3340080971659919,
+          "plTotal": 4940000,
           "ativos": [
             "CDB ZETA 2027",
             "LCI ZETA 2028",
@@ -79,9 +79,9 @@
           ],
           "severidadeImpacto": "alta",
           "estado": "agravado",
-          "exposicaoAnterior": 972800,
+          "exposicaoAnterior": 2112000,
           "variacaoExposicao": -0.21875,
-          "severidadeAnterior": "baixa",
+          "severidadeAnterior": "media",
           "abaixoDoPiso": false,
           "cobertura": 1,
           "confianca": "media",
@@ -97,8 +97,8 @@
         "DUNAS_CAP",
         "FAROL_INV"
       ],
-      "exposicaoTotal": 760000,
-      "fracaoCasa": 0.030315117670522536,
+      "exposicaoTotal": 1650000,
+      "fracaoCasa": 0.04158266129032258,
       "pior": "alta",
       "estado": "agravado"
     },
@@ -119,9 +119,9 @@
       "atingidas": [
         {
           "carteira": "ALPHA_01",
-          "valor": 760000,
-          "fracaoPl": 0.18765432098765433,
-          "plTotal": 4050000,
+          "valor": 1650000,
+          "fracaoPl": 0.3340080971659919,
+          "plTotal": 4940000,
           "ativos": [
             "CDB ZETA 2027",
             "LCI ZETA 2028",
@@ -147,8 +147,8 @@
         "DUNAS_CAP",
         "FAROL_INV"
       ],
-      "exposicaoTotal": 760000,
-      "fracaoCasa": 0.030315117670522536,
+      "exposicaoTotal": 1650000,
+      "fracaoCasa": 0.04158266129032258,
       "pior": "alta",
       "estado": "novo"
     },
@@ -169,9 +169,9 @@
       "atingidas": [
         {
           "carteira": "DUNAS_CAP",
-          "valor": 60000,
-          "fracaoPl": 0.015151515151515152,
-          "plTotal": 3960000,
+          "valor": 280000,
+          "fracaoPl": 0.01699029126213592,
+          "plTotal": 16480000,
           "ativos": [
             "DEB AURORA 2029"
           ],
@@ -195,8 +195,8 @@
         "CEDRO_HLD",
         "FAROL_INV"
       ],
-      "exposicaoTotal": 60000,
-      "fracaoCasa": 0.0023932987634623054,
+      "exposicaoTotal": 280000,
+      "fracaoCasa": 0.007056451612903226,
       "pior": "media",
       "estado": "novo"
     },
@@ -244,7 +244,7 @@
         "FAROL_INV"
       ],
       "exposicaoTotal": 400000,
-      "fracaoCasa": 0.015955325089748704,
+      "fracaoCasa": 0.010080645161290322,
       "pior": "baixa",
       "estado": "novo"
     },
@@ -265,16 +265,16 @@
       "atingidas": [
         {
           "carteira": "CEDRO_HLD",
-          "valor": 2700000,
-          "fracaoPl": 0.3391959798994975,
-          "plTotal": 7960000,
+          "valor": 4500000,
+          "fracaoPl": 0.4610655737704918,
+          "plTotal": 9760000,
           "ativos": [
             "CDB OMEGA VENCE SET",
             "LCA OMEGA VENCE SET"
           ],
           "severidadeImpacto": "alta",
           "estado": "acompanhamento",
-          "exposicaoAnterior": 2700000,
+          "exposicaoAnterior": 4500000,
           "variacaoExposicao": 0,
           "severidadeAnterior": "alta",
           "abaixoDoPiso": false,
@@ -292,8 +292,8 @@
         "DUNAS_CAP",
         "FAROL_INV"
       ],
-      "exposicaoTotal": 2700000,
-      "fracaoCasa": 0.10769844435580375,
+      "exposicaoTotal": 4500000,
+      "fracaoCasa": 0.11340725806451613,
       "pior": "alta",
       "estado": "acompanhamento"
     },
@@ -315,8 +315,8 @@
         {
           "carteira": "ALPHA_01",
           "valor": 240000,
-          "fracaoPl": 0.05925925925925926,
-          "plTotal": 4050000,
+          "fracaoPl": 0.048582995951417005,
+          "plTotal": 4940000,
           "ativos": [
             "FUNDO MULTI BETA"
           ],
@@ -341,7 +341,7 @@
         "FAROL_INV"
       ],
       "exposicaoTotal": 240000,
-      "fracaoCasa": 0.009573195053849222,
+      "fracaoCasa": 0.006048387096774193,
       "pior": "baixa",
       "estado": "melhorado"
     },
@@ -396,7 +396,7 @@
       "carteira": "ALPHA_01",
       "tenantId": "demo",
       "severidade": "alta",
-      "afirmacao": "Banco Zeta S.A. teve default confirmado em 2026-08-24, e a carteira tem 18,8% do patrimônio nesse emissor.",
+      "afirmacao": "Banco Zeta S.A. teve default confirmado em 2026-08-24, e a carteira tem 33,4% do patrimônio nesse emissor.",
       "evidencias": {
         "emissorId": "banco-zeta",
         "emissorNome": "Banco Zeta S.A.",
@@ -408,9 +408,9 @@
         "dataEvento": "2026-08-24",
         "fonteEvento": "radar-de-credito-ficticio",
         "confiancaFonte": 0.95,
-        "exposicao": 760000,
-        "plTotal": 4050000,
-        "fracaoPl": 0.18765432098765433,
+        "exposicao": 1650000,
+        "plTotal": 4940000,
+        "fracaoPl": 0.3340080971659919,
         "estado": "novo",
         "ativos": "CDB ZETA 2027, LCI ZETA 2028, LF ZETA 2029"
       },
@@ -419,11 +419,11 @@
         "limiar": {
           "altaMin": 0.1,
           "mediaMin": 0.02,
-          "pisoAbsoluto": 50000,
+          "pisoAbsoluto": 250000,
           "piso": "sem piso (perda confirmada)"
         }
       },
-      "calculo": "R$ 760.000 / R$ 4.050.000 = 18,8% de exposicao; perda confirmada, escada 2,0%/10,0% com piso R$ 50.000 = impacto alta; sem registro anterior = novo",
+      "calculo": "R$ 1.650.000 / R$ 4.940.000 = 33,4% de exposicao; perda confirmada, escada 2,0%/10,0% com piso R$ 250.000 = impacto alta; sem registro anterior = novo",
       "fonte": {
         "fonte": "custodiante-demo",
         "data": "2026-08-24"
@@ -439,7 +439,7 @@
       "carteira": "ALPHA_01",
       "tenantId": "demo",
       "severidade": "alta",
-      "afirmacao": "Banco Zeta S.A. teve noticia negativa na imprensa em 2026-08-24, e a carteira tem 18,8% do patrimônio nesse emissor.",
+      "afirmacao": "Banco Zeta S.A. teve noticia negativa na imprensa em 2026-08-24, e a carteira tem 33,4% do patrimônio nesse emissor.",
       "evidencias": {
         "emissorId": "banco-zeta",
         "emissorNome": "Banco Zeta S.A.",
@@ -451,11 +451,11 @@
         "dataEvento": "2026-08-24",
         "fonteEvento": "radar-de-credito-ficticio",
         "confiancaFonte": 0.6,
-        "exposicao": 760000,
-        "plTotal": 4050000,
-        "fracaoPl": 0.18765432098765433,
+        "exposicao": 1650000,
+        "plTotal": 4940000,
+        "fracaoPl": 0.3340080971659919,
         "estado": "agravado",
-        "exposicaoAnterior": 972800,
+        "exposicaoAnterior": 2112000,
         "variacaoExposicao": -0.21875,
         "ativos": "CDB ZETA 2027, LCI ZETA 2028, LF ZETA 2029"
       },
@@ -463,11 +463,11 @@
         "nome": "MATRIZ_IMPACTO_CREDITO",
         "limiar": {
           "severidadeEvento": "alta",
-          "faixaExposicao": "media",
-          "piso": 0.01
+          "faixaExposicao": "alta",
+          "piso": 0.05
         }
       },
-      "calculo": "R$ 760.000 / R$ 4.050.000 = 18,8% de exposicao; evento alta x exposicao media = impacto alta; anterior R$ 972.800 (baixa) = agravado",
+      "calculo": "R$ 1.650.000 / R$ 4.940.000 = 33,4% de exposicao; evento alta x exposicao alta = impacto alta; anterior R$ 2.112.000 (media) = agravado",
       "fonte": {
         "fonte": "custodiante-demo",
         "data": "2026-08-24"
@@ -483,7 +483,7 @@
       "carteira": "CEDRO_HLD",
       "tenantId": "demo",
       "severidade": "alta",
-      "afirmacao": "Banco Omega S.A. teve downgrade de rating pela agencia em 2026-08-24, e a carteira tem 33,9% do patrimônio nesse emissor.",
+      "afirmacao": "Banco Omega S.A. teve downgrade de rating pela agencia em 2026-08-24, e a carteira tem 46,1% do patrimônio nesse emissor.",
       "evidencias": {
         "emissorId": "banco-omega",
         "emissorNome": "Banco Omega S.A.",
@@ -495,11 +495,11 @@
         "dataEvento": "2026-08-24",
         "fonteEvento": "radar-de-credito-ficticio",
         "confiancaFonte": 0.85,
-        "exposicao": 2700000,
-        "plTotal": 7960000,
-        "fracaoPl": 0.3391959798994975,
+        "exposicao": 4500000,
+        "plTotal": 9760000,
+        "fracaoPl": 0.4610655737704918,
         "estado": "acompanhamento",
-        "exposicaoAnterior": 2700000,
+        "exposicaoAnterior": 4500000,
         "variacaoExposicao": 0,
         "ativos": "CDB OMEGA VENCE SET, LCA OMEGA VENCE SET"
       },
@@ -508,10 +508,10 @@
         "limiar": {
           "severidadeEvento": "media",
           "faixaExposicao": "alta",
-          "piso": 0.005
+          "piso": 0.02
         }
       },
-      "calculo": "R$ 2.700.000 / R$ 7.960.000 = 33,9% de exposicao; evento media x exposicao alta = impacto alta; anterior R$ 2.700.000 (alta) = acompanhamento",
+      "calculo": "R$ 4.500.000 / R$ 9.760.000 = 46,1% de exposicao; evento media x exposicao alta = impacto alta; anterior R$ 4.500.000 (alta) = acompanhamento",
       "fonte": {
         "fonte": "custodiante-demo",
         "data": "2026-08-24"
@@ -527,7 +527,7 @@
       "carteira": "DUNAS_CAP",
       "tenantId": "demo",
       "severidade": "media",
-      "afirmacao": "Metalurgica Aurora teve pedido de recuperacao judicial em 2026-08-24, e a carteira tem 1,5% do patrimônio nesse emissor.",
+      "afirmacao": "Metalurgica Aurora teve pedido de recuperacao judicial em 2026-08-24, e a carteira tem 1,7% do patrimônio nesse emissor.",
       "evidencias": {
         "emissorId": "metalurgica-aurora",
         "emissorNome": "Metalurgica Aurora",
@@ -539,9 +539,9 @@
         "dataEvento": "2026-08-24",
         "fonteEvento": "radar-de-credito-ficticio",
         "confiancaFonte": 0.9,
-        "exposicao": 60000,
-        "plTotal": 3960000,
-        "fracaoPl": 0.015151515151515152,
+        "exposicao": 280000,
+        "plTotal": 16480000,
+        "fracaoPl": 0.01699029126213592,
         "estado": "novo",
         "ativos": "DEB AURORA 2029"
       },
@@ -550,11 +550,11 @@
         "limiar": {
           "altaMin": 0.1,
           "mediaMin": 0.02,
-          "pisoAbsoluto": 50000,
+          "pisoAbsoluto": 250000,
           "piso": "sem piso (perda confirmada)"
         }
       },
-      "calculo": "R$ 60.000 / R$ 3.960.000 = 1,5% de exposicao; perda confirmada, escada 2,0%/10,0% com piso R$ 50.000 = impacto media; sem registro anterior = novo",
+      "calculo": "R$ 280.000 / R$ 16.480.000 = 1,7% de exposicao; perda confirmada, escada 2,0%/10,0% com piso R$ 250.000 = impacto media; sem registro anterior = novo",
       "fonte": {
         "fonte": "custodiante-demo",
         "data": "2026-08-24"
@@ -570,7 +570,7 @@
       "carteira": "ALPHA_01",
       "tenantId": "demo",
       "severidade": "baixa",
-      "afirmacao": "Gestora multi-beta teve covenant quebrado em 2026-08-24, e a carteira tem 5,9% do patrimônio nesse emissor.",
+      "afirmacao": "Gestora multi-beta teve covenant quebrado em 2026-08-24, e a carteira tem 4,9% do patrimônio nesse emissor.",
       "evidencias": {
         "emissorId": "gestora-multi-beta",
         "emissorNome": "Gestora multi-beta",
@@ -583,8 +583,8 @@
         "fonteEvento": "radar-de-credito-ficticio",
         "confiancaFonte": 0.75,
         "exposicao": 240000,
-        "plTotal": 4050000,
-        "fracaoPl": 0.05925925925925926,
+        "plTotal": 4940000,
+        "fracaoPl": 0.048582995951417005,
         "estado": "melhorado",
         "exposicaoAnterior": 307200,
         "variacaoExposicao": -0.21875,
@@ -595,10 +595,10 @@
         "limiar": {
           "severidadeEvento": "media",
           "faixaExposicao": "baixa",
-          "piso": 0.005
+          "piso": 0.02
         }
       },
-      "calculo": "R$ 240.000 / R$ 4.050.000 = 5,9% de exposicao; evento media x exposicao baixa = impacto baixa; anterior R$ 307.200 (baixa) = melhorado",
+      "calculo": "R$ 240.000 / R$ 4.940.000 = 4,9% de exposicao; evento media x exposicao baixa = impacto baixa; anterior R$ 307.200 (baixa) = melhorado",
       "fonte": {
         "fonte": "custodiante-demo",
         "data": "2026-08-24"
@@ -637,7 +637,7 @@
         "limiar": {
           "severidadeEvento": "media",
           "faixaExposicao": "baixa",
-          "piso": 0.01
+          "piso": 0.05
         }
       },
       "calculo": "R$ 400.000 / R$ 4.800.000 = 8,3% de exposicao; evento media x exposicao baixa = impacto baixa; sem registro anterior = novo",

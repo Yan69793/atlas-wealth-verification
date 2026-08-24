@@ -77,31 +77,52 @@ export const THRESHOLDS = {
   coberturaAfirmaMin: 0.70,
   coberturaRessalvaMin: 0.40,
 
-  /** Um único ativo >= 20% do PL. Acima do limiar de posição nova (3%) por
-      ordem de grandeza: 3% é movimento que redefine a carteira, 20% é
-      concentração que sobrevive à rotação. */
-  radarConcentracaoAtivoPct: 0.20,
+  /** Um único ativo >= 30% do PL. Calibrado sobre 37 meses de dado real em
+      2026-08-24 (docs/calibracao-limiares-2026-08.md): o valor antigo (20%)
+      ficava ABAIXO de severidade.mediaMax (30%), então disparar já garantia
+      "alta" — 2.758 alertas, nenhum "baixa". 30% corta o volume medido de
+      74,5 para 56,7 alertas/mês. Como o novo valor agora EMPATA com
+      mediaMax, a severidade deste sinal deixou de usar a fração bruta: passa
+      a medir o EXCESSO sobre o próprio limiar (ver cross-portfolio.ts), a
+      mesma lógica que LIQUIDEZ_BAIXA já usa para o déficit. */
+  radarConcentracaoAtivoPct: 0.30,
 
-  /** Um único emissor >= 15% do PL, somando ativos de nomes diferentes. Mais
-      estrito que o de ativo porque é justamente o risco que não aparece na
-      tela de posições: três papéis distintos do mesmo banco. */
-  radarConcentracaoEmissorPct: 0.15,
+  /** Um único emissor >= 25% do PL, somando ativos de nomes diferentes.
+      Calibrado em 2026-08-24: o valor antigo (15%) misturava risco de
+      crédito com concentração em veículo — 70% dos 4.795 alertas medidos
+      eram fundo de caixa, não emissor de crédito. 25%, mais a exclusão da
+      classe liquidez do alarme (ver cross-portfolio.ts), corta o volume
+      medido de 129,6 para cerca de 22 alertas/mês. */
+  radarConcentracaoEmissorPct: 0.25,
 
-  /** Um único fator (indexador, moeda ou região) >= 50% do PL. É o caso da
-      carteira que parece diversificada em ativo e está inteira no mesmo
-      indexador. Metade do PL é o ponto em que o fator manda na carteira. */
-  radarConcentracaoFatorPct: 0.50,
+  /** Um único fator (indexador, moeda, região ou classe) >= 70% do PL.
+      Calibrado em 2026-08-24: o valor antigo (50%) já ficava ACIMA de
+      severidade.mediaMax (30%), então TODO alerta saía "alta" por
+      construção — 2.974 de 2.974 medidos, nenhum "média", nenhum "baixa",
+      77% deles era classe=liquidez. 70%, mais a exclusão de liquidez (mesmo
+      mecanismo do FATOR_BASE) e a severidade relativa ao limiar (ver
+      cross-portfolio.ts), corta o volume medido de 80,4 para cerca de 18
+      alertas/mês. */
+  radarConcentracaoFatorPct: 0.70,
 
   /** Liquidez ABAIXO de 5% do PL. Espelho invertido de caixaParadoMinPct
-      (10%): lá o problema é dinheiro sobrando, aqui é dinheiro faltando. */
+      (10%): lá o problema é dinheiro sobrando, aqui é dinheiro faltando.
+      Medido e MANTIDO em 2026-08-24: o volume (3,3 alertas/mês) já estava
+      bom; a severidade satura em "alta" (120 de 122 casos medidos) e segue
+      como problema aberto, sem fórmula de correção medida ainda. */
   radarLiquidezMinPct: 0.05,
 
-  /** >= 20% do PL vencendo dentro da janela de vencimento concentrado. */
-  radarVencimentoConcentradoPct: 0.20,
+  /** >= 15% do PL vencendo dentro da janela de vencimento concentrado.
+      Calibrado em 2026-08-24: com o valor antigo (20%/30 dias) o sinal
+      quase não disparava, 14 alertas em 37 meses, silencioso em 26 desses
+      37 — a JANELA era o gargalo, não o percentual. */
+  radarVencimentoConcentradoPct: 0.15,
 
-  /** Janela do vencimento concentrado, em dias corridos. Igual à janela de 30
-      de maturidadeJanelas: é o horizonte em que dá para reinvestir com calma. */
-  radarVencimentoJanelaDias: 30,
+  /** Janela do vencimento concentrado, em dias corridos. Calibrada em
+      2026-08-24: 90 dias (medido em 1,4 alerta/mês, contra 0,4 com a janela
+      antiga de 30) — mesmo horizonte de caixaParadoJanelaDias e o máximo de
+      maturidadeJanelas, o prazo em que dá para reinvestir com calma. */
+  radarVencimentoJanelaDias: 90,
 
   /** Queda de PL >= 10% contra o snapshot de comparação. Mesmo valor de
       saqueGrandePct, e de propósito: a queda de um dia e a deterioração do mês
@@ -138,9 +159,13 @@ export const THRESHOLDS = {
   /** Piso em REAIS que promove uma perda confirmada pequena de baixa para
       média. Percentual sozinho silencia caso que importa: um calote de
       R$ 300 mil numa carteira de R$ 20 mi é 1,5% do PL e continua sendo
-      R$ 300 mil que o assessor precisa explicar. Mesmo valor e mesma lógica
-      de saqueGrandePct + saqueGrandeMinAbs, que já combina os dois. */
-  creditoPerdaConfirmadaMinAbs: 50_000,
+      R$ 300 mil que o assessor precisa explicar. Mesma lógica de
+      saqueGrandePct + saqueGrandeMinAbs (piso + percentual combinados),
+      valor próprio a partir de 2026-08-24: medido sobre 37 meses de dado
+      real, R$ 50 mil promovia 389 de 1.177 pares emissor-carteira, um terço
+      de toda a casa — abaixo do ruído do livro (mediana de exposição por
+      par: R$ 232 mil). R$ 250 mil promove 115. */
+  creditoPerdaConfirmadaMinAbs: 250_000,
 
   /** Piso de exposição por classe de evento, em fração do PL. O que é ruído
       num rebaixamento é informação obrigatória num calote.
@@ -149,8 +174,12 @@ export const THRESHOLDS = {
         reconhecido. Tipo que o motor não entendeu não é evidência de que o
         evento seja pequeno, então cai no piso mais baixo, que reporta mais.
       - observacao: notícia negativa. Piso maior porque é o tipo com mais
-        volume e menos consequência direta. */
-  creditoPisoExposicao: { perdaConfirmada: 0, sinalizacao: 0.005, observacao: 0.01 },
+        volume e menos consequência direta.
+      Valores calibrados em 2026-08-24 sobre dado real: os antigos (0,5%/1%)
+      não filtravam quase nada, deixavam passar 91%/80% dos pares medidos —
+      a mediana de exposição por par (2,52% do PL) já estava uma ordem de
+      grandeza acima dos dois pisos antigos. 2%/5% corta para 59%/32%. */
+  creditoPisoExposicao: { perdaConfirmada: 0, sinalizacao: 0.02, observacao: 0.05 },
 
   /** Variação relativa da exposição que separa "agravado"/"melhorado" de
       "acompanhamento". Abaixo disso é oscilação de marcação a mercado, não

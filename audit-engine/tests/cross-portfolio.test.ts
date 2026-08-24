@@ -200,10 +200,12 @@ describe('carteira que parece diversificada e não é', () => {
   });
 
   it('moeda estrangeira concentrada continua sendo alarme', () => {
+    // 80% em USD: calibrado em 2026-08-24 para folga de 10pp sobre o novo
+    // limiar de 70% (era 60%/50%, folga de 10pp sobre o antigo).
     const c = carteira('OFFSHORE', [
-      pos('A', 600_000, completo({ moeda: 'USD', regiao: 'eua', classeCanonica: 'internacional', emissorId: 'e1', emissorNome: 'E1' })),
-      pos('B', 200_000, completo({ moeda: 'BRL', emissorId: 'e2', emissorNome: 'E2' })),
-      pos('C', 200_000, completo({ moeda: 'BRL', emissorId: 'e3', emissorNome: 'E3' })),
+      pos('A', 800_000, completo({ moeda: 'USD', regiao: 'eua', classeCanonica: 'internacional', emissorId: 'e1', emissorNome: 'E1' })),
+      pos('B', 100_000, completo({ moeda: 'BRL', emissorId: 'e2', emissorNome: 'E2' })),
+      pos('C', 100_000, completo({ moeda: 'BRL', emissorId: 'e3', emissorNome: 'E3' })),
     ]);
     const fatores = sinaisDe(radarCruzado([snap('2026-08-24', [c])]), 'OFFSHORE').filter(
       (s) => s.tipo === 'CONCENTRACAO_FATOR'

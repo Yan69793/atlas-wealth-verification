@@ -16,7 +16,17 @@
  * porque foi exatamente base errada que quebrou a queda de receita: medida
  * contra o PL, perder 99,9% da receita dava severidade "baixa".
  *
- *   CONCENTRACAO_*        base = a fração concentrada
+ *   CONCENTRACAO_EMISSOR  base = a fração concentrada
+ *   CONCENTRACAO_ATIVO,
+ *   CONCENTRACAO_FATOR    base = (fração − limiar) / limiar, o EXCESSO acima
+ *                         do próprio limiar. Entrou em 2026-08-24: com os
+ *                         limiares calibrados (30% e 70%), a fração bruta no
+ *                         primeiro disparo já encostava ou passava de
+ *                         severidade.mediaMax, e todo alerta desses dois
+ *                         tipos saía "alta" — 2.974 de 2.974 medidos em
+ *                         CONCENTRACAO_FATOR, zero espalhamento na escala de
+ *                         três graus. EMISSOR não muda: seu limiar (25%) não
+ *                         colide com mediaMax.
  *   VENCIMENTO_CONCENTRADO base = a fração vencendo na janela
  *   DETERIORACAO_PL       base = |queda| / PL anterior
  *   LIQUIDEZ_BAIXA        base = (limiar − fração) / limiar, o DÉFICIT
@@ -292,10 +302,17 @@ const CORTES = THRESHOLDS.severidade;
  * A leitura inversa, "esta carteira não tem nada fora do Brasil", é observação
  * legítima e diferente desta. É sinal próprio, com limiar próprio, e não está
  * no escopo desta entrega.
+ *
+ * `classeCanonica: 'liquidez'` entrou em 2026-08-24, mesmo mecanismo, mesma
+ * razão: estar em caixa não é concentração de risco, e a medição achou 77%
+ * dos 2.974 alertas de CONCENTRACAO_FATOR sendo exatamente isso. Vale só
+ * dentro da iteração de `classeCanonica`: uma posição de caixa referenciada
+ * em CDI continua contando normalmente para a concentração em `indexador`.
  */
 const FATOR_BASE: Partial<Record<Fator, string>> = {
   moeda: 'BRL',
   regiao: 'brasil',
+  classeCanonica: 'liquidez',
 };
 
 const SEM_VENCIMENTO = new Set([
@@ -494,7 +511,14 @@ export function radarCruzado(serie: Snapshot[], opcoes: OpcoesRadar = {}): Radar
     for (const p of c.posicoes) if (maior && p.valor > maior.valor) maior = p;
     if (maior && maior.valor / c.plTotal >= concAtivo) {
       const fracao = maior.valor / c.plTotal;
-      const sev = severidadeDe(fracao, CORTES);
+      // Severidade RELATIVA ao proprio limiar desde 2026-08-24. Com o limiar
+      // calibrado em 30%, a fracao bruta no primeiro disparo ja encosta em
+      // severidade.mediaMax (30%): usar a fracao direto faria todo alerta sair
+      // "alta", igual ao defeito medido em CONCENTRACAO_FATOR (2.974 de 2.974
+      // "alta"). Excesso sobre o limiar, mesmo desenho do deficit de
+      // LIQUIDEZ_BAIXA mais abaixo.
+      const excesso = (fracao - concAtivo) / concAtivo;
+      const sev = severidadeDe(excesso, CORTES);
       const acomp = acompanhar(c.nome, 'CONCENTRACAO_ATIVO', maior.ativo, sev, maior.valor);
       const ins = novoInsight({
         ...ctx,
@@ -541,6 +565,12 @@ export function radarCruzado(serie: Snapshot[], opcoes: OpcoesRadar = {}): Radar
       for (const p of c.posicoes) {
         const a = atributosDe(p);
         if (!a.emissorId) continue;
+        // Liquidez nunca conta para o alarme de emissor, desde 2026-08-24:
+        // medido sobre 37 meses de dado real, 70% dos 4.795 alertas de
+        // CONCENTRACAO_EMISSOR eram fundo de caixa, nao risco de credito.
+        // Continua contando na tabela informativa da casa (agregarEmissores),
+        // so o alarme fica de fora, mesmo principio do FATOR_BASE abaixo.
+        if (a.classeCanonica === 'liquidez') continue;
         const atual = porEmissor.get(a.emissorId) ?? { nome: a.emissorNome ?? a.emissorId, valor: 0 };
         atual.valor += p.valor;
         porEmissor.set(a.emissorId, atual);
@@ -610,7 +640,13 @@ export function radarCruzado(serie: Snapshot[], opcoes: OpcoesRadar = {}): Radar
         if (FATOR_BASE[fator] === valor) continue;
         const fracao = montante / c.plTotal;
         if (fracao < concFator) continue;
-        const sev = severidadeDe(fracao, CORTES);
+        // Severidade RELATIVA ao proprio limiar, mesma razao do bloco de
+        // CONCENTRACAO_ATIVO acima: com o limiar calibrado em 70%, a fracao
+        // bruta no primeiro disparo ja passa de severidade.mediaMax (30%), e
+        // ERA exatamente isso que fazia este sinal sair "alta" em 2.974 de
+        // 2.974 alertas medidos, zero espalhamento na escala de tres graus.
+        const excesso = (fracao - concFator) / concFator;
+        const sev = severidadeDe(excesso, CORTES);
         const chaveFator = `${fator}:${valor}`;
         const acomp = acompanhar(c.nome, 'CONCENTRACAO_FATOR', chaveFator, sev, montante);
         const ins = novoInsight({
