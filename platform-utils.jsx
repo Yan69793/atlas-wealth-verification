@@ -116,13 +116,26 @@ import React from 'react';
 
   const STORAGE_KEY = 'atlas_platform_v1';
 
+  /* Onde o app aterrissa quando ainda não há mês escolhido, ou quando o
+     escolhido saiu da faixa com dado. Quem decide é platform-data.js, que sabe
+     o modo de dados deste ambiente; aqui só se lê. Os defaults em cascata
+     cobrem carga fora de ordem e bundle antigo de instância. */
+  function mesDeAbertura() {
+    const D = window.AtlasData;
+    if (!D) return '2026-04';
+    if (D.landingMonth) return D.landingMonth();
+    return D.OPENING_MONTH || D.CURRENT_MONTH || '2026-04';
+  }
+
   function defaultStorage() {
     return {
       v: 1,
       auth: { sessionUntil: 0 },
-      /* OPENING_MONTH, não CURRENT_MONTH: onde o app aterrissa é decisão de
-         apresentação, e o mês corrente sai limpo de propósito desde Jul/26. */
-      ui: { selectedMonth: window.AtlasData ? (window.AtlasData.OPENING_MONTH || window.AtlasData.CURRENT_MONTH) : '2026-04', plRange: '6M', comparativo: {} },
+      /* landingMonth() decide, não uma constante: em demonstração é o mês de
+         abertura roteirado, em instância de cliente é o último mês com dado.
+         Fixar a constante aqui abriria dashboard vazio numa base cujo mês de
+         abertura do demo não existe. */
+      ui: { selectedMonth: mesDeAbertura(), plRange: '6M', comparativo: {} },
       observations: {},
       users: [],
       exceptions: {},
@@ -176,7 +189,7 @@ import React from 'react';
      */
     getSelectedMonth() {
       const d = storage.get();
-      return (d.ui && d.ui.selectedMonth) || (window.AtlasData ? (window.AtlasData.OPENING_MONTH || window.AtlasData.CURRENT_MONTH) : '2026-04');
+      return (d.ui && d.ui.selectedMonth) || mesDeAbertura();
     },
     setSelectedMonth(m) {
       storage.update(d => { d.ui = d.ui || {}; d.ui.selectedMonth = m; });

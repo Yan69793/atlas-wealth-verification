@@ -466,11 +466,16 @@
       }
     });
 
-    // 3. Passo 2: rescale para PL total Abr/2026 = 1.2bi
-    var aprIdx = MONTHS.indexOf(CURRENT_MONTH);
-    var aprTotal = 0;
-    CATALOG.forEach(function(p) { aprTotal += (_portfolioData[p.code].plArr[aprIdx] || 0); });
-    var scale = 1.2e9 / aprTotal;
+    /* 3. Passo 2: rescale para o PL total da casa fechar em R$ 1,2 bi.
+       A âncora é o mês de ABERTURA, não o corrente. O número redondo existe
+       para bater com o material comercial, e o material é lido ao lado da
+       primeira tela que o prospect abre. Ancorar no mês corrente jogava o
+       R$ 1,2 bi para uma tela que ninguém vê primeiro e deixava a de abertura
+       em R$ 1,1889 bi, desencontrada do pitch. */
+    var ancoraIdx = MONTHS.indexOf(OPENING_MONTH);
+    var ancoraTotal = 0;
+    CATALOG.forEach(function(p) { ancoraTotal += (_portfolioData[p.code].plArr[ancoraIdx] || 0); });
+    var scale = 1.2e9 / ancoraTotal;
 
     CATALOG.forEach(function(p) {
       var pd = _portfolioData[p.code];
@@ -1855,6 +1860,24 @@
     return { months: MONTHS.slice(0, last + 1), labels: MONTH_LABELS.slice(0, last + 1) };
   }
 
+  /* Mês em que o app deve aterrissar, decidido AQUI e não em cada tela.
+
+     OPENING_MONTH é constante do demo sintético: é o mês roteirado, onde o
+     produto mostra o que acha. Numa instância de cliente ele pode simplesmente
+     não existir na base, e mandar o app para um mês sem dado abre um dashboard
+     vazio, que é o defeito que o fallback original existia para evitar.
+
+     Então a regra tem dois lados. Em demonstração, aterrissa no mês de
+     abertura, desde que ele esteja na faixa com dado. Em dado real ou
+     importado, aterrissa no ÚLTIMO mês com dado, que é o mês que o cliente
+     acabou de fechar e o único que ele quer ver ao abrir. */
+  function landingMonth() {
+    var meses = visibleMonths().months || [];
+    var ultimo = meses.length ? meses[meses.length - 1] : CURRENT_MONTH;
+    if (_dataMode === 'demo' && meses.indexOf(OPENING_MONTH) >= 0) return OPENING_MONTH;
+    return ultimo;
+  }
+
   /* =============================================================
      8.5 CUSTO TOTAL DO CLIENTE E TRILHA DE AUDITORIA
   ============================================================= */
@@ -2192,6 +2215,7 @@
     getIBOV: getIBOV,
     CURRENT_MONTH: CURRENT_MONTH,
     OPENING_MONTH: OPENING_MONTH,
+    landingMonth: landingMonth,
     CATALOG: CATALOG,
     MANAGERS: MANAGERS,
     ASSETS: ASSETS,

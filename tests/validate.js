@@ -857,18 +857,80 @@ ok('nota INFO do mês estável não alega realocação que não houve',
   /estavel: \(month === CURRENT_MONTH && mi > 0\)/.test(dataContent)
   && dataContent.includes('Composição inalterada no período'));
 
-// Quem decide onde o app aterrissa tem de ler OPENING_MONTH.
+// Aterrissagem: quem decide é platform-data.js, porque só ele sabe o modo de
+// dados. Constante fixa na tela abriria dashboard VAZIO numa instância de
+// cliente cuja base não tem o mês de abertura do demo, que é exatamente o
+// defeito que o fallback original existia para evitar.
 {
   const utilsMes = fs.readFileSync(path.join(ROOT, 'platform-utils.jsx'), 'utf8');
-  ok('o mês inicial guardado no storage sai de OPENING_MONTH',
-    (utilsMes.match(/AtlasData\.OPENING_MONTH/g) || []).length >= 2);
-  ok('o fallback de mês fora da faixa cai na abertura, não no corrente',
-    /_abre = window\.AtlasData\.OPENING_MONTH/.test(appContent));
+  ok('platform-data.js decide a aterrissagem e exporta a decisão',
+    /function landingMonth\(\)/.test(dataContent) && /landingMonth: landingMonth/.test(dataContent));
+  ok('a aterrissagem é ciente do modo de dados, não constante fixa',
+    /_dataMode === 'demo' && meses\.indexOf\(OPENING_MONTH\) >= 0/.test(dataContent)
+    && /var ultimo = meses\.length \? meses\[meses\.length - 1\]/.test(dataContent));
+  ok('storage e roteador leem landingMonth em vez de fixar constante',
+    /D\.landingMonth\(\)/.test(utilsMes) && /AtlasData\.landingMonth\(\)/.test(appContent));
+  ok('a âncora do rescale é o mês de abertura, onde o material comercial olha',
+    /var ancoraIdx = MONTHS\.indexOf\(OPENING_MONTH\)/.test(dataContent));
   // A janela de gráfico continua olhando o mês corrente: é extensão de dado,
   // não aterrissagem. Trocar isso encurtaria o histórico em um mês.
   const dashMes = fs.readFileSync(path.join(ROOT, 'platform-dashboard.jsx'), 'utf8');
   ok('a janela de gráfico continua ancorada no mês corrente',
     /allM\.indexOf\(D\.CURRENT_MONTH\)/.test(dashMes));
+
+  // Comportamento, não texto: carrega o módulo e mede.
+  let Dd = null, erroData = null;
+  try {
+    const w = { addEventListener() {}, removeEventListener() {}, dispatchEvent() {},
+      localStorage: { getItem: () => null, setItem() {}, removeItem() {} }, console };
+    new Function('window', 'document', 'localStorage', dataContent)(
+      w, { addEventListener() {} }, w.localStorage);
+    Dd = w.AtlasData;
+  } catch (e) { erroData = e.message; }
+
+  ok('platform-data.js carrega fora do browser (contrato de módulo clássico)', !!Dd, erroData || 'ok');
+  if (Dd) {
+    ok('em demonstração o app aterrissa no mês de abertura',
+      Dd.landingMonth() === Dd.OPENING_MONTH, `${Dd.landingMonth()} vs ${Dd.OPENING_MONTH}`);
+    ok('o mês de abertura está dentro da faixa com dado',
+      Dd.visibleMonths().months.indexOf(Dd.OPENING_MONTH) >= 0);
+
+    const somaPL = (mes) => Dd.CATALOG.reduce((s, p) => {
+      const r = Dd.getRow(p.code, mes);
+      return s + (r && r.plCurr > 0 ? r.plCurr : 0);
+    }, 0);
+    // O R$ 1,2 bi do material comercial tem de bater com a PRIMEIRA tela.
+    ok('o PL da casa fecha em R$ 1,2 bi no mês de abertura',
+      Math.abs(somaPL(Dd.OPENING_MONTH) - 1.2e9) < 1,
+      (somaPL(Dd.OPENING_MONTH) / 1e9).toFixed(6) + ' bi');
+
+    // Mês de estabilidade: LIBERAR em todas e divergência zero, medido.
+    let naoLiberar = 0, maiorPct = 0;
+    for (const p of Dd.CATALOG) {
+      const r = Dd.getRow(p.code, Dd.CURRENT_MONTH);
+      if (!r || !(r.plCurr > 0)) continue;
+      if (r.status !== 'LIBERAR') naoLiberar++;
+      const base = r.plPrev;
+      if (base > 0) maiorPct = Math.max(maiorPct, Math.abs(r.divergenciaBRL) / base);
+    }
+    ok('mês corrente sai inteiro em LIBERAR', naoLiberar === 0, `${naoLiberar} fora de LIBERAR`);
+    ok('mês corrente sai sem divergência material', maiorPct < 1e-9,
+      (maiorPct * 100).toFixed(6) + '%');
+
+    // Estabilidade da composição, medida contra o mês anterior.
+    const meses = Dd.MONTHS;
+    const anterior = meses[meses.indexOf(Dd.CURRENT_MONTH) - 1];
+    let mudaram = 0, comparadas = 0;
+    for (const p of Dd.CATALOG) {
+      const a = Dd.getComposition(p.code, anterior).map(r => r.name).sort().join('|');
+      const b = Dd.getComposition(p.code, Dd.CURRENT_MONTH).map(r => r.name).sort().join('|');
+      if (!a || !b) continue;
+      comparadas++;
+      if (a !== b) mudaram++;
+    }
+    ok('nenhuma carteira troca de ativo no mês de estabilidade',
+      comparadas > 0 && mudaram === 0, `${mudaram} de ${comparadas} mudaram`);
+  }
 }
 
 // ─── 16. Marca neutra — o produto não assina com nome de casa ───────────────

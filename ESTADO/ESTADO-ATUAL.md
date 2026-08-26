@@ -11,15 +11,18 @@ aqui, trate este arquivo como suspeito e rode o refresh do fim da página.
 ## Portão de verificação, medido hoje
 
 ```
-719/719 checks OK — todos os checks passaram
+728/728 checks OK — todos os checks passaram
 ℹ tests 278   ℹ suites 73   ℹ pass 278   ℹ fail 0   ℹ skipped 0
 ```
 
 Medido em 2026-08-26, depois da Fase 2 inteira. 688 para 699 com Jul/26 como
-mês de estabilidade, e 699 para 719 com o modelo de cadastro por custodiante.
-Os 20 últimos incluem um teste fim a fim que roda o gerador de verdade contra
-o exemplo e confere o overlay linha por linha. Ver as seções "Fase 2" e
-"Overlay real de cadastro" mais abaixo.
+mês de estabilidade, 699 para 719 com o modelo de cadastro por custodiante, e
+719 para 728 com a correção da aterrissagem e da âncora. Os novos incluem dois
+testes de comportamento, um que roda o gerador de cadastro de verdade contra o
+exemplo e confere o overlay linha por linha, e outro que carrega
+`platform-data.js` fora do browser e MEDE o mês de estabilidade em vez de
+conferir o texto do código. Ver as seções "Fase 2" e "Overlay real de
+cadastro" mais abaixo.
 
 Antes disso era 688/688, depois do overlay real de cadastro. 659 para 688, os
 29 cobrindo as listas de negação do overlay, as regras do gerador e o
@@ -969,7 +972,7 @@ janela do gráfico do dashboard também, senão o histórico encurtaria um mês.
 | Status | 24 LIBERAR, 12 COM ALERTA, 4 CORRIGIR | 40 LIBERAR |
 | Divergência máxima | 0,738620% do PL anterior | 0,000000% |
 | Carteiras com divergência material | 4 | 0 |
-| PL total | R$ 1,1889 bi | R$ 1,2000 bi |
+| PL total | R$ 1,2000 bi | R$ 1,2112 bi |
 | Composição contra o mês anterior | 40 carteiras trocaram de ativo | 40 carteiras idênticas |
 
 Julho fecha exato por construção, não por sorte: sem roteiro de status
@@ -1001,11 +1004,33 @@ entre ativos. As duas coisas foram feitas, mas por motivos diferentes:
 composição estável conserta o comparador de posição, e julho fecha exato
 porque nenhuma carteira dele é CORRIGIR.
 
-### Efeito colateral aceito
+### Âncora do rescale, corrigida antes de publicar
 
-A âncora do rescale é o mês corrente, então o total de R$ 1,2 bi mudou de
-junho para julho. Junho passou a somar R$ 1,1889 bi. Todos os números do demo
-foram reescalados junto, o que é o comportamento correto da âncora.
+A primeira versão manteve a âncora do R$ 1,2 bi no mês corrente, e com julho
+virando corrente o número redondo foi parar numa tela que ninguém abre
+primeiro. Junho, que é onde o demo aterrissa, passou a somar R$ 1,1889 bi, e
+`docs/go-to-market/pitch-institucional.html` diz "R$ 1,20 bi" em dois lugares.
+Desencontro entre material comercial e primeira tela, justo na conversa de
+venda.
+
+A âncora passou a ser `OPENING_MONTH`. Medido: junho fecha em R$ 1,2000 bi,
+julho sai em R$ 1,2112 bi. O rescale multiplica PL, movimentação e PL anterior
+reportado pelo mesmo fator, então a conta do produto continua fechando em zero
+em julho, conferido depois da troca.
+
+### Aterrissagem passou a ser decidida pelo dado, não por constante
+
+Defeito introduzido pela primeira versão desta fase e corrigido antes de
+publicar. `OPENING_MONTH` é constante do demo sintético. Fixá-la como destino
+de aterrissagem em `platform-utils.jsx` e `platform-app.jsx` abriria dashboard
+VAZIO numa instância de cliente cuja base não tem Jun/26, que é exatamente o
+defeito que aquele fallback existia para evitar.
+
+Quem decide agora é `AtlasData.landingMonth()`, porque só `platform-data.js`
+sabe o modo de dados do ambiente. Em demonstração, aterrissa no mês de abertura
+roteirado, desde que ele esteja na faixa com dado. Em dado real ou importado,
+aterrissa no último mês com dado, que é o mês que o cliente acabou de fechar e
+o único que ele quer ver ao abrir. Storage e roteador só leem.
 
 ### Sete notas INFO em julho, deixadas de propósito
 
@@ -1352,3 +1377,14 @@ e é o que impede a próxima pessoa de repetir.
   reescrito com três carteiras que provam o modelo inteiro, e o portão ganhou um teste fim a
   fim que roda o gerador de verdade e confere o overlay linha por linha. 699 → 719 checks.
   Ver a seção "Overlay real de cadastro" acima.
+- **2026-08-26, Fase 2, correção de aterrissagem e âncora antes de publicar.** Dois defeitos
+  da própria Fase 2, achados na conferência que precedeu a publicação. O primeiro é meu e
+  era o mais grave: `OPENING_MONTH` virou destino fixo de aterrissagem em duas telas, e é
+  constante do demo sintético, então numa instância de cliente sem Jun/26 na base o app
+  abriria num dashboard vazio. Passou a existir `AtlasData.landingMonth()`, ciente do modo
+  de dados, demo aterrissa no mês de abertura e dado real aterrissa no último mês com dado.
+  O segundo é o efeito colateral que tinha sido aceito: a âncora do R$ 1,2 bi ficou no mês
+  corrente e jogou o número redondo para uma tela que ninguém abre primeiro, desencontrada
+  do `pitch-institucional.html`. Âncora passou para o mês de abertura, junho voltou a fechar
+  em R$ 1,2000 bi. 719 → 728 checks, com dois deles medindo comportamento em vez de conferir
+  texto. Ver as seções "Âncora do rescale" e "Aterrissagem" acima.
