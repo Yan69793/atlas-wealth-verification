@@ -56,13 +56,13 @@ máquina. O pacote havia sumido do ambiente, então o portão vinha relatando "t
 passaram" com um teste a menos, sem avisar. Reinstalado, ele roda e passa. Dependência de
 ambiente que some sem quebrar nada é a forma mais barata de perder cobertura de teste.
 
-## Cadeia de gitlink, fechada em 17/ago
+## Cadeia de gitlink
 
 | Camada | Branch | HEAD | Registra o filho em |
 |---|---|---|---|
-| Produto | `feat/separacao-cloudflare` | `f8356fa` (17/ago) | instância em `019ceda` |
-| Instância | `fix/workers-dev-off` | `019ceda` (17/ago) | core em `e693239` |
-| Core | `fix/paths-bom-pos-mudanca` | `e693239` (15/ago) | folha |
+| Produto | `feat/separacao-cloudflare` | `5107c55` (26/ago) | instância em `dbea51b` |
+| Instância | `fix/workers-dev-off` | `dbea51b` (26/ago) | core em `42a9c7e` |
+| Core | `pin/instancia-fase-2` (local, sem upstream) | `42a9c7e` (26/ago) | folha |
 
 Cada pai aponta o HEAD do filho, conferido em disco. Os três working trees estão limpos, com
 a exceção conhecida do material não versionado listado adiante, que é do produto e não é
@@ -76,6 +76,24 @@ commits de ponteiro, sem nenhum arquivo de dado envolvido.
 **Publicado em 2026-08-21, decisão do dono.** Os três branches subiram e o hash do remoto
 foi conferido igual ao local: produto `97c4c49` (feat/separacao-cloudflare), instância
 `019ceda` (fix/workers-dev-off), core `e693239` (fix/paths-bom-pos-mudanca).
+
+**Cadeia avançada para a Fase 2 e publicada na instância, 2026-08-26, decisão do dono.**
+O core estava pinado em `e693239`, anterior à Fase 2, sem `AtlasData.landingMonth()` nem a
+âncora do rescale no mês de abertura. Avançado para `42a9c7e`, HEAD de `feat/separacao-cloudflare`
+naquele momento. `dist-app` reconstruído dentro do core, `index.html` da instância regerado por
+`scripts/gen-index.mjs`. Instância e produto subiram, hash do remoto conferido igual ao local:
+instância `dbea51b` (fix/workers-dev-off), produto `5107c55` (feat/separacao-cloudflare). O core
+saiu da branch compartilhada `fix/paths-bom-pos-mudanca` (que ficava numa linha divergente do
+commit alvo) para uma branch local própria, `pin/instancia-fase-2`, sem upstream: o commit
+`42a9c7e` já existe no remoto do mesmo repositório, só que sob o nome `feat/separacao-cloudflare`
+do produto, não desta branch local.
+
+No mesmo trabalho, `npm test` no produto: 728/728 checks, 278/278 testes. Worker `atlas-instancia`
+recebeu deploy (versão `32ee81a0-4a90-44e0-a7a8-43936ab0ea29`, substitui `4f0caf1f`, ponto de
+rollback). Confirmado por fora: `atlas.szuchmacher.com.br` segue 302 pro Access,
+`atlas-instancia.prospects-intel.workers.dev` segue 404. O deploy saiu com exit code 1 por uma
+falha de permissão do token ao listar rotas de zona (`Authentication error [code: 10000]`), lacuna
+já registrada em `diagnosticos/DIAGNOSTICO-2026-08-25.md`, não bloqueou upload nem versão nova.
 
 Os hashes que o `CLAUDE.md` do projeto registra (`c0ad7b4` para a instância, `810f0d9` para
 o produto, `d33ee42` para o core) descrevem o estado de 15 de agosto e não batem mais com o
@@ -1423,3 +1441,11 @@ e é o que impede a próxima pessoa de repetir.
   do `pitch-institucional.html`. Âncora passou para o mês de abertura, junho voltou a fechar
   em R$ 1,2000 bi. 719 → 728 checks, com dois deles medindo comportamento em vez de conferir
   texto. Ver as seções "Âncora do rescale" e "Aterrissagem" acima.
+- **2026-08-26, Fase 2 chega na instância do cliente.** A ressalva registrada acima ("nada
+  desta fase chega lá antes de alguém avançar a cadeia de gitlink de propósito") deixou de
+  valer nesta data. Gitlink do core avançado de `e693239` para `42a9c7e` (HEAD da
+  `feat/separacao-cloudflare` no momento), instância e produto avançados atrás dele e
+  publicados no GitHub, hash do remoto conferido igual ao local nos dois. Portão do produto
+  728/728 checks, 278/278 testes. Worker `atlas-instancia` recebeu deploy autorizado pelo
+  dono, versão `32ee81a0-4a90-44e0-a7a8-43936ab0ea29`, confirmado por fora (Access intacto,
+  `workers.dev` seguindo fora do ar). Ver a tabela "Cadeia de gitlink" no topo deste arquivo.
