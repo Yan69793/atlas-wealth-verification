@@ -1,0 +1,78 @@
+{
+  "_formato": {
+    "o_que_e": "Exemplo do arquivo cadastro-pendencias.json que vive na RAIZ DA INSTÂNCIA, nunca aqui no produto. É a lista de pendências cadastrais do escritório, e é a única fonte do overlay platform-cadastro.js.",
+    "como_gerar": "node scripts/gerar-cadastro.mjs --dir <raiz-da-instancia>",
+    "aceita": "a lista nua (um array no topo do arquivo) ou este formato, com a chave \"pendencias\".",
+    "campos_obrigatorios": {
+      "code": "código da carteira, string não vazia. É a chave que liga a pendência à carteira.",
+      "type": "um dos tipos de documento do escritório, exatamente como escrito na lista de scripts/gerar-cadastro.mjs."
+    },
+    "campos_opcionais": {
+      "status": "Pendente, Em Análise, Aguardando Cliente ou Vencido. Declarado manda sobre calculado.",
+      "since": "YYYY-MM ou YYYY-MM-DD. Data do documento, que é o que a janela de validade mede.",
+      "obs": "texto livre que a tela de Cadastro mostra na coluna Observação.",
+      "name": "apelido da carteira, passa direto para a tela.",
+      "segment": "Ultra, Large, Mid ou Small, passa direto para a tela."
+    },
+    "tipos": [
+      "Ficha Cadastral",
+      "KYC",
+      "Perfil de Investimento",
+      "Perfil de Risco",
+      "Declaração de Investidor Qualificado",
+      "Declaração de Investidor Profissional",
+      "Comprovante de Residência",
+      "Contrato de Gestão",
+      "Documento de Identidade",
+      "Procuração",
+      "Declaração de Beneficiário Final"
+    ],
+    "janela_de_validade_em_meses": {
+      "Comprovante de Residência": 6,
+      "Perfil de Investimento": 24,
+      "Perfil de Risco": 24,
+      "_demais_tipos": "sem janela. A pendência é declarada pelo escritório e nunca calculada: inventar prazo para KYC ou procuração produz Vencido que ninguém consegue provar."
+    },
+    "regras_que_pegam": [
+      "Linha inválida aborta a geração inteira. Gravar só as linhas boas sumiria em silêncio com pendência que existe.",
+      "Arquivo ausente ou vazio não gera overlay nenhum. Ausência de dado não é ausência de pendência, e o app fica marcando a pendência como estimativa, que é o estado honesto.",
+      "Sem status declarado e sem janela de validade, a linha cai em Pendente. Nunca em Vencido."
+    ],
+    "aviso": "Os códigos abaixo são do catálogo sintético do demo. Nenhum dado de cliente real entra em arquivo versionado."
+  },
+  "pendencias": [
+    {
+      "code": "ALPHA_01",
+      "name": "Alpha Gestão I",
+      "segment": "Large",
+      "type": "KYC",
+      "status": "Em Análise",
+      "since": "2026-05-20",
+      "obs": "Status declarado pelo escritório. Declarado sempre manda sobre calculado."
+    },
+    {
+      "code": "BRAVO_FAM",
+      "name": "Bravo Family Office",
+      "segment": "Ultra",
+      "type": "Comprovante de Residência",
+      "since": "2025-01-10",
+      "obs": "Sem status na lista. Comprovante vale 6 meses, e esta data tem 19, então nasce Vencido."
+    },
+    {
+      "code": "BRAVO_PV",
+      "name": "Bravo Patrimonial",
+      "segment": "Mid",
+      "type": "Perfil de Investimento",
+      "since": "2026-03-01",
+      "obs": "Sem status na lista. Suitability vale 24 meses e esta tem 5, então nasce Pendente, não Vencido."
+    },
+    {
+      "code": "ALPHA_03",
+      "name": "Alpha Gestão III",
+      "segment": "Small",
+      "type": "Procuração",
+      "since": "2019-05",
+      "obs": "Sem status e sem janela de validade. Cai em Pendente por mais velha que seja a data."
+    }
+  ]
+}

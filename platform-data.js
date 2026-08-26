@@ -887,10 +887,17 @@
      7. DADOS DE CADASTRO (~28 pendências)
   ============================================================= */
 
+  /* Tipos de documento do escritório. Esta lista é o gêmeo de TIPOS em
+     scripts/gerar-cadastro.mjs, que valida o cadastro REAL da instância. As
+     duas precisam dizer a mesma coisa: se divergirem, o filtro "Tipo" da tela
+     de Cadastro muda de conteúdo quando a instância troca de dado sintético
+     para dado real, e o operador acha que perdeu documento. Mexeu aqui,
+     mexa lá. */
   var PENDING_TYPES = [
-    'Ficha Cadastral','Doc. Identificação','Comprovante de Residência',
-    'Perfil Individual','Perfil de Risco','Comprovante SRF',
-    'Pesquisa de Mídia','Visita','Qualificado/Profissional','Balanço Patrimonial'
+    'Ficha Cadastral','KYC','Perfil de Investimento','Perfil de Risco',
+    'Declaração de Investidor Qualificado','Declaração de Investidor Profissional',
+    'Comprovante de Residência','Contrato de Gestão','Documento de Identidade',
+    'Procuração','Declaração de Beneficiário Final'
   ];
 
   var PENDING_STATUSES = ['Pendente','Em Análise','Aguardando Cliente','Vencido'];

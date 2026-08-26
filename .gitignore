@@ -113,6 +113,12 @@ platform-caixa-parado.js
 platform-radar.js
 platform-credito.js
 platform-receita-drop.js
+# Cadastro real da instancia, gerado por scripts/gerar-cadastro.mjs a partir do
+# cadastro-pendencias.json da casa. Nome de carteira e pendencia de documento
+# sao dado de cliente. Nao confundir com platform-cadastro.jsx, que e a PAGINA
+# de Cadastro & Compliance e continua versionada (a regra abaixo casa o nome
+# exato, entao a pagina nao e pega).
+platform-cadastro.js
 data.js
 data.json
 historico.js

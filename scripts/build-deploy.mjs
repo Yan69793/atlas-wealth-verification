@@ -43,6 +43,7 @@ const NUNCA = [
   /^platform-radar(\.min)?\.js$/i,
   /^platform-credito(\.min)?\.js$/i,
   /^platform-receita-drop(\.min)?\.js$/i,
+  /^platform-cadastro(\.min)?\.js$/i,
   /^data\.js(on)?$/i,
   /^historico\.js(on)?$/i,
 ];
@@ -211,7 +212,11 @@ if (perdidos.length) {
   process.exit(1);
 }
 
-if (/platform-data-real\.js|platform-data-audit\.js|platform-historico\.js|platform-brand\.js|platform-oportunidades\.js|platform-vencimentos\.js|platform-caixa-parado\.js|platform-radar\.js|platform-credito\.js|platform-receita-drop\.js/.test(htmlSaida)) {
+/* O `(?!x)` do cadastro não é enfeite: platform-cadastro.jsx é a PÁGINA de
+   Cadastro & Compliance, código do produto que entra no bundle normalmente.
+   Sem ele, "platform-cadastro.js" casaria como prefixo de "platform-cadastro.jsx"
+   e uma referência legítima à página abortaria a publicação. */
+if (/platform-data-real\.js|platform-data-audit\.js|platform-historico\.js|platform-brand\.js|platform-oportunidades\.js|platform-vencimentos\.js|platform-caixa-parado\.js|platform-radar\.js|platform-credito\.js|platform-receita-drop\.js|platform-cadastro\.js(?!x)/.test(htmlSaida)) {
   console.error('\nABORTADO: tag de overlay de dado real presente no index publicado.');
   process.exit(1);
 }

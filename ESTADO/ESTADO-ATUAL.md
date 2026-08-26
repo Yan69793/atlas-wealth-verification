@@ -11,15 +11,20 @@ aqui, trate este arquivo como suspeito e rode o refresh do fim da página.
 ## Portão de verificação, medido hoje
 
 ```
-659/659 checks OK — todos os checks passaram
+688/688 checks OK — todos os checks passaram
 ℹ tests 278   ℹ suites 73   ℹ pass 278   ℹ fail 0   ℹ skipped 0
 ```
 
-Medido em 2026-08-26, depois da camada de exploração e decisão (ranking de
-criticidade, resumo da casa, rastreador de ativos, comparador por carteira,
-histórico de verificação). 602 para 659 checks, os 57 novos travando as
-regras da Entrega, ver a seção logo abaixo. Testes do app continuam 278: a
-camada nova é coberta pela suíte estática (`tests/validate.js`), não pela
+Medido em 2026-08-26, depois do overlay real de cadastro. 659 para 688, os
+29 novos cobrindo as listas de negação do overlay, as regras do gerador e o
+comportamento do consolidado com e sem cadastro real. Ver a seção "Overlay
+real de cadastro" mais abaixo.
+
+Antes disso era 659/659, depois da camada de exploração e decisão (ranking
+de criticidade, resumo da casa, rastreador de ativos, comparador por
+carteira, histórico de verificação). 602 para 659 checks, os 57 novos
+travando as regras daquela Entrega. Testes do app continuam 278: as duas
+camadas são cobertas pela suíte estática (`tests/validate.js`), não pela
 suíte do motor.
 
 Antes da camada de exploração era 602/602, depois das Entregas A, B, B.1,
@@ -860,9 +865,10 @@ sandbox e principal nos 11 arquivos versionados antes de commitar.
 
 1. ~~Publicação ainda não verificada.~~ **Resolvida em 2026-08-26**, ver a
    seção "Publicação do demo" logo abaixo.
-2. **Sem overlay real de cadastro.** Enquanto `window.ATLAS_CADASTRO_DATA`
-   não existir, pendência cadastral em instância de cliente sai sempre
-   marcada como estimativa e fora da ordenação. Ver decisão 1 acima.
+2. ~~Sem overlay real de cadastro.~~ **Estrutura entregue em 2026-08-26**,
+   ver a seção "Overlay real de cadastro" logo abaixo. O que falta agora não
+   é código, é a lista de pendências do escritório. Sem ela o app continua,
+   de propósito, marcando a pendência como estimativa.
 3. **`fmtCompactBRL` sem `maximumFractionDigits`** era defeito preexistente
    em `platform-utils.jsx`, achado pelo rastreador (primeira tela a exibir
    delta de posição pequeno o bastante para cair no ramo abaixo de mil).
@@ -928,6 +934,84 @@ por leitura parcial merece confirmação antes de virar alarme. Testar
 presença de arquivo por código de status num servidor com fallback de página
 única não prova nada; o que prova é `content-type`, tamanho e um caminho de
 controle.
+
+## Overlay real de cadastro (2026-08-26)
+
+Fecha o último número do ranking que ainda saía marcado como estimativa. O
+consumidor não mudou: `platform-consolidado.js` sempre leu
+`window.ATLAS_CADASTRO_DATA.pendencias`, e agora existe quem escreva esse
+arquivo.
+
+### O que entrou
+
+- **`scripts/gerar-cadastro.mjs`**, gerador. Lê `cadastro-pendencias.json` na
+  raiz da instância, valida linha por linha e escreve `platform-cadastro.js`
+  lá mesmo. Aceita `--dir` (raiz da instância) e `--hoje` (data de referência
+  do cálculo de validade, para o exemplo ser reproduzível).
+- **Lista de tipos de documento do escritório**, onze: Ficha Cadastral, KYC,
+  Perfil de Investimento, Perfil de Risco, Declaração de Investidor
+  Qualificado, Declaração de Investidor Profissional, Comprovante de
+  Residência, Contrato de Gestão, Documento de Identidade, Procuração,
+  Declaração de Beneficiário Final. `PENDING_TYPES` em `platform-data.js`
+  (o conjunto que o demo sintético sorteia) foi recalibrado para a mesma
+  lista, com comentário cruzado nos dois lugares. Um check do portão compara
+  as duas listas e falha se divergirem: divergência mudaria o filtro "Tipo"
+  da tela de Cadastro quando a instância troca de sintético para real, e o
+  operador acharia que perdeu documento.
+- **Janela de validade só onde existe regra objetiva**: Comprovante de
+  Residência 6 meses, Perfil de Investimento e Perfil de Risco 24. Nos
+  outros oito tipos a pendência é declarada e nunca calculada. Inventar
+  prazo para KYC ou procuração produziria "Vencido" que ninguém consegue
+  provar de onde veio.
+- **`docs/cadastro-pendencias.exemplo.json`**, formato documentado dentro do
+  próprio arquivo, com quatro linhas que provam as quatro decisões: status
+  declarado manda, tipo com janela e data velha nasce Vencido, tipo com
+  janela e data recente nasce Pendente, tipo sem janela nasce Pendente por
+  mais velha que seja a data. Um check confere que todo código do exemplo
+  vem do catálogo sintético do demo.
+- **Listas de negação**, cinco lugares: `scripts/build-deploy.mjs`,
+  `scripts/verify-build.mjs`, `scripts/deploy-cf.ps1`, `.gitignore` do
+  produto e `.gitignore` da instância. Mais a lista `OVERLAYS` do
+  `scripts/gen-index.mjs` da instância, que é quem injeta a tag no index
+  servido. As duas edições da instância ficaram sem commit nesta rodada,
+  sobem com o próximo commit de lá.
+
+### As três regras que não podem ser relaxadas
+
+1. **Arquivo ausente ou vazio não gera overlay nenhum.** Ausência de dado não
+   é ausência de pendência. Overlay vazio faria a tela dizer "nenhuma
+   pendência cadastral" com a autoridade de dado confirmado, quando a verdade
+   é que ninguém preencheu a lista. Sem o arquivo, o app fica no estado
+   honesto de estimativa marcada, que é pior de ler e certo de confiar.
+2. **Linha inválida aborta a geração inteira.** Gravar as boas e descartar as
+   ruins em silêncio sumiria com pendência que existe no escritório.
+3. **O log do gerador só imprime contagem.** Código de carteira, apelido e
+   observação nunca saem na tela: log de gerador acaba colado em ticket. Erro
+   de validação aponta pelo índice da linha, nunca pelo código.
+
+### Cuidado que quase virou defeito
+
+`platform-cadastro.jsx` é a PÁGINA de Cadastro & Compliance, produto que
+entra no bundle. `platform-cadastro.js` é o overlay de dado real. Negação por
+prefixo levaria a página junto e ela sumiria do bundle sem erro nenhum, então
+as regras de nome são exatas e as checagens de tag no HTML usam `(?!x)`. Um
+check do portão trava isso nos dois scripts.
+
+### O que falta, e não é código
+
+A lista de pendências do escritório. Enquanto `cadastro-pendencias.json` não
+existir na raiz da instância, o app continua marcando a pendência cadastral
+como estimativa e a mantém fora da ordenação de criticidade, que é o
+comportamento correto e está travado por check.
+
+### Gap adjacente, não corrigido
+
+`scripts/deploy-nova-conta.ps1` tem a própria lista `$proibidos` e ela já
+estava incompleta antes desta entrega: falta `platform-radar.js`,
+`platform-credito.js` e agora `platform-cadastro.js`. Não foi mexido porque
+está fora do escopo pedido e o roteiro da conta nova está suspenso, proibido
+de rodar. Se a separação de conta reabrir, essa lista precisa ser fechada
+antes de qualquer publicação por ali.
 
 ## Pendências, ordenadas por prioridade acordada com o dono em 17/ago
 
@@ -1118,3 +1202,12 @@ e é o que impede a próxima pessoa de repetir.
   positivo de segurança que quase virou alarme, o 200 em `/platform-data-real.js` que é
   fallback de página única do Worker, não overlay servido. Detalhe nas seções "Publicação do
   demo", "Dois P0 do pre-flight" e "Falso positivo registrado" acima.
+- **2026-08-26, overlay real de cadastro.** Entregue a estrutura que tira a pendência
+  cadastral da marca de estimativa: gerador `scripts/gerar-cadastro.mjs`, exemplo documentado
+  em `docs/`, lista de onze tipos de documento do escritório espelhada em `PENDING_TYPES`, e
+  `platform-cadastro.js` acrescentado às cinco listas de negação do produto mais a lista de
+  overlays do `gen-index.mjs` da instância (essa última sem commit nesta rodada). Janela de
+  validade só nos três tipos com regra objetiva; nos outros oito a pendência é declarada,
+  nunca calculada. Lista ausente ou vazia não gera overlay de propósito, porque ausência de
+  dado não é ausência de pendência. 659 → 688 checks, 278 testes do app inalterados. Ver a
+  seção "Overlay real de cadastro" acima.

@@ -2291,6 +2291,188 @@ ok('R$ × dias não é formatado como moeda',
     /window\.AtlasConsolidado\.dataApuracaoIntel\(\)/.test(cartSrc));
 }
 
+// ─── 31. Overlay real de cadastro (platform-cadastro.js) ───────────────────
+//
+// A pendência cadastral era o último número do ranking que saía marcado como
+// estimativa. A estrutura que a tira dessa marca é este overlay, e ela traz
+// dois riscos novos que estes checks existem para travar:
+//
+//  - dado real de cadastro (carteira + documento pendente) publicado junto com
+//    o demo, porque o nome do overlay nasceu fora das listas de negação;
+//  - overlay escrito vazio quando ninguém preencheu a lista, que trocaria
+//    "não sei" por "nenhuma pendência" com a autoridade de dado confirmado.
+//
+// O terceiro é de conteúdo: a lista de tipos do gerador e a PENDING_TYPES do
+// demo têm de dizer a mesma coisa, senão o filtro "Tipo" da tela de Cadastro
+// muda quando a instância troca de sintético para real.
+
+{
+  const genPath = path.join(ROOT, 'scripts/gerar-cadastro.mjs');
+  ok('scripts/gerar-cadastro.mjs existe', fs.existsSync(genPath));
+  const gen = fs.existsSync(genPath) ? fs.readFileSync(genPath, 'utf8') : '';
+
+  // ── Listas de negação: dado de cadastro nunca é publicado nem versionado ──
+  const verifyBuild = fs.readFileSync(path.join(ROOT, 'scripts/verify-build.mjs'), 'utf8');
+  const deployPs1 = fs.readFileSync(path.join(ROOT, 'scripts/deploy-cf.ps1'), 'utf8');
+  const gitignore = fs.readFileSync(path.join(ROOT, '.gitignore'), 'utf8');
+
+  ok('build-deploy nega platform-cadastro.js por nome de arquivo',
+    buildDeploy.includes('^platform-cadastro(\\.min)?\\.js$'));
+  ok('verify-build nega platform-cadastro.js por nome de arquivo',
+    verifyBuild.includes('^platform-cadastro(\\.min)?\\.js$'));
+  ok('deploy-cf.ps1 lista platform-cadastro.js em $proibidos',
+    /\$proibidos\s*=\s*@\([^)]*'platform-cadastro\.js'/.test(deployPs1));
+  ok('.gitignore do produto nega platform-cadastro.js',
+    gitignore.split(/\r?\n/).some((l) => l.trim() === 'platform-cadastro.js'));
+
+  // A página Cadastro & Compliance é produto e continua versionada. A negação
+  // do overlay é por nome exato, nunca por prefixo: um `platform-cadastro*`
+  // levaria a página junto e ela sumiria do bundle sem erro nenhum.
+  ok('a pagina platform-cadastro.jsx existe e nao e pega pela negacao do overlay',
+    fs.existsSync(path.join(ROOT, 'platform-cadastro.jsx'))
+    && !/^platform-cadastro(\.js)?\*/m.test(gitignore));
+  ok('a checagem de tag no index exclui o .jsx da pagina',
+    /platform-cadastro\\\.js\(\?!x\)/.test(buildDeploy)
+    && /platform-cadastro\\\.js\(\?!x\)/.test(verifyBuild));
+
+  // ── Tipos: gerador e demo sintético dizem a mesma coisa ──────────────────
+  const listaDe = (src, re) => {
+    const m = re.exec(src);
+    if (!m) return null;
+    return (m[1].match(/'[^']*'|"[^"]*"/g) || []).map((s) => s.slice(1, -1));
+  };
+  const tiposGerador = listaDe(gen, /const TIPOS = \[([\s\S]*?)\];/);
+  const tiposDemo = listaDe(dataContent, /var PENDING_TYPES = \[([\s\S]*?)\];/);
+  ok('gerador declara a lista de tipos do escritorio', !!tiposGerador && tiposGerador.length >= 10,
+    tiposGerador ? String(tiposGerador.length) : 'ausente');
+  ok('PENDING_TYPES do demo e a mesma lista do gerador (filtro nao muda entre sintetico e real)',
+    !!tiposGerador && !!tiposDemo
+    && tiposGerador.slice().sort().join('|') === tiposDemo.slice().sort().join('|'),
+    tiposDemo ? tiposDemo.slice().sort().join(', ') : 'ausente');
+  ok('os dois lados apontam um para o outro em comentario',
+    /gerar-cadastro\.mjs/.test(dataContent) && /platform-data\.js/.test(gen));
+
+  // ── Janela de validade só onde existe regra real ─────────────────────────
+  const janelas = listaDe(gen, /const JANELA_MESES = \{([\s\S]*?)\};/) || [];
+  ok('janela de validade so nos tres tipos com regra objetiva',
+    janelas.slice().sort().join('|') ===
+      ['Comprovante de Residência', 'Perfil de Investimento', 'Perfil de Risco'].sort().join('|'),
+    janelas.join(', '));
+  ok('Vencido calculado exige janela E data, nunca so idade',
+    /if \(janela && idade !== null\)/.test(gen) && /idade >= janela \? 'Vencido' : 'Pendente'/.test(gen));
+  ok('sem janela e sem status a linha cai em Pendente, nunca em Vencido',
+    /else \{\s*status = 'Pendente';/.test(gen));
+
+  // ── Ausência de lista não vira ausência de pendência ─────────────────────
+  ok('lista ausente ou vazia nao escreve overlay',
+    /if \(!fs\.existsSync\(FONTE\)\) semLista\(/.test(gen)
+    && /if \(linhas\.length === 0\) semLista\(/.test(gen)
+    && /function semLista\(/.test(gen));
+  ok('o gerador registra por que o vazio nao gera arquivo',
+    gen.includes('Ausência de dado não é ausência de pendência')
+    || gen.includes('ausência de dado não é ausência de pendência'));
+  ok('linha invalida aborta a geracao inteira, sem gravacao parcial',
+    /if \(erros\.length\) \{[\s\S]{0,400}process\.exit\(1\)/.test(gen)
+    && gen.indexOf('erros.length') < gen.indexOf('fs.writeFileSync(SAIDA'));
+  ok('o log do gerador nao imprime codigo nem apelido de carteira (LGPD)',
+    !/\$\{(code|r\.code|linha\.code|p\.code|r\.name)\}/.test(gen)
+    && gen.includes('índice, nunca o código'));
+
+  // ── Exemplo versionado: formato documentado, só código do demo ───────────
+  const exPath = path.join(ROOT, 'docs/cadastro-pendencias.exemplo.json');
+  ok('docs/cadastro-pendencias.exemplo.json existe', fs.existsSync(exPath));
+  if (fs.existsSync(exPath)) {
+    let ex = null;
+    try { ex = JSON.parse(fs.readFileSync(exPath, 'utf8')); } catch (e) { ex = null; }
+    ok('exemplo e JSON valido com formato documentado',
+      !!ex && !!ex._formato && Array.isArray(ex.pendencias) && ex.pendencias.length >= 2);
+    const linhasEx = (ex && ex.pendencias) || [];
+    ok('exemplo tem um item com status declarado e um sem status para provar o calculo',
+      linhasEx.some((r) => !!r.status) && linhasEx.some((r) => !r.status));
+    ok('exemplo prova a janela: item sem status em tipo com validade e data velha',
+      linhasEx.some((r) => !r.status && r.type === 'Comprovante de Residência' && /^20(1|2[0-5])/.test(r.since || '')));
+    // Nenhum código fora do catálogo sintético: dado de cliente não entra em
+    // arquivo versionado, e a checagem é contra o catálogo, não contra a
+    // impressão de quem escreveu o exemplo.
+    const catalogo = new Set((dataContent.match(/code:'([A-Z0-9_]+)'/g) || [])
+      .map((s) => s.slice(6, -1)));
+    const foraDoCatalogo = linhasEx.map((r) => r.code).filter((c) => !catalogo.has(c));
+    ok('exemplo usa somente codigo do catalogo sintetico do demo',
+      catalogo.size > 0 && foraDoCatalogo.length === 0, foraDoCatalogo.join(', ') || 'ok');
+  }
+
+  // ── Comportamento: o overlay presente derruba a marca de estimativa ──────
+  // Regex prova o texto; isto prova a decisão. O módulo é carregado num window
+  // de mentira, com AtlasData mínimo, e as duas situações são medidas.
+  const consSrcC = fs.readFileSync(path.join(ROOT, 'platform-consolidado.js'), 'utf8');
+  const carrega = (cadastro, modo) => {
+    const w = {
+      ATLAS_CADASTRO_DATA: cadastro,
+      AtlasData: {
+        MONTHS: ['2026-07', '2026-08'],
+        CATALOG: [{ code: 'X1', name: 'Carteira de teste', risk: 'moderado', inception: '2022-01' }],
+        getDataMode: () => modo,
+        registration: () => ([
+          { code: 'X1', type: 'KYC', status: 'Vencido' },
+          { code: 'X1', type: 'Ficha Cadastral', status: 'Pendente' },
+          { code: 'X1', type: 'Procuração', status: 'Pendente' },
+        ]),
+        getRow: () => ({
+          code: 'X1', name: 'Carteira de teste', manager: 'M1', status: 'LIBERAR',
+          plPrev: 1000000, plCurr: 1000000, plEsperado: 1000000,
+          divergenciaBRL: 0, divergenciaAbsBRL: 0,
+          rent: 0, vsCDI: 0, nAchados: 0, totalCost: 0, totalCostPct: 0,
+        }),
+        getComposition: () => ([]),
+      },
+    };
+    new Function('window', consSrcC)(w);
+    return w.AtlasConsolidado;
+  };
+
+  const OVERLAY_FAKE = {
+    pendencias: [
+      { code: 'X1', type: 'KYC', status: 'Vencido' },
+      { code: 'X1', type: 'Comprovante de Residência', status: 'Pendente' },
+    ],
+  };
+
+  const semOverlay = carrega(null, 'real');
+  const comOverlay = carrega(OVERLAY_FAKE, 'real');
+  const demoSemOverlay = carrega(null, 'demo');
+
+  const oSem = semOverlay.pendenciasOrigem();
+  const oCom = comOverlay.pendenciasOrigem();
+  const oDemo = demoSemOverlay.pendenciasOrigem();
+
+  ok('sem overlay e fora do demo a pendencia sai como estimativa sintetica',
+    oSem.fonte === 'sintetica' && oSem.estimadas === true, JSON.stringify(oSem));
+  ok('com overlay a fonte vira overlay e a marca de estimativa cai',
+    oCom.fonte === 'overlay' && oCom.estimadas === false, JSON.stringify(oCom));
+  ok('em demo o sintetico e legitimo e nao vai marcado',
+    oDemo.fonte === 'sintetica' && oDemo.estimadas === false, JSON.stringify(oDemo));
+
+  const pendCom = comOverlay.pendenciasPorCarteira().X1;
+  ok('com overlay a contagem vem da lista do escritorio, nao do sorteio',
+    !!pendCom && pendCom.total === 2 && pendCom.vencidas === 1,
+    JSON.stringify(pendCom));
+
+  const lSem = semOverlay.linhaCriticidade('X1', '2026-08');
+  const lCom = comOverlay.linhaCriticidade('X1', '2026-08');
+  ok('estimativa conta na tela mas nao ordena a criticidade',
+    lSem.pendencias === 3 && lSem.pendenciasEstimadas === true
+    && lSem.pendOrdenavel === 0 && lSem.pendVencidasOrdenavel === 0,
+    `total=${lSem.pendencias} ord=${lSem.pendOrdenavel}/${lSem.pendVencidasOrdenavel}`);
+  ok('com overlay a pendencia volta a ordenar a criticidade',
+    lCom.pendencias === 2 && lCom.pendenciasEstimadas === false
+    && lCom.pendOrdenavel === 2 && lCom.pendVencidasOrdenavel === 1,
+    `total=${lCom.pendencias} ord=${lCom.pendOrdenavel}/${lCom.pendVencidasOrdenavel}`);
+  ok('o motivo na tela para de dizer "estimado" quando o cadastro e real',
+    lSem.motivos.some((m) => /estimado/.test(m))
+    && !lCom.motivos.some((m) => /estimado/.test(m)),
+    lCom.motivos.join(' | '));
+}
+
 // ─── Resultado ──────────────────────────────────────────────────────────────
 
 const total = pass + fail;
