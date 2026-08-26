@@ -858,11 +858,8 @@ sandbox e principal nos 11 arquivos versionados antes de commitar.
 
 ### Pendências abertas desta camada
 
-1. **Publicação ainda não verificada.** A prova de rota rodou contra o
-   servidor de desenvolvimento local (demo local), não contra o ambiente
-   publicado (Cloudflare). Antes de publicar, repetir a verificação em
-   navegador contra o domínio publicado, mesma condição de aceite da
-   revisão, desta vez no ambiente real.
+1. ~~Publicação ainda não verificada.~~ **Resolvida em 2026-08-26**, ver a
+   seção "Publicação do demo" logo abaixo.
 2. **Sem overlay real de cadastro.** Enquanto `window.ATLAS_CADASTRO_DATA`
    não existir, pendência cadastral em instância de cliente sai sempre
    marcada como estimativa e fora da ordenação. Ver decisão 1 acima.
@@ -873,6 +870,64 @@ sandbox e principal nos 11 arquivos versionados antes de commitar.
 4. **Nenhum limiar novo.** A tolerância de materialidade (0,30%) e a régua
    de criticidade reusam o que o motor já tinha. Nada aqui precisa de
    calibração do dono.
+
+### Publicação do demo (2026-08-26)
+
+Autorizada pelo dono e executada. A camada de exploração e decisão está no ar
+no demo público.
+
+| Item | Valor |
+|---|---|
+| URL | `https://demo.multi-assets.com` |
+| Worker | `app-verificacao-carteiras-atlas` |
+| Conta | a antiga. A separação de conta segue suspensa, `deploy-nova-conta.ps1` não foi usado |
+| Versão | `5d6410a3-a25d-44cb-a3fa-7f637fa0d95f` |
+| Pacote | 6 arquivos, 2 novos ou modificados enviados, 4 já presentes |
+
+Conferido no ar por rede: raiz em 200, bundle
+`assets/index-B6rOFtSX.js` em 200 com 1.292.801 bytes, e quatro marcas do
+código novo presentes no bundle que o domínio realmente serve
+(`AtlasConsolidado`, `Ranking de Criticidade`, `Rastreador de Ativos`,
+`sem-regua-calibrada`). A rota `#/ranking` renderiza com a mesma ordem do
+ambiente local.
+
+**Nota de método que vale para a próxima publicação.** Os arquivos novos
+não existem soltos em produção, entram compilados no bundle único, que é o
+contrato de build. Conferir "arquivo X carrega na posição Y da ordem de
+carga" não se aplica ao ambiente publicado; a prova equivalente é presença
+de marca dentro do bundle servido.
+
+### Dois P0 do pre-flight, ambos fechados
+
+O pre-flight rodou antes da publicação, como o `CLAUDE.md` exige, e travou o
+voo com dois P0. Os dois foram corrigidos, cada um em commit isolado.
+
+1. **`deploy-cf.ps1` saía sem exit code em falha.** Os quatro desfechos de
+   falha terminavam em `Write-Error` seguido de `return`, e `return` não
+   define o exit code do processo, então quem chama o script por `&` lê
+   `LASTEXITCODE` residual e decide errado. Mesma classe de defeito já
+   registrada no `CLAUDE.md` global em `run-daily-scan.ps1` (commit
+   `adc9dbf`). Trocados por `exit 1`. Os `return` de `-DryRun` e
+   `-SkipDeploy` ficaram como estão, são saída normal.
+2. **`deploy-nova-conta.ps1` tinha travessão**, que quebra em PowerShell
+   5.1 em arquivo sem BOM. Trocado por vírgula. O script segue suspenso
+   junto com a separação de conta e continua fora do caminho de publicação.
+
+### Falso positivo registrado, para não virar alarme de novo
+
+Durante a conferência no ar, `https://demo.multi-assets.com/platform-data-real.js`
+respondeu **HTTP 200**, o que parece overlay de dado real sendo servido.
+**Não é.** O Worker do demo tem fallback de página única, então qualquer
+rota desconhecida devolve o `index.html`. Provado por controle: a resposta
+vem com `content-type: text/html` e 4.014 bytes, exatamente os mesmos que um
+caminho inventado (`/xyz-nao-existe-123.js`) devolve. Nenhum overlay está no
+pacote, conferido nas duas camadas independentes de trava.
+
+Vale como lição de método, a mesma que o log já registra em 17/ago: achado
+por leitura parcial merece confirmação antes de virar alarme. Testar
+presença de arquivo por código de status num servidor com fallback de página
+única não prova nada; o que prova é `content-type`, tamanho e um caminho de
+controle.
 
 ## Pendências, ordenadas por prioridade acordada com o dono em 17/ago
 
@@ -1055,3 +1110,11 @@ e é o que impede a próxima pessoa de repetir.
   decidindo posição de carteira sem aparecer na tela (unificado em `divergenciaDe()`), e
   rótulo de cliente imprimindo `"demo"` como se fosse nome de casa. 602 → 659 checks, 278
   testes do app inalterados. Ver a seção "Camada de exploração e decisão, P0/P1" acima.
+- **2026-08-26, demo publicado e dois P0 fechados.** Camada de exploração e decisão no ar em
+  `demo.multi-assets.com`, versão `5d6410a3-a25d-44cb-a3fa-7f637fa0d95f`, Worker
+  `app-verificacao-carteiras-atlas`, conta antiga. O pre-flight travou o voo antes da
+  publicação e achou dois P0, os dois corrigidos em commit isolado: `deploy-cf.ps1` saindo
+  sem exit code em falha, e travessão em `deploy-nova-conta.ps1`. Registrado também um falso
+  positivo de segurança que quase virou alarme, o 200 em `/platform-data-real.js` que é
+  fallback de página única do Worker, não overlay servido. Detalhe nas seções "Publicação do
+  demo", "Dois P0 do pre-flight" e "Falso positivo registrado" acima.
