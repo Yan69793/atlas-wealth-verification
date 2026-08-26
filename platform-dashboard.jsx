@@ -66,11 +66,21 @@ import React from 'react';
     const semDado = r.carteiras.semDado;
     const conc = r.concentracao;
 
-    function Bloco({ titulo, children, aviso }) {
+    function Bloco({ titulo, children, aviso, link }) {
       return (
         <div className="card" style={{ flex: 1, minWidth: 220 }}>
-          <div style={{ fontSize: '0.714rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 8 }}>
-            {titulo}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <div style={{ fontSize: '0.714rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--muted)' }}>
+              {titulo}
+            </div>
+            {link && (
+              <button
+                onClick={link.onClick}
+                style={{ background: 'none', border: 'none', color: 'var(--navy)', cursor: 'pointer', fontSize: '0.714rem', padding: 0 }}
+              >
+                {link.label}
+              </button>
+            )}
           </div>
           {children}
           {aviso && <div style={{ fontSize: '0.714rem', color: 'var(--amber)', marginTop: 8 }}>{aviso}</div>}
@@ -140,15 +150,12 @@ import React from 'react';
 
         {/* 3: custos, concentração, instituições */}
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 12 }}>
-          <Bloco titulo="Custos identificados">
+          <Bloco titulo="Custos identificados" link={{ label: 'Ver detalhamento →', onClick: () => navigate('#/custos') }}>
             <Linha rotulo="Total no mês" valor={fmtCompactBRL(r.custos.total)} />
             <Linha rotulo="Sobre o patrimônio" valor={fmtPct(r.custos.pctPl, 2)} />
-            {r.custos.maiores.slice(0, 3).map(l => (
-              <Linha key={l.code} rotulo={l.code} valor={fmtPct(l.custoPct, 2)} cor="var(--muted)" titulo={l.name} />
-            ))}
           </Bloco>
 
-          <Bloco titulo="Concentração">
+          <Bloco titulo="Concentração" link={{ label: 'Detalhamento (Top 10) →', onClick: () => navigate('#/receitas') }}>
             {conc ? (
               <>
                 <Linha rotulo="Top 5 carteiras" valor={fmtPct(conc.top5Pct, 1)} />
@@ -173,18 +180,7 @@ import React from 'react';
             ))}
           </Bloco>
 
-          <Bloco
-            titulo="Risco e cadastro"
-            aviso={!r.intelApurada ? 'Sinais de risco não apurados neste ambiente. Vazio aqui é falta de apuração, não carteira limpa.' : null}
-          >
-            {r.intelApurada ? (
-              <>
-                <Linha rotulo="Carteiras acesas" valor={String(r.intel.carteirasComSinal)} titulo="Carteiras com pelo menos um sinal do radar ou evento de crédito." />
-                <Linha rotulo="Sinais do radar" valor={r.intel.sinaisRadar + ' (' + r.intel.sinaisRadarAlta + ' alta)'} cor={r.intel.sinaisRadarAlta > 0 ? 'var(--red)' : undefined} />
-                <Linha rotulo="Eventos de crédito" valor={r.intel.eventosCredito + ' (' + r.intel.eventosCreditoAlta + ' alta)'} cor={r.intel.eventosCreditoAlta > 0 ? 'var(--red)' : undefined} />
-                <Linha rotulo="Sem cobertura de emissor" valor={String(r.intel.carteirasNoEscuro)} cor={r.intel.carteirasNoEscuro > 0 ? 'var(--amber)' : undefined} titulo="Carteiras que o motor de crédito não conseguiu avaliar. Não são carteiras limpas." />
-              </>
-            ) : <div style={{ fontSize: '0.786rem', color: 'var(--muted)' }}>Não apurado.</div>}
+          <Bloco titulo="Pendências" link={{ label: 'Ver em Cadastro & Compliance →', onClick: () => navigate('#/cadastro') }}>
             <Linha
               rotulo={r.pendencias.estimadas ? 'Pendências (estimativa)' : 'Pendências vencidas'}
               valor={(r.pendencias.estimadas ? '~' : '') + r.pendencias.vencidas}
@@ -193,6 +189,9 @@ import React from 'react';
                 ? 'Este ambiente não tem cadastro de compliance carregado. O número é estimativa e não decide prioridade.'
                 : r.pendencias.total + ' pendência(s) em ' + r.pendencias.carteiras + ' carteira(s).'}
             />
+            {!r.pendencias.estimadas && (
+              <Linha rotulo="Carteiras com pendência" valor={String(r.pendencias.carteiras)} />
+            )}
           </Bloco>
         </div>
 
@@ -252,54 +251,6 @@ import React from 'react';
     const n = map[range] || 6;
     const from = Math.max(0, last - n + 1);
     return allM.slice(from, last + 1);
-  }
-
-  /* ============================================================
-     KPI TILES ROW
-  ============================================================ */
-  function KpiRow({ stats, onFilterChange, activeFilter, month }) {
-    const cdi = stats.cdi;
-    return (
-      <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(6, 1fr)' }}>
-        <KPITile
-          label="Carteiras"
-          value={stats.total}
-          sub={fmtMonthLabel(month)}
-          onClick={() => onFilterChange('todos')}
-        />
-        <KPITile
-          label="Liberar"
-          value={stats.liberar}
-          sub={fmtPct(stats.liberar / stats.total, 0) + ' do total'}
-          variant={activeFilter === 'LIBERAR' ? 'navy' : undefined}
-          onClick={() => onFilterChange('LIBERAR')}
-        />
-        <KPITile
-          label="Com Alerta"
-          value={stats.alerta}
-          sub={stats.alerta > 0 ? 'Monitorar' : 'Nenhuma'}
-          variant={stats.alerta > 0 ? 'amber' : undefined}
-          onClick={() => onFilterChange('COM ALERTA')}
-        />
-        <KPITile
-          label="Corrigir"
-          value={stats.corrigir}
-          sub={stats.corrigir > 0 ? 'Bloqueia liberação' : 'Nenhuma'}
-          variant={stats.corrigir > 0 ? 'red' : undefined}
-          onClick={() => onFilterChange('CORRIGIR')}
-        />
-        <KPITile
-          label="PL do Mês"
-          value={fmtCompactBRL(stats.plTotal)}
-          sub={fmtMonthLabel(month)}
-        />
-        <KPITile
-          label="CDI Mês"
-          value={fmtPct(cdi, 3)}
-          sub="Taxa mensal"
-        />
-      </div>
-    );
   }
 
   /* ============================================================
@@ -463,10 +414,16 @@ import React from 'react';
   /* ============================================================
      TABELA DE CARTEIRAS
   ============================================================ */
+  const PORTFOLIO_PREVIEW_CAP = 8;
+
   function PortfolioTable({ rows, sortKey, sortDir, onSort, month }) {
+    const [showAll, setShowAll] = useState(false);
+
     if (!rows.length) {
       return <EmptyState title="Nenhuma carteira encontrada" sub="Ajuste os filtros ou a busca." icon="search" />;
     }
+
+    const displayRows = showAll ? rows : rows.slice(0, PORTFOLIO_PREVIEW_CAP);
 
     function ThSort({ col, label, className }) {
       const active = sortKey === col;
@@ -483,6 +440,7 @@ import React from 'react';
     }
 
     return (
+      <>
       <div className="table-wrap">
         <table>
           <thead>
@@ -500,7 +458,7 @@ import React from 'react';
             </tr>
           </thead>
           <tbody>
-            {rows.map(r => (
+            {displayRows.map(r => (
               <tr
                 key={r.code}
                 className="clickable"
@@ -539,6 +497,18 @@ import React from 'react';
           </tbody>
         </table>
       </div>
+      {rows.length > PORTFOLIO_PREVIEW_CAP && (
+        <button
+          onClick={() => setShowAll(!showAll)}
+          style={{
+            background: 'none', border: 'none', color: 'var(--navy)', cursor: 'pointer',
+            fontSize: '0.714rem', padding: '4px 0', marginTop: 4,
+          }}
+        >
+          {showAll ? 'Mostrar menos' : 'Mostrar todas as carteiras (' + rows.length + ')'}
+        </button>
+      )}
+      </>
     );
   }
 
@@ -549,7 +519,7 @@ import React from 'react';
     IPCA: { label: 'IPCA', color: '#276749', dash: '3 3', get: m => D.getIPCA ? D.getIPCA(m) : 0 },
     IBOV: { label: 'IBOV', color: '#C05621', dash: '2 2', get: m => D.getIBOV ? D.getIBOV(m) : 0 } };
 
-  function PlChart({ range, onRange }) {
+  function PlChart({ range, onRange, month }) {
     const {
       AreaChart, Area, XAxis, YAxis,
       CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -650,6 +620,7 @@ import React from 'react';
         </ResponsiveContainer>
         <div style={{ fontSize: '0.714rem', color: 'var(--muted)', marginTop: 4, textAlign: 'right' }}>
           Variacao % acumulada no periodo selecionado
+          {month && D.CDI[month] != null ? ' · CDI de ' + fmtMonthLabel(month) + ': ' + fmtPct(D.CDI[month], 3) : ''}
         </div>
       </div>
     );
@@ -678,8 +649,6 @@ import React from 'react';
         localStorage.setItem('atlas_platform_v1', JSON.stringify(d));
       } catch {}
     }, [range]);
-
-    const stats = useMemo(() => D.dashboardStats(selectedMonth), [selectedMonth]);
 
     const allRows = useMemo(() => {
       return D.CATALOG.map(p => D.getRow(p.code, selectedMonth)).filter(Boolean);
@@ -730,13 +699,6 @@ import React from 'react';
 
         <ResumoCasa month={selectedMonth} />
 
-        <KpiRow
-          stats={stats}
-          onFilterChange={handleFilterChange}
-          activeFilter={filter}
-          month={selectedMonth}
-        />
-
         <BlockedBanner
           rows={allRows}
           onNavigate={f => setFilter(f)}
@@ -744,7 +706,7 @@ import React from 'react';
 
         <AlertsSection month={selectedMonth} onNavigate={code => navigate('#/carteira/' + code)} />
 
-        <PlChart range={range} onRange={setRange} />
+        <PlChart range={range} onRange={setRange} month={selectedMonth} />
 
         <Toolbar
           filter={filter}

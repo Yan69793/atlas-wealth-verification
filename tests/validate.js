@@ -2378,8 +2378,14 @@ ok('R$ × dias não é formatado como moeda',
   const dashSrc = fs.readFileSync(path.join(ROOT, 'platform-dashboard.jsx'), 'utf8');
   ok('dashboard monta o resumo da casa', /function ResumoCasa\(/.test(dashSrc) && /<ResumoCasa month=\{selectedMonth\} \/>/.test(dashSrc));
   ok('resumo da casa consome AtlasConsolidado', /C\.resumoCasa\(month\)/.test(dashSrc));
-  ok('resumo separa radar de credito, para nao divergir do ranking',
-    /sinaisRadarAlta/.test(dashSrc) && /eventosCreditoAlta/.test(dashSrc));
+  // O card "Risco e cadastro" foi removido em 26/08: duplicava Radar de
+  // Carteiras numa metrica diferente (severidade alta vs qualquer sinal),
+  // exatamente a armadilha "duas telas decidindo o mesmo numero" que este
+  // arquivo ja nomeia acima. resumoCasa() continua calculando os dois
+  // campos separados (platform-consolidado.js, fora do escopo desta
+  // mudanca), so ninguem no Dashboard os le mais.
+  ok('dashboard nao volta a duplicar radar/credito por carteira (ver Radar de Carteiras)',
+    !/sinaisRadarAlta/.test(dashSrc) && !/eventosCreditoAlta/.test(dashSrc));
   ok('resumo declara carteiras sem extrato em vez de escondê-las no agregado',
     dashSrc.includes('sem extrato com patrimônio em'));
 
