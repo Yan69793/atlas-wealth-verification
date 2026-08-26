@@ -1032,6 +1032,41 @@ roteirado, desde que ele esteja na faixa com dado. Em dado real ou importado,
 aterrissa no último mês com dado, que é o mês que o cliente acabou de fechar e
 o único que ele quer ver ao abrir. Storage e roteador só leem.
 
+### Publicação da Fase 2 (2026-08-26)
+
+No ar em `https://demo.multi-assets.com`, versão
+`90b1e63c-590b-4925-a07f-070dbe7b7f57`, Worker `app-verificacao-carteiras-atlas`,
+conta antiga. Roteiro de sempre: `npm test`, `npm run build`,
+`scripts/verify-build.mjs`, dry-run e `scripts/deploy-cf.ps1 -Target worker`.
+Pacote de 6 arquivos, 2 novos enviados. A conta nova segue suspensa e o
+`deploy-nova-conta.ps1` não foi usado.
+
+Conferido no domínio publicado, em navegador de verdade, medindo em vez de
+afirmar:
+
+| | Medido no ar |
+|---|---|
+| Modo | demo |
+| Mês corrente / abertura | 2026-07 / 2026-06 |
+| `landingMonth()` e mês na tela | 2026-06 nos dois |
+| PL de junho | R$ 1,200000 bi |
+| PL de julho | R$ 1,211224 bi |
+| Status de junho | 24 LIBERAR, 12 COM ALERTA, 4 CORRIGIR |
+| Status de julho | 40 LIBERAR |
+| Divergência máxima de julho | 0,000000% |
+| Composição jun → jul | 40 comparadas, 0 mudaram |
+| `#/ranking` | renderiza, 8 carteiras exigindo ação |
+
+Bundle servido com 1.293.776 bytes, byte a byte igual ao local. Overlays
+seguem fora do pacote: `platform-data-real.js`, `platform-cadastro.js` e
+`platform-brand.js` respondem 200 com `text/html` e 4.014 bytes, idênticos a um
+caminho de controle inventado, que é o fallback de página única já registrado
+como falso positivo mais abaixo.
+
+**Instância de cliente não foi afetada.** Ela consome `core/`, que é checkout
+pinado num commit anterior. Nada desta fase chega lá antes de alguém avançar a
+cadeia de gitlink de propósito.
+
 ### Sete notas INFO em julho, deixadas de propósito
 
 Sete carteiras LIBERAR carregam nota INFO de variação acima da faixa
