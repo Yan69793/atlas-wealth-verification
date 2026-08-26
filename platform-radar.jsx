@@ -220,7 +220,8 @@ import React from 'react';
 
   /* Faixa de cobertura da casa. Fica no topo de propósito: e a primeira coisa
      que o leitor precisa saber antes de acreditar em qualquer numero abaixo. */
-  function BannerCobertura({ casa, limiares, porCarteira }) {
+  function BannerCobertura({ casa, limiares, porCarteira, aoVerCobertura }) {
+    const [aberto, setAberto] = useState(false);
     if (!casa) return null;
     const faixa = casa.faixaGlobal;
     const cor = COR_FAIXA[faixa];
@@ -241,30 +242,48 @@ import React from 'react';
         border: '1px solid ' + cor, borderLeft: '4px solid ' + cor, borderRadius: 8,
         padding: '12px 14px', marginBottom: 16, background: 'var(--bg-subtle, #f8fafc)',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+        <button
+          onClick={() => setAberto(!aberto)}
+          aria-expanded={aberto}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+            background: 'none', border: 'none', padding: 0, margin: 0,
+            font: 'inherit', textAlign: 'left', cursor: 'pointer',
+          }}
+        >
           <Icon name="alert" size={16} />
           <strong style={{ fontSize: '0.857rem' }}>{ROTULO_FAIXA[faixa]}</strong>
-          <span style={{ fontSize: '0.786rem', color: 'var(--muted)' }}>{texto}</span>
-        </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          {casa.atributos.map((a) => (
-            <Pill key={a.atributo} cor={COR_FAIXA[a.faixa]}>
-              {ROTULO_ATRIBUTO[a.atributo] || a.atributo} {fmtPct(a.fracao, 0)}
-            </Pill>
-          ))}
-        </div>
-        {abaixo.length > 0 && (
-          <div style={{ fontSize: '0.786rem', marginTop: 8, color: COR_FAIXA.ressalva }}>
-            {abaixo.length === 1 ? '1 carteira nao tem' : abaixo.length + ' carteiras nao tem'} classificacao
-            suficiente e o motor cala sobre parte delas: {abaixo.map((c) => c.carteira).join(', ')}.
-            Veja a aba Cobertura.
-          </div>
-        )}
-        {limiares && (
-          <div style={{ fontSize: '0.714rem', color: 'var(--muted)', marginTop: 8 }}>
-            Afirma a partir de {fmtPct(limiares.coberturaAfirmaMin, 0)} do patrimonio classificado;
-            entre {fmtPct(limiares.coberturaRessalvaMin, 0)} e {fmtPct(limiares.coberturaAfirmaMin, 0)} afirma com ressalva;
-            abaixo de {fmtPct(limiares.coberturaRessalvaMin, 0)} nao conclui.
+          <span style={{ fontSize: '0.786rem', color: 'var(--muted)', flex: 1 }}>{texto}</span>
+          <Icon name="chevronRight" size={14} style={{ transform: aberto ? 'rotate(90deg)' : 'none', flexShrink: 0 }} />
+        </button>
+        {aberto && (
+          <div style={{ marginTop: 8 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {casa.atributos.map((a) => (
+                <Pill key={a.atributo} cor={COR_FAIXA[a.faixa]}>
+                  {ROTULO_ATRIBUTO[a.atributo] || a.atributo} {fmtPct(a.fracao, 0)}
+                </Pill>
+              ))}
+            </div>
+            {abaixo.length > 0 && (
+              <div style={{ fontSize: '0.786rem', marginTop: 8, color: COR_FAIXA.ressalva }}>
+                {abaixo.length === 1 ? '1 carteira nao tem' : abaixo.length + ' carteiras nao tem'} classificacao
+                suficiente e o motor cala sobre parte delas: {abaixo.map((c) => c.carteira).join(', ')}.{' '}
+                <button
+                  onClick={(e) => { e.stopPropagation(); aoVerCobertura && aoVerCobertura(); }}
+                  style={{ background: 'none', border: 'none', padding: 0, color: 'var(--navy)', textDecoration: 'underline', cursor: 'pointer', font: 'inherit' }}
+                >
+                  Veja a aba Cobertura.
+                </button>
+              </div>
+            )}
+            {limiares && (
+              <div style={{ fontSize: '0.714rem', color: 'var(--muted)', marginTop: 8 }}>
+                Afirma a partir de {fmtPct(limiares.coberturaAfirmaMin, 0)} do patrimonio classificado;
+                entre {fmtPct(limiares.coberturaRessalvaMin, 0)} e {fmtPct(limiares.coberturaAfirmaMin, 0)} afirma com ressalva;
+                abaixo de {fmtPct(limiares.coberturaRessalvaMin, 0)} nao conclui.
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -390,7 +409,7 @@ import React from 'react';
           </div>
         </div>
 
-        <BannerCobertura casa={DATA.coberturaCasa} limiares={DATA.limiares} porCarteira={DATA.cobertura} />
+        <BannerCobertura casa={DATA.coberturaCasa} limiares={DATA.limiares} porCarteira={DATA.cobertura} aoVerCobertura={() => setAba('cobertura')} />
 
         <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
           <KPITile
