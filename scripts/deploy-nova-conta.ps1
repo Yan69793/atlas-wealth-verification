@@ -1,4 +1,4 @@
-# deploy-nova-conta.ps1 — publica o demo na conta Cloudflare nova do ATLAS.
+# deploy-nova-conta.ps1, publica o demo na conta Cloudflare nova do ATLAS.
 #
 # Usa o mesmo pacote e as mesmas travas do deploy normal (build-deploy.mjs +
 # lista de proibidos), mas publica com demo-worker/wrangler.nova-conta.toml,
