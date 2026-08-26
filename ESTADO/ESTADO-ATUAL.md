@@ -194,10 +194,11 @@ O que o levantamento estabeleceu, e vale contra a leitura otimista de que "já e
   são globais e fixos, dois escritórios ingerindo sobrescrevem o mesmo arquivo. Categórico.
 - **Nada chama esse backend.** O app React não faz rede, e `tests/validate.js` proíbe
   ativamente rede em sete páginas. O único `fetch` para ele está em `deploy_cf/app.jsx`,
-  casca anterior à migração Vite, sem header de autorização, duplamente quebrada. As telas
-  `platform-usuarios.jsx` e `platform-cadastro.jsx` são maquete em localStorage, com papéis
-  que nem correspondem aos do backend, e a segunda não é cadastro de usuário, é pendência
-  cadastral de compliance de carteira.
+  casca anterior à migração Vite, sem header de autorização, duplamente quebrada.
+  `platform-cadastro.jsx` não é cadastro de usuário, é pendência cadastral de compliance de
+  carteira. `platform-usuarios.jsx` era maquete em localStorage com papéis que não
+  correspondiam aos do backend, **fechada em 2026-08-26**, ver a seção "Tela de Usuários"
+  abaixo.
 - **Cobertura de teste zero.** Nenhum dos 17 arquivos de teste do motor menciona server,
   auth, jwt, token, login, papel ou limite de taxa. O portão compila esse código e nunca o
   executa.
@@ -1213,6 +1214,36 @@ está fora do escopo pedido e o roteiro da conta nova está suspenso, proibido
 de rodar. Se a separação de conta reabrir, essa lista precisa ser fechada
 antes de qualquer publicação por ali.
 
+## Tela de Usuários, aviso honesto (2026-08-26)
+
+`platform-usuarios.jsx` era maquete: lista e formulário gravando usuário falso no
+`localStorage` do navegador, admin fixo sem e-mail, papéis que não correspondiam a nada
+real. A arquitetura já tinha decidido em 17/ago que a identidade fica no Cloudflare Access,
+na frente do Worker, e fechado a hipótese de reviver o backend Node para isso. Uma tela que
+finge gerenciar usuário sem gerenciar nada é a mesma classe de defeito que a correção de
+agosto já tratou uma vez, tela que parece funcionar e engana, e ficava no caminho do
+prospect porque o link de menu "Usuários" é sempre visível.
+
+Decisão do dono: tirar a maquete do ar, sem construir superfície nova. A tela virou um
+aviso estático dizendo que o acesso é controlado pelo Cloudflare Access, que liberar ou
+remover pessoa é tarefa do administrador da conta, e que esta tela não gerencia usuário.
+Zero infra nova, zero token novo. `.usuarios-grid` em `platform-styles.css` saiu junto, CSS
+morto do mesmo layout que a maquete usava.
+
+`tests/validate.js` não tinha nenhuma asserção sobre o conteúdo da maquete (só os dois
+checks genéricos de import que todo `platform-*.jsx` tem), então nenhum teste mudou. Portão
+antes e depois: 728/728.
+
+**Gestão de usuário por cliente de verdade continua pendente**, e não é mais problema de
+tela mentirosa: é decisão de modelo de delegação de acesso no Cloudflare Access (quem
+administra o quê, por cliente), sem dono de decisão marcado ainda. Ver o item 1 da lista de
+pendências, abaixo.
+
+Escopo desta mudança foi só o produto (demo público). A instância do cliente tem a mesma
+maquete numa cópia própria dentro de `verificacao-carteiras/core/`, alcançada pela cadeia de
+gitlink. Levar a correção até lá é passo separado, mesmo ritual de duas etapas da Fase 2, não
+feito nesta rodada.
+
 ## Pendências, ordenadas por prioridade acordada com o dono em 17/ago
 
 1. **Distância entre protótipo e produto vendável — decisão de arquitetura tomada em
@@ -1222,8 +1253,10 @@ antes de qualquer publicação por ali.
    D1 ou Durable Object por cliente) quando o 2º cliente assinar. Instância física vira
    tier premium de venda, não padrão operacional. **Executado em 21/08:** `tenantId` no
    modelo de dados do motor (snapshot, ingestion, events, reconciliação, fila de exceção),
-   com default `default`, compat com artefato antigo e teste que pega regressão. Falta
-   gestão de usuário por cliente, que é o próximo passo concreto da pendência.
+   com default `default`, compat com artefato antigo e teste que pega regressão. O próximo
+   passo concreto **não é mais tela de app** (a maquete `platform-usuarios.jsx` foi fechada
+   em 26/08, ver a seção "Tela de Usuários" abaixo): é decisão de modelo de delegação de
+   acesso no Cloudflare Access, quem administra o quê por cliente, ainda sem dono marcado.
 2. ~~**Corrigir as cinco fases de agosto.**~~ **Fechada em 17/ago.** Os doze defeitos
    bloqueantes e os seis não bloqueantes foram corrigidos nas Ondas 0 a 5, cada um com o teste
    que pegaria o defeito de volta. Sobrou uma decisão do dono, o teto de `diasParado`, na
@@ -1449,3 +1482,12 @@ e é o que impede a próxima pessoa de repetir.
   728/728 checks, 278/278 testes. Worker `atlas-instancia` recebeu deploy autorizado pelo
   dono, versão `32ee81a0-4a90-44e0-a7a8-43936ab0ea29`, confirmado por fora (Access intacto,
   `workers.dev` seguindo fora do ar). Ver a tabela "Cadeia de gitlink" no topo deste arquivo.
+- **2026-08-26, tela de Usuários vira aviso honesto.** `platform-usuarios.jsx` deixou de ser
+  maquete em localStorage e virou aviso estático de que o acesso é controlado pelo Cloudflare
+  Access. Decisão do dono, entre três opções levantadas: sem infra nova, sem token novo,
+  só tirar a mentira do ar. `.usuarios-grid` saiu de `platform-styles.css` junto, CSS morto do
+  mesmo layout. Nenhum teste mudou, `tests/validate.js` não tinha asserção sobre o conteúdo da
+  maquete. Gestão de usuário por cliente de verdade fica pendente, reclassificada de "tela de
+  app" para "decisão de modelo de delegação no Access", sem dono de decisão ainda. Escopo só o
+  produto, a instância do cliente tem a mesma maquete numa cópia própria, fica para outra
+  passada. Ver a seção "Tela de Usuários" acima.

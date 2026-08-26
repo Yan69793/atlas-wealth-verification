@@ -628,14 +628,6 @@ input, select, textarea {
   box-shadow: 0 0 0 3px rgba(5,48,95,0.08);
 }
 
-/* Layout da página de usuários (lista + painel) — colapsa no mobile via @media */
-.usuarios-grid {
-  display: grid;
-  grid-template-columns: 1fr 360px;
-  gap: 24px;
-  align-items: start;
-}
-
 /* Search input */
 .search-wrap {
   position: relative;
@@ -1469,9 +1461,6 @@ th.sort-asc .th-sort-icon, th.sort-desc .th-sort-icon { opacity: 1; }
   .table-wrap table { font-size: 0.8rem; }
   .table-wrap thead th,
   .table-wrap tbody td { padding: 8px 10px; }
-
-  /* Grid de usuários colapsa para 1 coluna */
-  .usuarios-grid { grid-template-columns: 1fr !important; gap: 16px; }
 
 }
 
