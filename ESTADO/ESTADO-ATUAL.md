@@ -1,6 +1,6 @@
 # ESTADO ATUAL do ATLAS
 
-**Data-base: 2026-08-24.** Colhido rodando os comandos, não de memória.
+**Data-base: 2026-08-26.** Colhido rodando os comandos, não de memória.
 
 Fonte única do estado do projeto. Se outro arquivo divergir deste, este ganha. Se você chegou
 sem contexto, leia [[LEIA-PRIMEIRO]] primeiro. Para achar coisa, [[MAPA]].
@@ -11,15 +11,23 @@ aqui, trate este arquivo como suspeito e rode o refresh do fim da página.
 ## Portão de verificação, medido hoje
 
 ```
-602/602 checks OK — todos os checks passaram
+659/659 checks OK — todos os checks passaram
 ℹ tests 278   ℹ suites 73   ℹ pass 278   ℹ fail 0   ℹ skipped 0
 ```
 
-Medido em 2026-08-24, depois das Entregas A, B, B.1, B.2 e B.3 da camada de
-inteligência. Antes delas era 469/469 checks e 143 testes. A crescida: A somou
-51 checks e 63 testes, B mais 60 checks e 37 testes, B.2 mais 22 checks e 35
-testes. B.1 (calibração, sem código) e B.3 (aplicação dos limiares calibrados)
-não mudam a contagem: reajustam valor dentro de teste e fixture já existentes.
+Medido em 2026-08-26, depois da camada de exploração e decisão (ranking de
+criticidade, resumo da casa, rastreador de ativos, comparador por carteira,
+histórico de verificação). 602 para 659 checks, os 57 novos travando as
+regras da Entrega, ver a seção logo abaixo. Testes do app continuam 278: a
+camada nova é coberta pela suíte estática (`tests/validate.js`), não pela
+suíte do motor.
+
+Antes da camada de exploração era 602/602, depois das Entregas A, B, B.1,
+B.2 e B.3 da camada de inteligência. Antes delas era 469/469 checks e 143
+testes. A crescida: A somou 51 checks e 63 testes, B mais 60 checks e 37
+testes, B.2 mais 22 checks e 35 testes. B.1 (calibração, sem código) e B.3
+(aplicação dos limiares calibrados) não mudam a contagem: reajustam valor
+dentro de teste e fixture já existentes.
 
 A contagem de testes desceu de 131 para 129 de propósito: o corte de 90 dias no caixa parado
 substituiu cinco testes do contrato antigo por três do contrato novo. Os checks subiram de 460
@@ -728,6 +736,144 @@ conferida a mao antes de editar, nao por tentativa e erro.
 Mesma contagem de antes: este passe muda valor dentro de teste e fixture
 existentes, nao adiciona nem remove `it()` nem check.
 
+## Camada de exploração e decisão, P0/P1 (2026-08-26)
+
+Pedido do dono: trazer os padrões de exploração de referência de mercado
+(ranking, comparador, rastreador transversal de ativo) sem transformar o
+ATLAS em portal de investimento. Fluxo alvo: Cliente → Carteira → Problema →
+Ativo → Divergência → Fonte → Ação. Planejado em modo de planejamento,
+validado por revisão independente antes de codificar
+(`docs/validacao-plano-p0-p1.md`), construído e testado num worktree
+separado (`ATLAS-sandbox/`, branch `feat/exploracao-p0-p1`) antes de portar
+para o principal. O worktree segue de pé, sem commit próprio: é ambiente de
+trabalho, não histórico paralelo.
+
+### O que entrou
+
+- **`platform-consolidado.js`** (`window.AtlasConsolidado`), módulo novo e
+  fonte única de decisão cruzada. Ranking, resumo da casa, rastreador,
+  comparador e histórico leem daqui, nenhum recalcula por conta própria.
+  Carregado depois dos overlays de radar/crédito (lê os dois) e antes das
+  páginas, em `src/main.jsx`.
+- **Ranking de Criticidade** (`platform-ranking.jsx`, rota `#/ranking`, item
+  novo no menu Painel). Ordena por fato observável, lexicográfico, nunca por
+  soma ponderada: status, depois divergência em R$, depois achado
+  bloqueante, depois risco alto, depois pendência, depois custo. Seis
+  critérios alternativos. Sem nota de 0 a 100 de propósito, decisão
+  registrada: já existe uma escala dessas em `score.ts` do motor onde 100 é
+  BOM, uma segunda com o mesmo nome diria o oposto.
+- **Resumo da casa no Dashboard** (`ResumoCasa` em `platform-dashboard.jsx`).
+  Responde na ordem pedida: patrimônio apurado, corte
+  liberado/alerta/bloqueado, divergência material, custos, concentração,
+  instituições, risco e cadastro, "onde agir" com link. Consome o mesmo
+  `resumoCasa()` que o ranking usa, para as duas telas não divergirem sobre
+  quantas carteiras exigem ação.
+- **Rastreador de Ativos** (`platform-busca.jsx`, mesma rota `#/busca`,
+  substitui a busca antiga). Um papel, todas as carteiras expostas, peso na
+  carteira e na casa, variação contra o mês anterior, e a situação de
+  verificação de cada carteira exposta.
+- **Comparador por carteira** (`ComparativoCarteira` em
+  `platform-comparativo.jsx`). Modo novo dentro do Comparativo existente,
+  posição a posição entre dois meses, mais o painel fonte A (extrato
+  mensal) contra fonte B (posição diária do radar). Aceita
+  `#/comparativo?carteira=CODE`, destino do atalho do ranking.
+- **Histórico de verificação por carteira** (aba Histórico em
+  `platform-carteira.jsx`). Ganhou status de verificação, divergência e
+  custo mês a mês, além do que já tinha (patrimônio, rentabilidade,
+  drawdown). Mês sem extrato aparece na tabela como tal, não desaparece nem
+  vira zero na conta de retorno.
+- **`getRow` em `platform-data.js`** ganhou `plEsperado`, `divergenciaBRL`,
+  `divergenciaAbsBRL`. É a conta que já existia dentro de `continuidade`
+  (regra R1), agora exposta em reais: fração não se soma entre carteiras
+  nem prioriza por materialidade.
+- **`intelDaCarteira` em `platform-carteira.jsx`** deixou de ler os overlays
+  por conta própria e passou a delegar para o consolidado, mesmo padrão de
+  fonte única.
+
+### Quatro correções exigidas pela revisão antes de portar
+
+Revisão independente (`docs/validacao-plano-p0-p1.md`) aprovou o plano com
+quatro exigências, todas fechadas antes do porto para o principal:
+
+1. **Porta de entrada.** Os dois arquivos novos entraram na ordem de import
+   de `src/main.jsx`, na rota e no menu de `platform-app.jsx`, e ganharam
+   55 checks novos em `tests/validate.js` (seção 30) travando cada promessa
+   do plano. Sem isso o módulo passaria no portão sem nunca ser executado.
+2. **Comparação com mês sem dado.** `compararCarteira` devolve
+   `disponivel: false` com o motivo quando falta extrato de um dos dois
+   lados, nunca fabrica entrada/saída de posição.
+3. **Carteira criada depois do mês.** `rankingCarteiras` e
+   `historicoVerificacao` filtram por `inception`: carteira que ainda não
+   existia no mês não conta como "sem dado".
+4. **Atalho para tela que ignora o parâmetro.** `Comparativo` passou a
+   aceitar `?carteira=CODE` antes do atalho do ranking existir.
+
+### Dois defeitos achados durante a construção, corrigidos no caminho
+
+- **Resíduo de ponto flutuante decidindo posição.** A divergência em reais
+  não era arredondada, então centavos de resíduo bagunçavam a ordem de
+  carteiras que a tela mostra como "sem divergência", e o histórico chegou
+  a escrever "-R$ 0,00". Motivo: duas contas separadas para o mesmo número,
+  uma no ranking e outra no histórico. Unificadas em `divergenciaDe()`
+  dentro do consolidado, arredondada a centavo, único lugar que decide.
+- **Rótulo de cliente imprimindo "demo".** `clienteAtual()` lia o
+  `tenantId` do overlay e imprimia como nome de casa. Em ambiente de
+  demonstração esse campo vale literalmente `"demo"`, que é rótulo de
+  ambiente, não identidade de cliente. Corrigido para só assinar quando há
+  marca declarada (`window.AtlasBrand.tenant`) ou tenant real diferente de
+  `default`/`demo`.
+
+### Duas decisões de produto tomadas nesta entrega
+
+1. **Pendência cadastral sintética, marcada, não corrigida de raiz.**
+   `AtlasData.registration()` gera pendências por sorteio determinístico e
+   o carregamento de dado real não a substitui — mesmo defeito de fundo que
+   a Onda 1 corrigiu em agosto, reaberto por uma porta nova. Solução
+   aplicada, a mais rápida das três que a revisão levantou: fora do modo
+   demonstração a pendência sai marcada como estimativa (til no número,
+   itálico na tela, faixa de aviso, origem declarada no CSV) e **não entra
+   na ordenação de criticidade**. Overlay real (`window.ATLAS_CADASTRO_DATA`)
+   ainda não existe; no dia em que existir, a marca cai sozinha.
+2. **Comparação de fontes sem veredito.** A primeira versão classificava
+   "aderente" quando o desvio entre extrato mensal e posição diária ficava
+   dentro de 0,30%, reusando a tolerância de continuidade (regra R1). Essa
+   régua mede um mês contra o anterior na MESMA fonte; aplicá-la a duas
+   fontes apuradas em datas diferentes por desenho produziria veredito sem
+   medição. `fontesDaCarteira` agora devolve o delta, as duas datas de
+   apuração e os dias de distância entre elas, com a conclusão declarada
+   como `sem-regua-calibrada` em vez de inventar "aderente" ou
+   "divergência".
+
+### Rastro de verificação
+
+Construído e testado no worktree `ATLAS-sandbox/` (mesmo repositório,
+branch `feat/exploracao-p0-p1`) antes de tocar o principal, para não
+sobrescrever trabalho em andamento. Rota `#/ranking` e `#/dashboard`
+abertas em navegador real contra o servidor de desenvolvimento (rede
+confirmando os dois arquivos novos em `200 OK` na ordem certa, texto
+renderizado conferido) — primeiro no sandbox, depois repetido no ambiente
+de demonstração do principal (`atlas-vite-dev`) depois do porto, condição
+de aceite da revisão. Porto conferido arquivo por arquivo, diff vazio entre
+sandbox e principal nos 11 arquivos versionados antes de commitar.
+
+### Pendências abertas desta camada
+
+1. **Publicação ainda não verificada.** A prova de rota rodou contra o
+   servidor de desenvolvimento local (demo local), não contra o ambiente
+   publicado (Cloudflare). Antes de publicar, repetir a verificação em
+   navegador contra o domínio publicado, mesma condição de aceite da
+   revisão, desta vez no ambiente real.
+2. **Sem overlay real de cadastro.** Enquanto `window.ATLAS_CADASTRO_DATA`
+   não existir, pendência cadastral em instância de cliente sai sempre
+   marcada como estimativa e fora da ordenação. Ver decisão 1 acima.
+3. **`fmtCompactBRL` sem `maximumFractionDigits`** era defeito preexistente
+   em `platform-utils.jsx`, achado pelo rastreador (primeira tela a exibir
+   delta de posição pequeno o bastante para cair no ramo abaixo de mil).
+   Corrigido de passagem, fora do escopo original do plano.
+4. **Nenhum limiar novo.** A tolerância de materialidade (0,30%) e a régua
+   de criticidade reusam o que o motor já tinha. Nada aqui precisa de
+   calibração do dono.
+
 ## Pendências, ordenadas por prioridade acordada com o dono em 17/ago
 
 1. **Distância entre protótipo e produto vendável — decisão de arquitetura tomada em
@@ -900,3 +1046,12 @@ e é o que impede a próxima pessoa de repetir.
   `.gitignore` da instância conferido antes, nada entrou no git). Push dos três repos
   executado, hashes conferidos no remoto. Pesquisa de arquitetura multi-cliente
   (tendências 2025-2026 + análise do sistema) entregue para decisão da pendência 1.
+- **2026-08-26, camada de exploração e decisão.** Ranking de Criticidade, resumo da casa no
+  Dashboard, Rastreador de Ativos, comparador por carteira e histórico de verificação por
+  carteira, todos sobre `platform-consolidado.js` (`window.AtlasConsolidado`), fonte única de
+  decisão cruzada. Construído e testado em worktree separado (`ATLAS-sandbox/`, branch
+  `feat/exploracao-p0-p1`) antes de portar, revisado de forma independente antes de codificar
+  e antes de portar. Duas correções de defeito achadas no caminho: resíduo de ponto flutuante
+  decidindo posição de carteira sem aparecer na tela (unificado em `divergenciaDe()`), e
+  rótulo de cliente imprimindo `"demo"` como se fosse nome de casa. 602 → 659 checks, 278
+  testes do app inalterados. Ver a seção "Camada de exploração e decisão, P0/P1" acima.

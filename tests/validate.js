@@ -180,7 +180,11 @@ const CONTRATO = [
   'platform-receita-drop-demo.js',
   'platform-radar-demo.js',
   'platform-credito-demo.js',
+  // Camada de decisão cruzada: depois dos overlays porque os lê, antes das
+  // páginas porque todas elas leem dela.
+  'platform-consolidado.js',
   'platform-utils.jsx',
+  'platform-ranking.jsx',
   'platform-dashboard.jsx',
   'platform-carteira.jsx',
   'platform-report.jsx',
@@ -2103,8 +2107,17 @@ ok('R$ × dias não é formatado como moeda',
   // topo da pagina vem do extrato MENSAL e a aba vem da posicao DIARIA.
   const cartPage = fs.readFileSync(path.join(ROOT, 'platform-carteira.jsx'), 'utf8');
   ok('carteira tem aba de inteligencia', cartPage.includes("key: 'inteligencia'"));
-  ok('aba de inteligencia le os overlays do radar e do credito',
-    cartPage.includes('window.ATLAS_RADAR_DATA') && cartPage.includes('window.ATLAS_CREDITO_DATA'));
+  // A leitura dos dois overlays saiu daqui e virou fonte única em
+  // AtlasConsolidado. O check antigo procurava os nomes dos overlays no arquivo
+  // da carteira, e passaria só por eles aparecerem num comentário. Agora exige
+  // a delegação, e a leitura de verdade é cobrada no módulo (secao 30).
+  ok('aba de inteligencia delega a leitura dos overlays ao consolidado',
+    /intelDaCarteira\s*\(\s*code\s*\)\s*\{\s*return\s+window\.AtlasConsolidado\.intelDaCarteira/.test(cartPage));
+  ok('carteira nao le os overlays por conta propria fora de comentario',
+    !cartPage.split('\n')
+      .filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l))
+      .join('\n')
+      .match(/window\.ATLAS_(RADAR|CREDITO)_DATA/));
   ok('aba de inteligencia declara o periodo apurado, para os dois PL nao parecerem erro',
     cartPage.includes('extrato mensal') && cartPage.includes('posição diária'));
   ok('aba de inteligencia avisa quando a carteira esta no escuro para credito',
@@ -2113,6 +2126,169 @@ ok('R$ × dias não é formatado como moeda',
     !/fetch\s*\(|XMLHttpRequest|sendBeacon|WebSocket|EventSource/.test(cartPage));
   ok('aba de inteligencia traduz o tipo do evento, sem nome de enum na tela',
     cartPage.includes('ROTULO_EVENTO_INTEL'));
+}
+
+// ─── 30. Camada de exploração e decisão (ranking, resumo, rastreador) ───────
+//
+// O que estes checks existem para impedir, cada um com o defeito concreto que
+// já apareceu na revisão desta camada:
+//
+//  - módulo construído e não ligado no bundle: passa no portão por nunca ser
+//    executado, e o usuário não vê nada;
+//  - segunda escala de 0 a 100 competindo com a do motor, onde 100 é BOM;
+//  - ausência de dado exibida como aprovação;
+//  - pendência cadastral sintética apresentada como fato fora do demo;
+//  - comparação entre meses fabricando entrada e saída quando falta um lado;
+//  - veredito de aderência entre fontes com régua de outro conceito;
+//  - atalho que abre uma tela que ignora o parâmetro.
+
+{
+  const consPath = path.join(ROOT, 'platform-consolidado.js');
+  ok('platform-consolidado.js existe', fs.existsSync(consPath));
+  const cons = fs.existsSync(consPath) ? fs.readFileSync(consPath, 'utf8') : '';
+  const consCodigo = cons.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+
+  ok('consolidado expoe window.AtlasConsolidado', cons.includes('window.AtlasConsolidado = {'));
+  ok('consolidado le os dois overlays de inteligencia',
+    consCodigo.includes('window.ATLAS_RADAR_DATA') && consCodigo.includes('window.ATLAS_CREDITO_DATA'));
+
+  // Nenhuma escala nova de 0 a 100. A ordem é lexicográfica sobre fato.
+  ok('consolidado nao cria escala 0 a 100 concorrente com score.ts',
+    !/\b(score|nota|pontuacao|pontuação)\s*[:=]\s*\d/i.test(consCodigo));
+  ok('criticidade e ordem lexicografica, nao soma ponderada',
+    /pesoStatus - a\.pesoStatus\)?\s*\|\|/.test(consCodigo.replace(/\s+/g, ' ')));
+
+  // Ausência de dado nunca é aprovação, e fica acima de COM ALERTA na ordem.
+  ok('SEM DADO existe como status proprio', consCodigo.includes("'SEM DADO'"));
+  ok('SEM DADO pesa mais que COM ALERTA e menos que CORRIGIR',
+    /'CORRIGIR':\s*4[\s\S]{0,40}'SEM DADO':\s*3[\s\S]{0,40}'COM ALERTA':\s*2/.test(consCodigo));
+
+  // A tolerância de materialidade é a mesma régua da regra R1, não uma nova.
+  ok('materialidade reusa a tolerancia de continuidade (0,003)',
+    /MATERIALIDADE_PCT\s*=\s*0\.003/.test(consCodigo));
+  const dataR1 = dataContent.match(/tolerance:\s*0\.003/);
+  ok('a tolerancia de 0,003 existe mesmo em computeAuditTrail (regra R1)', !!dataR1);
+
+  // getRow expõe a conta em reais, que é o que ordena o ranking.
+  ok('getRow expoe plEsperado e divergenciaBRL',
+    dataContent.includes('plEsperado: expected') && dataContent.includes('divergenciaBRL: plCurr - expected'));
+
+  // Um lugar só decide a divergência em reais.
+  ok('divergencia em reais tem funcao unica e arredonda a centavo',
+    /function divergenciaDe\(row\)/.test(consCodigo) && /Math\.round\(num\(row\.divergenciaBRL\) \* 100\) \/ 100/.test(consCodigo));
+  ok('historico e criticidade usam a mesma funcao de divergencia',
+    (consCodigo.match(/divergenciaDe\(row\)/g) || []).length >= 2);
+
+  // Pendência cadastral: sintética fora do demo sai marcada e não ordena.
+  ok('pendencia declara origem e marca estimativa fora do demo',
+    /function pendenciasOrigem\(\)/.test(consCodigo) && /estimadas:\s*modo\s*!==\s*'demo'/.test(consCodigo));
+  ok('pendencia estimada nao entra na ordem de criticidade',
+    /pendOrdenavel:\s*pendEstimadas\s*\?\s*0/.test(consCodigo)
+    && /pendVencidasOrdenavel:\s*pendEstimadas\s*\?\s*0/.test(consCodigo)
+    && /b\.pendVencidasOrdenavel - a\.pendVencidasOrdenavel/.test(consCodigo));
+  ok('registration() do demo continua sintetica, o que justifica a marca',
+    /function getRegistration\(\)/.test(dataContent) && /subRng\('registration/.test(dataContent));
+
+  // Carteira que ainda não existia no mês não é "sem dado".
+  ok('ranking respeita a data de criacao da carteira',
+    /!p\.inception \|\| p\.inception <= month/.test(consCodigo));
+  ok('historico respeita a data de criacao da carteira',
+    /m >= inception && m <= limite/.test(consCodigo));
+
+  // Comparação: um lado sem extrato anula o resultado, não vira movimento.
+  ok('comparacao com um mes sem dado fica indisponivel',
+    /var semBase = a\.semDado \|\| b\.semDado;/.test(consCodigo)
+    && /disponivel: !semBase/.test(consCodigo)
+    && /motivo: semBase \? 'sem-dado-em-um-dos-meses'/.test(consCodigo));
+  ok('comparacao indisponivel nao devolve entrada nem saida de posicao',
+    /entradas: semBase \? \[\]/.test(consCodigo)
+    && /saidas: semBase \? \[\]/.test(consCodigo)
+    && /posicoes: semBase \? \[\]/.test(consCodigo));
+
+  // Fonte A x fonte B: sem veredito, com as duas datas.
+  ok('fontes nao concluem aderencia com a regua de continuidade',
+    !/'aderente'/.test(consCodigo));
+  ok('fontes declaram que falta regua calibrada',
+    /'sem-regua-calibrada'/.test(consCodigo));
+  ok('fontes declaram as duas datas de apuracao',
+    /apuradoEm: month/.test(consCodigo) && /apuradoEm: R\.data/.test(consCodigo)
+    && /diasEntreApuracoes/.test(consCodigo));
+  ok('sem arquivo de posicao a resposta e nao verificavel, nunca conferido',
+    /'nao-verificavel'/.test(consCodigo) && /'sem-arquivo-de-posicao'/.test(consCodigo));
+
+  // "Não sei" e "sem exposição" continuam sendo respostas diferentes.
+  ok('carteira sem cobertura de emissor e marcada, nao dada como limpa',
+    /noEscuro/.test(consCodigo) && /naoAvaliaveis/.test(consCodigo));
+  ok('inteligencia ausente e declarada como nao apurada',
+    /function intelDisponivel\(\)/.test(consCodigo));
+
+  // Ação: o ranking deposita na fila que já existe, com id que não vira órfã.
+  ok('acao usa o contrato de entrada da fila existente',
+    /#\/oportunidades\?nova=1/.test(consCodigo) && /&opid=/.test(consCodigo) && /&origem=achado/.test(consCodigo));
+  ok('id da acao e deterministico e nasce reconhecido pela fila (prefixo op-)',
+    /'op-' \+ linha\.code \+ '-' \+ linha\.month \+ '-verificacao-'/.test(consCodigo));
+  const utilsSrc = fs.readFileSync(path.join(ROOT, 'platform-utils.jsx'), 'utf8');
+  ok('a fila realmente trata id sem prefixo op- como orfa, o que justifica o formato',
+    /function criadaNaTela\(id\)/.test(utilsSrc) && /indexOf\('op-'\) === 0/.test(utilsSrc));
+
+  // Página do ranking: existe, está registrada e não faz rede.
+  const rankPath = path.join(ROOT, 'platform-ranking.jsx');
+  ok('platform-ranking.jsx existe', fs.existsSync(rankPath));
+  const rank = fs.existsSync(rankPath) ? fs.readFileSync(rankPath, 'utf8') : '';
+  ok('AtlasPages.Ranking registrado', rank.includes('AtlasPages.Ranking'));
+  ok('rota /ranking em platform-app.jsx', /['"]\/ranking['"]/.test(appContent));
+  ok('navegacao contem o ranking', /label:\s*['"]Ranking de Criticidade['"]/.test(appContent));
+  ok('ranking nao usa primitiva de rede',
+    !/fetch\s*\(|XMLHttpRequest|sendBeacon|WebSocket|EventSource/.test(rank));
+  ok('ranking nao recalcula: consome o consolidado',
+    rank.includes('window.AtlasConsolidado') && !/AtlasData\.getRow\s*\(/.test(rank));
+  ok('ranking tem estado vazio, carregando e erro',
+    /fase: 'carregando'/.test(rank) && /fase: 'erro'/.test(rank) && /EmptyState/.test(rank));
+  ok('ranking mostra a conta que gerou a divergencia',
+    rank.includes('PL reportado') && rank.includes('PL esperado'));
+  ok('ranking carimba pendencia estimada na tela',
+    /pendenciasEstimadas/.test(rank) && rank.includes('Estimativa.'));
+
+  // Dashboard: o resumo da casa vem do consolidado e responde na ordem certa.
+  const dashSrc = fs.readFileSync(path.join(ROOT, 'platform-dashboard.jsx'), 'utf8');
+  ok('dashboard monta o resumo da casa', /function ResumoCasa\(/.test(dashSrc) && /<ResumoCasa month=\{selectedMonth\} \/>/.test(dashSrc));
+  ok('resumo da casa consome AtlasConsolidado', /C\.resumoCasa\(month\)/.test(dashSrc));
+  ok('resumo separa radar de credito, para nao divergir do ranking',
+    /sinaisRadarAlta/.test(dashSrc) && /eventosCreditoAlta/.test(dashSrc));
+  ok('resumo declara carteiras sem extrato em vez de escondê-las no agregado',
+    dashSrc.includes('sem extrato com patrimônio em'));
+
+  // Rastreador de ativos.
+  const buscaSrc = fs.readFileSync(path.join(ROOT, 'platform-busca.jsx'), 'utf8');
+  ok('rastreador consome AtlasConsolidado', /C\.rastrearAtivo\(termo, month\)/.test(buscaSrc));
+  ok('rastreador distingue sem base de posicao nova',
+    buscaSrc.includes('sem base') && /c\.entrou/.test(buscaSrc));
+  ok('rastreador nao usa primitiva de rede',
+    !/fetch\s*\(|XMLHttpRequest|sendBeacon|WebSocket|EventSource/.test(buscaSrc));
+
+  // Comparador por carteira e o atalho que leva até ele.
+  const compSrc = fs.readFileSync(path.join(ROOT, 'platform-comparativo.jsx'), 'utf8');
+  ok('comparativo aceita o parametro de carteira do atalho',
+    /location\.params\.carteira/.test(compSrc));
+  ok('atalho do ranking aponta para o parametro que o comparativo consome',
+    /#\/comparativo\?carteira=/.test(rank));
+  ok('comparativo recebe location no roteador',
+    /pages\.Comparativo,\s*\{\s*location\s*\}/.test(appContent));
+  ok('comparador por carteira escreve o motivo quando indisponivel',
+    /Comparação indisponível para/.test(compSrc));
+
+  // Histórico de verificação por carteira.
+  const cartSrc = fs.readFileSync(path.join(ROOT, 'platform-carteira.jsx'), 'utf8');
+  ok('historico da carteira vem do consolidado',
+    /window\.AtlasConsolidado\.historicoVerificacao\(code, month\)/.test(cartSrc));
+  ok('historico mostra status, divergencia e custo por mes',
+    /mesesReprovados/.test(cartSrc) && /Divergência acumulada/.test(cartSrc) && /Custo acumulado/.test(cartSrc));
+  ok('mes sem extrato nao entra na conta de retorno nem some da tabela',
+    /history\.filter\(r => !r\.semDado && r\.rent != null\)/.test(cartSrc)
+    && /comDado\.forEach\(/.test(cartSrc)
+    && cartSrc.includes('Sem extrato com patrimônio neste mês'));
+  ok('data de apuracao da inteligencia sai do consolidado',
+    /window\.AtlasConsolidado\.dataApuracaoIntel\(\)/.test(cartSrc));
 }
 
 // ─── Resultado ──────────────────────────────────────────────────────────────

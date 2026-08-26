@@ -59,10 +59,16 @@ import '../platform-radar-demo.js';
    ver scripts/gerar-credito-demo.mjs — não editar à mão. */
 import '../platform-credito-demo.js';
 
+/* 3j. Camada de decisão cruzada. Depois dos overlays porque lê radar e crédito,
+   antes das páginas porque ranking, dashboard, busca, comparativo e carteira
+   leem dela. Não recalcula nada do motor: filtra, cruza e ordena. */
+import '../platform-consolidado.js';
+
 /* 4. Utilitários, ícones, gráficos, UI primitives */
 import '../platform-utils.jsx';
 
 /* 5. Páginas (registram window.AtlasPages.*) */
+import '../platform-ranking.jsx';
 import '../platform-dashboard.jsx';
 import '../platform-carteira.jsx';
 import '../platform-report.jsx';

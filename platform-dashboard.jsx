@@ -12,6 +12,235 @@ import React from 'react';
   const D = window.AtlasData;
 
   /* ============================================================
+     RESUMO DA CASA — a leitura de segundos, no topo
+
+     Ordem fixa e deliberada, é a pergunta do ritual mensal na sequência em
+     que ela é feita: patrimônio verificado, carteiras analisadas, o corte
+     LIBERAR / ALERTA / CORRIGIR, divergência material em reais, e onde agir.
+
+     Os números vêm de window.AtlasConsolidado, o mesmo que alimenta o ranking.
+     Painel e ranking discordando sobre quantas carteiras exigem ação seria o
+     defeito clássico deste projeto, duas telas decidindo o mesmo número.
+  ============================================================ */
+  function ResumoCasa({ month }) {
+    const C = window.AtlasConsolidado;
+    const [estado, setEstado] = useState({ fase: 'carregando', dados: null, erro: null });
+
+    useEffect(() => {
+      let vivo = true;
+      setEstado({ fase: 'carregando', dados: null, erro: null });
+      const id = setTimeout(() => {
+        if (!vivo) return;
+        try {
+          const dados = C.resumoCasa(month);
+          if (vivo) setEstado({ fase: 'pronto', dados, erro: null });
+        } catch (e) {
+          if (vivo) setEstado({ fase: 'erro', dados: null, erro: e });
+        }
+      }, 0);
+      return () => { vivo = false; clearTimeout(id); };
+    }, [month]);
+
+    if (estado.fase === 'carregando') {
+      return <div className="card" style={{ marginBottom: 16, color: 'var(--muted)', fontSize: '0.786rem' }}>Apurando o mês...</div>;
+    }
+    if (estado.fase === 'erro') {
+      return (
+        <div className="banner banner--red" style={{ marginBottom: 16 }}>
+          <Icon name="alert" size={16} />
+          <span>Não foi possível apurar o resumo de {fmtMonthLabel(month)}. Detalhe: {String((estado.erro && estado.erro.message) || estado.erro)}</span>
+        </div>
+      );
+    }
+    const r = estado.dados;
+    if (!r || r.carteiras.total === 0) {
+      return (
+        <EmptyState
+          title="Sem carteiras neste mês"
+          sub={'Nenhuma carteira da casa existia em ' + fmtMonthLabel(month) + '.'}
+          icon="search"
+        />
+      );
+    }
+
+    const semDado = r.carteiras.semDado;
+    const conc = r.concentracao;
+
+    function Bloco({ titulo, children, aviso }) {
+      return (
+        <div className="card" style={{ flex: 1, minWidth: 220 }}>
+          <div style={{ fontSize: '0.714rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 8 }}>
+            {titulo}
+          </div>
+          {children}
+          {aviso && <div style={{ fontSize: '0.714rem', color: 'var(--amber)', marginTop: 8 }}>{aviso}</div>}
+        </div>
+      );
+    }
+
+    function Linha({ rotulo, valor, cor, titulo }) {
+      return (
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '3px 0', fontSize: '0.786rem' }} title={titulo}>
+          <span style={{ color: 'var(--muted)' }}>{rotulo}</span>
+          <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: cor || 'var(--heading)' }}>{valor}</span>
+        </div>
+      );
+    }
+
+    return (
+      <div style={{ marginBottom: 20 }}>
+        {/* 1 e 2: patrimônio verificado e carteiras analisadas */}
+        <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(5, 1fr)' }}>
+          <KPITile
+            label="Patrimônio apurado"
+            value={fmtCompactBRL(r.patrimonio.total)}
+            sub={r.carteiras.comDado + ' carteira(s) com extrato'}
+          />
+          <KPITile
+            label="Liberado"
+            value={fmtCompactBRL(r.patrimonio.liberado)}
+            sub={fmtPct(r.patrimonio.pctLiberado, 0) + ' do apurado · ' + r.carteiras.liberar + ' carteira(s)'}
+            variant="green"
+            onClick={() => navigate('#/ranking')}
+          />
+          <KPITile
+            label="Em alerta"
+            value={fmtCompactBRL(r.patrimonio.emAlerta)}
+            sub={r.carteiras.alerta + ' carteira(s)'}
+            variant={r.carteiras.alerta > 0 ? 'amber' : undefined}
+          />
+          <KPITile
+            label="Bloqueado"
+            value={fmtCompactBRL(r.patrimonio.bloqueado)}
+            sub={r.carteiras.corrigir + ' carteira(s) em CORRIGIR'}
+            variant={r.carteiras.corrigir > 0 ? 'red' : undefined}
+          />
+          <KPITile
+            label="Divergência material"
+            value={fmtCompactBRL(r.divergencias.valorAbsTotal)}
+            sub={r.divergencias.nMateriais + ' acima de ' + fmtPct(r.divergencias.toleranciaPct, 2) + ' do PL anterior'}
+            variant={r.divergencias.nMateriais > 0 ? 'amber' : undefined}
+            onClick={() => navigate('#/ranking')}
+          />
+        </div>
+
+        {/* Ausência de extrato nunca fica escondida atrás de um agregado. */}
+        {semDado > 0 && (
+          <div className="banner banner--amber" style={{ marginTop: 12 }}>
+            <Icon name="alert" size={16} />
+            <span>
+              {semDado} carteira(s) sem extrato com patrimônio em {fmtMonthLabel(month)}
+              {' ('}{r.carteiras.semDadoCodigos.slice(0, 5).join(', ')}
+              {r.carteiras.semDadoCodigos.length > 5 ? ' e mais ' + (r.carteiras.semDadoCodigos.length - 5) : ''}
+              {'). '}
+              Não entram no patrimônio apurado e não podem ser liberadas.
+            </span>
+          </div>
+        )}
+
+        {/* 3: custos, concentração, instituições */}
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 12 }}>
+          <Bloco titulo="Custos identificados">
+            <Linha rotulo="Total no mês" valor={fmtCompactBRL(r.custos.total)} />
+            <Linha rotulo="Sobre o patrimônio" valor={fmtPct(r.custos.pctPl, 2)} />
+            {r.custos.maiores.slice(0, 3).map(l => (
+              <Linha key={l.code} rotulo={l.code} valor={fmtPct(l.custoPct, 2)} cor="var(--muted)" titulo={l.name} />
+            ))}
+          </Bloco>
+
+          <Bloco titulo="Concentração">
+            {conc ? (
+              <>
+                <Linha rotulo="Top 5 carteiras" valor={fmtPct(conc.top5Pct, 1)} />
+                {conc.top1 && <Linha rotulo={conc.top1.code} valor={fmtPct(conc.top1.pct, 1)} titulo={conc.top1.name} />}
+                {conc.top5.slice(1, 3).map(c => (
+                  <Linha key={c.code} rotulo={c.code} valor={fmtPct(c.pct, 1)} cor="var(--muted)" titulo={c.name} />
+                ))}
+              </>
+            ) : <div style={{ fontSize: '0.786rem', color: 'var(--muted)' }}>Não apurada neste mês.</div>}
+          </Bloco>
+
+          <Bloco titulo="Instituições">
+            <Linha rotulo="Distintas" valor={String(r.instituicoes.total)} />
+            {r.instituicoes.maiores.slice(0, 3).map(i => (
+              <Linha
+                key={i.instituicao}
+                rotulo={i.instituicao.length > 22 ? i.instituicao.slice(0, 21) + '…' : i.instituicao}
+                valor={fmtPct(i.pct, 1)}
+                cor="var(--muted)"
+                titulo={i.instituicao + ' · ' + i.nCarteiras + ' carteira(s) · ' + fmtCompactBRL(i.valor)}
+              />
+            ))}
+          </Bloco>
+
+          <Bloco
+            titulo="Risco e cadastro"
+            aviso={!r.intelApurada ? 'Sinais de risco não apurados neste ambiente. Vazio aqui é falta de apuração, não carteira limpa.' : null}
+          >
+            {r.intelApurada ? (
+              <>
+                <Linha rotulo="Carteiras acesas" valor={String(r.intel.carteirasComSinal)} titulo="Carteiras com pelo menos um sinal do radar ou evento de crédito." />
+                <Linha rotulo="Sinais do radar" valor={r.intel.sinaisRadar + ' (' + r.intel.sinaisRadarAlta + ' alta)'} cor={r.intel.sinaisRadarAlta > 0 ? 'var(--red)' : undefined} />
+                <Linha rotulo="Eventos de crédito" valor={r.intel.eventosCredito + ' (' + r.intel.eventosCreditoAlta + ' alta)'} cor={r.intel.eventosCreditoAlta > 0 ? 'var(--red)' : undefined} />
+                <Linha rotulo="Sem cobertura de emissor" valor={String(r.intel.carteirasNoEscuro)} cor={r.intel.carteirasNoEscuro > 0 ? 'var(--amber)' : undefined} titulo="Carteiras que o motor de crédito não conseguiu avaliar. Não são carteiras limpas." />
+              </>
+            ) : <div style={{ fontSize: '0.786rem', color: 'var(--muted)' }}>Não apurado.</div>}
+            <Linha
+              rotulo={r.pendencias.estimadas ? 'Pendências (estimativa)' : 'Pendências vencidas'}
+              valor={(r.pendencias.estimadas ? '~' : '') + r.pendencias.vencidas}
+              cor={r.pendencias.estimadas ? 'var(--muted)' : (r.pendencias.vencidas > 0 ? 'var(--amber)' : undefined)}
+              titulo={r.pendencias.estimadas
+                ? 'Este ambiente não tem cadastro de compliance carregado. O número é estimativa e não decide prioridade.'
+                : r.pendencias.total + ' pendência(s) em ' + r.pendencias.carteiras + ' carteira(s).'}
+            />
+          </Bloco>
+        </div>
+
+        {/* 4: onde agir */}
+        <div className="card" style={{ marginTop: 12 }}>
+          <div className="card-header" style={{ marginBottom: 8 }}>
+            <div className="card-title">Onde agir</div>
+            <button className="btn btn--ghost btn--sm" onClick={() => navigate('#/ranking')}>
+              Ver ranking completo
+            </button>
+          </div>
+          {r.ondeAgir.length === 0 ? (
+            <div style={{ fontSize: '0.786rem', color: 'var(--muted)' }}>
+              Nenhuma carteira reprovou, ficou sem extrato, passou da tolerância de divergência,
+              tem achado em aberto ou acendeu risco alto em {fmtMonthLabel(month)}.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {r.ondeAgir.map(l => (
+                <div
+                  key={l.code}
+                  className="clickable"
+                  onClick={() => navigate('#/carteira/' + l.code)}
+                  title={l.motivos.join('\n')}
+                  style={{
+                    display: 'flex', gap: 10, alignItems: 'baseline', padding: '6px 10px',
+                    border: '1px solid var(--rule)', borderRadius: 'var(--r-sm)',
+                    cursor: 'pointer', fontSize: '0.786rem',
+                  }}
+                >
+                  <Badge status={l.status} />
+                  <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, flexShrink: 0 }}>{l.code}</span>
+                  <span style={{ color: 'var(--body)', flex: 1 }}>{l.motivos[0] || l.name}</span>
+                  {l.material && (
+                    <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--red)', flexShrink: 0 }}>
+                      {fmtCompactBRL(l.divergenciaBRL)}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  /* ============================================================
      RANGE helpers
   ============================================================ */
   const RANGES = ['3M', '6M', '1A', '2A', 'Máx'];
@@ -498,6 +727,8 @@ import React from 'react';
             <SeloChip month={selectedMonth} />
           </div>
         </div>
+
+        <ResumoCasa month={selectedMonth} />
 
         <KpiRow
           stats={stats}

@@ -166,6 +166,7 @@ import ReactDOM from 'react-dom/client';
 
   const NAV_PAINEL = [
     { id:'dashboard',   label:'Dashboard',          icon:'dashboard',  path:'#/dashboard'   },
+    { id:'ranking',     label:'Ranking de Criticidade', icon:'report',  path:'#/ranking'     },
     { id:'risco',       label:'Radar de Risco',      icon:'alert',      path:'#/risco'       },
     { id:'radar',       label:'Radar de Carteiras',  icon:'trend',      path:'#/radar'       },
     { id:'eventos',     label:'Eventos & Impacto',   icon:'findings',   path:'#/eventos'     },
@@ -178,7 +179,7 @@ import ReactDOM from 'react-dom/client';
     { id:'tendencia',   label:'Tendência do Ciclo',  icon:'trend',      path:'#/tendencia'   },
     { id:'custos',      label:'Transp. de Custos',   icon:'revenue',    path:'#/custos'      },
     { id:'receitas',    label:'Receitas & ROA',      icon:'revenue',    path:'#/receitas'    },
-    { id:'busca',       label:'Busca por Ativo',     icon:'search',     path:'#/busca'       },
+    { id:'busca',       label:'Rastreador de Ativos', icon:'search',   path:'#/busca'       },
   ];
 
   const NAV_GESTAO = [
@@ -402,6 +403,7 @@ import ReactDOM from 'react-dom/client';
     // '/login' não é mais uma página. Cai no default junto com qualquer rota
     // desconhecida; o redirect no AppRoot leva ao dashboard em seguida.
     if (path === '/dashboard') return 'dashboard';
+    if (path === '/ranking') return 'ranking';
     if (path.startsWith('/carteira/')) return 'carteira';
     if (path === '/achados') return 'achados';
     if (path === '/oportunidades') return 'oportunidades';
@@ -426,6 +428,7 @@ import ReactDOM from 'react-dom/client';
 
   const PAGE_TITLES = {
     dashboard:  'Dashboard',
+    ranking:    'Ranking de Criticidade',
     carteira:   'Carteira',
     achados:    'Achados & Exceções',
     oportunidades: 'Oportunidades',
@@ -436,7 +439,7 @@ import ReactDOM from 'react-dom/client';
     comparativo:'Comparativo',
     receitas:   'Receitas & ROA',
     cadastro:   'Cadastro & Compliance',
-    busca:      'Busca por Ativo',
+    busca:      'Rastreador de Ativos',
     risco:      'Radar de Risco',
     radar:      'Radar de Carteiras',
     eventos:    'Eventos & Impacto',
@@ -548,6 +551,11 @@ import ReactDOM from 'react-dom/client';
           ? React.createElement(pages.Dashboard)
           : <PlaceholderPage title="Dashboard" etapa={2} />;
 
+      case 'ranking':
+        return pages.Ranking
+          ? React.createElement(pages.Ranking)
+          : <PlaceholderPage title="Ranking de Criticidade" etapa="ranking" />;
+
       case 'carteira': {
         const code = location.segments[1];
         return pages.Carteira
@@ -594,7 +602,7 @@ import ReactDOM from 'react-dom/client';
 
       case 'comparativo':
         return pages.Comparativo
-          ? React.createElement(pages.Comparativo)
+          ? React.createElement(pages.Comparativo, { location })
           : <PlaceholderPage title="Comparativo" etapa={6} />;
 
       case 'receitas':
@@ -614,8 +622,8 @@ import ReactDOM from 'react-dom/client';
 
       case 'busca':
         return pages.Busca
-          ? React.createElement(pages.Busca)
-          : <PlaceholderPage title="Busca por Ativo" etapa={8} />;
+          ? React.createElement(pages.Busca, { location })
+          : <PlaceholderPage title="Rastreador de Ativos" etapa={8} />;
 
       case 'risco':
         return pages.Risco

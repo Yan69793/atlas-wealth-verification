@@ -1019,6 +1019,14 @@
       revenueYTD: revenueYTD,
       fee: pd.fee,
       continuidade: continuidade,
+      /* A conta que sustenta o produto, exposta em REAIS e nao so em fracao.
+         `continuidade` ja media o mesmo desvio, mas normalizado pelo PL
+         anterior, e fracao nao se soma entre carteiras nem se prioriza por
+         materialidade. Quem precisa decidir onde agir precisa do R$.
+         plEsperado = PL anterior reportado * (1 + rentabilidade) + movimentacao. */
+      plEsperado: expected,
+      divergenciaBRL: plCurr - expected,
+      divergenciaAbsBRL: Math.abs(plCurr - expected),
       nAtivos: nAtivos,
       nAtivosPrev: nAtivosPrev,
       cdi: cdi,

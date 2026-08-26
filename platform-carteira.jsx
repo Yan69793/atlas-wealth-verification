@@ -290,23 +290,18 @@ import React from 'react';
     OUTRO: 'Outro',
   };
 
-  /** Sinais do radar + eventos de crédito desta carteira. Sem recálculo. */
+  /** Sinais do radar + eventos de crédito desta carteira. Sem recálculo.
+   *
+   * A leitura dos dois overlays (window.ATLAS_RADAR_DATA e
+   * window.ATLAS_CREDITO_DATA) mora em window.AtlasConsolidado, e esta função
+   * é só o adaptador. Antes a lógica vivia aqui e o ranking tinha a sua
+   * própria: duas leituras da mesma coisa divergem sozinhas, e o dia em que
+   * divergissem esta aba chamaria de "agravado" o que o ranking chama de
+   * "acompanhamento" sobre o mesmo movimento. Mesmo motivo pelo qual
+   * intel/estado.ts saiu de dentro do adapter de crédito no motor.
+   */
   function intelDaCarteira(code) {
-    const R = window.ATLAS_RADAR_DATA;
-    const C = window.ATLAS_CREDITO_DATA;
-    const alvo = R && R.carteiras ? R.carteiras.find(c => c.carteira === code) : null;
-    const cobertura = R && R.cobertura ? R.cobertura.find(c => c.carteira === code) : null;
-    const insights = new Map(((R && R.insights) || []).concat((C && C.insights) || []).map(i => [i.id, i]));
-    const creditos = [];
-    for (const imp of (C && C.impactos) || []) {
-      for (const a of imp.atingidas || []) {
-        if (a.carteira === code) creditos.push({ evento: imp.evento, a });
-      }
-    }
-    /* Carteira que o motor de crédito não consegue avaliar não está limpa. A
-       aba precisa dizer isso, senão a ausência de evento vira falsa calmaria. */
-    const noEscuro = !!(C && (C.impactos || []).some(i => (i.naoAvaliaveis || []).includes(code)));
-    return { sinais: (alvo && alvo.sinais) || [], cobertura, insights, creditos, noEscuro };
+    return window.AtlasConsolidado.intelDaCarteira(code);
   }
 
   function contarIntel(code) {
@@ -355,10 +350,7 @@ import React from 'react';
        outro por desenho, nao por erro. Sem esta linha, o leitor ve dois
        patrimonios diferentes para a mesma carteira na mesma tela e conclui,
        com razao, que o sistema esta errado. */
-    const dataApuracao =
-      (window.ATLAS_RADAR_DATA && window.ATLAS_RADAR_DATA.data) ||
-      (window.ATLAS_CREDITO_DATA && window.ATLAS_CREDITO_DATA.data) ||
-      null;
+    const dataApuracao = window.AtlasConsolidado.dataApuracaoIntel();
 
     return (
       <div>
@@ -501,38 +493,44 @@ import React from 'react';
     const p = useMemo(() => D.CATALOG.find(x => x.code === code), [code]);
     const inception = p ? (p.inception || D.MONTHS[0]) : D.MONTHS[0];
 
+    /* A série vem inteira de AtlasConsolidado, incluindo custo, divergência e
+       o status que a verificação atribuiu em cada mês. Antes esta aba só sabia
+       patrimônio e rentabilidade, e a pergunta que o fechamento faz é "isso é
+       recorrente ou foi desta vez", que exige ver o status ao lado do número.
+
+       Os apelidos plCurr/plPrev existem porque o gráfico e o drawdown abaixo já
+       liam esses nomes. Mês sem extrato entra na série com valores nulos, em vez
+       de sumir: buraco escondido vira série contínua e mente sobre a história. */
     const history = useMemo(() => {
-      const months = D.MONTHS.filter(m => m >= inception && m <= month);
-      return months.map(m => {
-        const r = D.getRow(code, m);
-        if (!r) return null;
-        return {
-          month: m,
-          label: D.MONTH_LABELS[D.MONTHS.indexOf(m)] || m,
-          plCurr: r.plCurr,
-          plPrev: r.plPrev,
-          rent: r.rent,
-          cdi: r.cdi,
-          varBRL: r.varBRL,
-        };
-      }).filter(Boolean);
+      const serie = window.AtlasConsolidado.historicoVerificacao(code, month);
+      return serie.map(r => Object.assign({}, r, { plCurr: r.pl, plPrev: r.plAnterior }));
     }, [code, month]);
 
+    const comDado = useMemo(() => history.filter(r => !r.semDado && r.rent != null), [history]);
+    const dd = useMemo(() => computeDrawdown(comDado), [comDado]);
+
     if (!history.length) {
-      return <EmptyState title="Sem histórico" sub="Nenhum dado disponível para este período." icon="search" />;
+      return <EmptyState title="Sem histórico" sub="Nenhum mês desta carteira está dentro da faixa com dado." icon="search" />;
     }
 
-    const twr    = history.reduce((acc, r) => acc * (1 + r.rent), 1) - 1;
-    const cdiAcc = history.reduce((acc, r) => acc * (1 + r.cdi),  1) - 1;
-    const plFirst   = history[0].plPrev;
-    const plLast    = history[history.length - 1].plCurr;
+    const twr    = comDado.reduce((acc, r) => acc * (1 + r.rent), 1) - 1;
+    const cdiAcc = comDado.reduce((acc, r) => acc * (1 + r.cdi),  1) - 1;
+    const plFirst   = comDado.length ? comDado[0].plPrev : 0;
+    const plLast    = comDado.length ? comDado[comDado.length - 1].plCurr : 0;
     const varPatrimonial = plFirst > 0 ? (plLast - plFirst) / plFirst : 0;
-    const dd = useMemo(() => computeDrawdown(history), [history]);
 
-    // Accumulated series for chart
+    const mesesSemDado = history.filter(r => r.semDado).length;
+    const custoTotal = history.reduce((s, r) => s + r.custoBRL, 0);
+    const divergenciaTotal = history.reduce((s, r) => s + r.divergenciaAbsBRL, 0);
+    const mesesMateriais = history.filter(r => r.material).length;
+    const mesesReprovados = history.filter(r => r.status === 'CORRIGIR').length;
+    const mesesAlerta = history.filter(r => r.status === 'COM ALERTA').length;
+
+    // Accumulated series for chart. Mês sem extrato não compõe retorno: tratar
+    // ausência como zero achataria a curva e inventaria um mês estável.
     let twrRun = 1, cdiRun = 1;
     const twrData = [], cdiData = [];
-    history.forEach(r => {
+    comDado.forEach(r => {
       twrRun *= (1 + r.rent);
       cdiRun *= (1 + r.cdi);
       twrData.push({ month: r.month, value: twrRun - 1 });
@@ -548,7 +546,7 @@ import React from 'react';
       <div>
         {/* Summary */}
         <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(6, 1fr)', marginBottom: 20 }}>
-          <KPITile label="TWR Período"      value={fmtPct(twr, 2)}              sub={`desde ${fmtMonthLabel(history[0].month)}`} />
+          <KPITile label="TWR Período"      value={comDado.length ? fmtPct(twr, 2) : '—'} sub={`desde ${fmtMonthLabel(history[0].month)}`} />
           <KPITile label="CDI Período"      value={fmtPct(cdiAcc, 2)}           sub="Acumulado" />
           <KPITile label="vs CDI"           value={(twr - cdiAcc >= 0 ? '+' : '') + fmtPct(twr - cdiAcc, 2)}
             sub="TWR – CDI" variant={twr < cdiAcc ? 'amber' : undefined} />
@@ -586,31 +584,82 @@ import React from 'react';
           </div>
         )}
 
-        {/* Monthly table */}
+        {/* Histórico de verificação: o que o fechamento decidiu em cada mês,
+            ao lado do custo e da divergência que sustentaram a decisão. */}
+        <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(5, 1fr)', marginBottom: 12 }}>
+          <KPITile label="Meses reprovados" value={mesesReprovados}
+            sub={'de ' + history.length + ' meses'} variant={mesesReprovados > 0 ? 'red' : undefined} />
+          <KPITile label="Meses com alerta" value={mesesAlerta}
+            variant={mesesAlerta > 0 ? 'amber' : undefined} sub="Status COM ALERTA" />
+          <KPITile label="Meses sem extrato" value={mesesSemDado}
+            sub={mesesSemDado > 0 ? 'Não puderam ser liberados' : 'Nenhum'}
+            variant={mesesSemDado > 0 ? 'amber' : undefined} />
+          <KPITile label="Divergência acumulada" value={fmtCompactBRL(divergenciaTotal)}
+            sub={mesesMateriais + ' mês(es) acima da tolerância'} variant={mesesMateriais > 0 ? 'amber' : undefined} />
+          <KPITile label="Custo acumulado" value={fmtCompactBRL(custoTotal)} sub="Soma dos meses da série" />
+        </div>
+
         <div className="table-wrap">
           <table>
             <thead>
               <tr>
                 <th>Mês</th>
+                <th>Verificação</th>
                 <th className="num">PL Ant.</th>
                 <th className="num">PL Atual</th>
                 <th className="num">Rent.</th>
-                <th className="num">CDI</th>
                 <th className="num">vs CDI</th>
+                <th className="num">Divergência</th>
+                <th className="num">Custo</th>
+                <th className="num">Achados</th>
                 <th className="num">Aporte/Resg. Est.</th>
               </tr>
             </thead>
             <tbody>
               {history.map(r => {
+                /* Mês sem extrato não recebe conta nenhuma. Preencher com zero
+                   faria a linha parecer um mês tranquilo. */
+                if (r.semDado) {
+                  return (
+                    <tr key={r.month}>
+                      <td style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.857rem' }}>{r.label}</td>
+                      <td><Badge status="SEM DADO" /></td>
+                      <td className="num" colSpan={8} style={{ color: 'var(--muted)', textAlign: 'left' }}>
+                        Sem extrato com patrimônio neste mês. Não entrou na conta de retorno nem de custo.
+                      </td>
+                    </tr>
+                  );
+                }
                 const apResg = r.plCurr - r.plPrev - r.plPrev * r.rent;
                 return (
                   <tr key={r.month}>
                     <td style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.857rem' }}>{r.label}</td>
+                    <td><Badge status={r.status} /></td>
                     <td className="num">{fmtCompactBRL(r.plPrev)}</td>
                     <td className="num">{fmtCompactBRL(r.plCurr)}</td>
                     <td className={`num ${signClass(r.rent)}`}>{fmtPct(r.rent, 2)}</td>
-                    <td className="num">{fmtPct(r.cdi, 3)}</td>
                     <td className={`num ${signClass(r.rent - r.cdi)}`}>{fmtPct(r.rent - r.cdi, 2)}</td>
+                    <td
+                      className={`num ${signClass(r.divergenciaBRL)}`}
+                      title={'PL reportado menos PL esperado. Esperado = ' + fmtCompactBRL(r.plEsperado) + '.'}
+                      style={{ fontWeight: r.material ? 600 : 400 }}
+                    >
+                      {r.divergenciaAbsBRL === 0 ? '—' : (r.divergenciaBRL > 0 ? '+' : '') + fmtCompactBRL(r.divergenciaBRL)}
+                      {r.material && (
+                        <span style={{ display: 'block', fontSize: '0.714rem', color: 'var(--red)' }}>
+                          {fmtPct(r.divergenciaPct, 2)} · material
+                        </span>
+                      )}
+                    </td>
+                    <td className="num">
+                      {fmtCompactBRL(r.custoBRL)}
+                      <span style={{ display: 'block', fontSize: '0.714rem', color: 'var(--muted)' }}>
+                        {fmtPct(r.custoPct, 2)}
+                      </span>
+                    </td>
+                    <td className="num" style={{ color: r.nAchados > 0 ? 'var(--amber)' : 'var(--muted)' }}>
+                      {r.nAchados > 0 ? r.nAchados : '—'}
+                    </td>
                     <td className="num" style={{ color: 'var(--muted)' }}>
                       {Math.abs(apResg) < 1000 ? '—' : fmtCompactBRL(apResg)}
                     </td>

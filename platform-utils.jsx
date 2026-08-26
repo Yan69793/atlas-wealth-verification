@@ -28,7 +28,12 @@ import React from 'react';
     if (abs >= 1e9) return sign + 'R$ ' + (abs / 1e9).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' bi';
     if (abs >= 1e6) return sign + 'R$ ' + (abs / 1e6).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' mi';
     if (abs >= 1e3) return sign + 'R$ ' + (abs / 1e3).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' mil';
-    return sign + 'R$ ' + abs.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+    /* maximumFractionDigits explícito: sem ele o padrão do runtime deixa
+       passar até 3 casas em pt-BR, e um valor abaixo de mil com resíduo
+       decimal (posição de ativo, por exemplo) sai como "R$ 358,155" em vez
+       de "R$ 358,16". Achado pelo rastreador de ativos, que é a primeira
+       tela a exibir delta de posição pequeno o bastante para cair aqui. */
+    return sign + 'R$ ' + abs.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
   function fmtPct(v, decimals) {
