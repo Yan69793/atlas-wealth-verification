@@ -11,14 +11,17 @@ aqui, trate este arquivo como suspeito e rode o refresh do fim da página.
 ## Portão de verificação, medido hoje
 
 ```
-688/688 checks OK — todos os checks passaram
+699/699 checks OK — todos os checks passaram
 ℹ tests 278   ℹ suites 73   ℹ pass 278   ℹ fail 0   ℹ skipped 0
 ```
 
-Medido em 2026-08-26, depois do overlay real de cadastro. 659 para 688, os
-29 novos cobrindo as listas de negação do overlay, as regras do gerador e o
-comportamento do consolidado com e sem cadastro real. Ver a seção "Overlay
-real de cadastro" mais abaixo.
+Medido em 2026-08-26, depois da Fase 2 (Jul/26 como mês de estabilidade). 688
+para 699, os 11 novos separando mês corrente de mês de abertura e travando a
+estabilidade de julho. Ver a seção "Fase 2" mais abaixo.
+
+Antes disso era 688/688, depois do overlay real de cadastro. 659 para 688, os
+29 cobrindo as listas de negação do overlay, as regras do gerador e o
+comportamento do consolidado com e sem cadastro real.
 
 Antes disso era 659/659, depois da camada de exploração e decisão (ranking
 de criticidade, resumo da casa, rastreador de ativos, comparador por
@@ -935,6 +938,80 @@ presença de arquivo por código de status num servidor com fallback de página
 única não prova nada; o que prova é `content-type`, tamanho e um caminho de
 controle.
 
+## Fase 2, Jul/2026 como mês de estabilidade (2026-08-26)
+
+`CURRENT_MONTH` avançou de `2026-06` para `2026-07`.
+
+### Dois conceitos que eram um só
+
+`CURRENT_MONTH` era ao mesmo tempo o último mês fechado e o mês em que o demo
+abre. Isso já custou caro uma vez: alguém avançou o mês sem estender o roteiro
+de status, a abertura caiu no gerador pseudoaleatório e saiu 40/40 LIBERAR,
+com o prospect chegando pela tela em que o produto declara não ter achado
+nada. Com Jul/26 limpo de propósito, os dois passam a ser separados:
+
+| Constante | O que é | Valor |
+|---|---|---|
+| `CURRENT_MONTH` | último mês fechado, âncora do rescale e limite de fabricação | `2026-07` |
+| `OPENING_MONTH` | onde o app aterrissa | `2026-06` |
+
+`OPENING_MONTH` governa só aterrissagem, em três lugares (estado inicial e
+fallback em `platform-utils.jsx`, fallback de mês fora da faixa em
+`platform-app.jsx`). Extensão de dado continua olhando `CURRENT_MONTH`, e a
+janela do gráfico do dashboard também, senão o histórico encurtaria um mês.
+
+### O que julho é, medido e não afirmado
+
+| | Jun/26 (abertura) | Jul/26 (corrente) |
+|---|---|---|
+| Status | 24 LIBERAR, 12 COM ALERTA, 4 CORRIGIR | 40 LIBERAR |
+| Divergência máxima | 0,738620% do PL anterior | 0,000000% |
+| Carteiras com divergência material | 4 | 0 |
+| PL total | R$ 1,1889 bi | R$ 1,2000 bi |
+| Composição contra o mês anterior | 40 carteiras trocaram de ativo | 40 carteiras idênticas |
+
+Julho fecha exato por construção, não por sorte: sem roteiro de status
+`getStatus` devolve LIBERAR para o mês corrente inteiro, e só CORRIGIR injeta
+ajuste em `reportedPlPrev`. Sem CORRIGIR, `plEsperado = plCurr` e a
+divergência é zero. Um check prende essa causa, não o efeito.
+
+### Composição estável
+
+O mês corrente reaproveita a composição do mês anterior, papel por papel, e o
+saldo anda só por marcação a mercado. Antes cada mês sorteava um conjunto novo
+de ativos, e o comparador de posição entre dois meses mostrava a carteira
+inteira trocando de papel, compra e venda que nunca aconteceram. O sorteio
+continua valendo para o histórico, onde nunca foi confrontado posição a
+posição.
+
+**Correção que veio junto.** A nota INFO de variação acima da faixa histórica
+dizia "confirmado pelo gestor como realocação tática". Num mês de estabilidade
+isso é texto contradizendo o comparador na tela ao lado, que mostra zero
+entrada e zero saída. A observação ficou, o número dela é verdadeiro, só a
+causa mudou para marcação a mercado. Travado por check.
+
+### Correção de premissa que vale registrar
+
+O pedido supunha que estabilizar a composição é o que tira a divergência de
+julho. Não é. A conta do produto vive em `reportedPlPrevArr`, `retArr` e
+`nnmArr`, na materialização, e composição não a alimenta, só distribui o PL
+entre ativos. As duas coisas foram feitas, mas por motivos diferentes:
+composição estável conserta o comparador de posição, e julho fecha exato
+porque nenhuma carteira dele é CORRIGIR.
+
+### Efeito colateral aceito
+
+A âncora do rescale é o mês corrente, então o total de R$ 1,2 bi mudou de
+junho para julho. Junho passou a somar R$ 1,1889 bi. Todos os números do demo
+foram reescalados junto, o que é o comportamento correto da âncora.
+
+### Sete notas INFO em julho, deixadas de propósito
+
+Sete carteiras LIBERAR carregam nota INFO de variação acima da faixa
+histórica. Não são achado inventado: a severidade é informativa, o número no
+texto é a rentabilidade real da carteira, a divergência delas é zero e o
+status não muda. Removê-las apagaria observação verdadeira.
+
 ## Overlay real de cadastro (2026-08-26)
 
 Fecha o último número do ranking que ainda saía marcado como estimativa. O
@@ -1211,3 +1288,11 @@ e é o que impede a próxima pessoa de repetir.
   nunca calculada. Lista ausente ou vazia não gera overlay de propósito, porque ausência de
   dado não é ausência de pendência. 659 → 688 checks, 278 testes do app inalterados. Ver a
   seção "Overlay real de cadastro" acima.
+- **2026-08-26, Fase 2, Jul/26 vira mês de estabilidade.** `CURRENT_MONTH` avançou para
+  `2026-07`, limpo por construção: 40 LIBERAR, divergência máxima 0,000000%, zero carteira
+  material. Mês de abertura do demo virou constante própria (`OPENING_MONTH`, `2026-06`),
+  porque abrir o demo num mês sem achado é o defeito que a trava do portão existe para
+  impedir desde agosto. Composição do mês corrente passou a reaproveitar a do mês anterior,
+  papel por papel, encerrando a compra e venda fabricada que o comparador de posição
+  mostrava. Corrigida junto a nota INFO que alegava realocação tática num mês sem
+  realocação nenhuma. 688 → 699 checks. Ver a seção "Fase 2" acima.

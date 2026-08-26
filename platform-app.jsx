@@ -700,7 +700,10 @@ import ReactDOM from 'react-dom/client';
       const _vis = window.AtlasData.visibleMonths ? window.AtlasData.visibleMonths() : null;
       // Um mes persistido fora da faixa com dado (ex.: futuro escolhido antes deste
       // fix) cai para o mes corrente, em vez de abrir num dashboard vazio/fabricado.
-      return (_vis && _vis.months.indexOf(_m) < 0) ? window.AtlasData.CURRENT_MONTH : _m;
+      // Cai no mes de ABERTURA, nao no corrente: desde Jul/26 o corrente e mes
+      // de estabilidade e abre sem achado nenhum na tela.
+      const _abre = window.AtlasData.OPENING_MONTH || window.AtlasData.CURRENT_MONTH;
+      return (_vis && _vis.months.indexOf(_m) < 0) ? _abre : _m;
     });
     const setSelectedMonth = useCallback(m => {
       setSelectedMonthState(m);

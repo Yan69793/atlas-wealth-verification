@@ -120,7 +120,9 @@ import React from 'react';
     return {
       v: 1,
       auth: { sessionUntil: 0 },
-      ui: { selectedMonth: window.AtlasData ? window.AtlasData.CURRENT_MONTH : '2026-04', plRange: '6M', comparativo: {} },
+      /* OPENING_MONTH, não CURRENT_MONTH: onde o app aterrissa é decisão de
+         apresentação, e o mês corrente sai limpo de propósito desde Jul/26. */
+      ui: { selectedMonth: window.AtlasData ? (window.AtlasData.OPENING_MONTH || window.AtlasData.CURRENT_MONTH) : '2026-04', plRange: '6M', comparativo: {} },
       observations: {},
       users: [],
       exceptions: {},
@@ -174,7 +176,7 @@ import React from 'react';
      */
     getSelectedMonth() {
       const d = storage.get();
-      return (d.ui && d.ui.selectedMonth) || (window.AtlasData ? window.AtlasData.CURRENT_MONTH : '2026-04');
+      return (d.ui && d.ui.selectedMonth) || (window.AtlasData ? (window.AtlasData.OPENING_MONTH || window.AtlasData.CURRENT_MONTH) : '2026-04');
     },
     setSelectedMonth(m) {
       storage.update(d => { d.ui = d.ui || {}; d.ui.selectedMonth = m; });

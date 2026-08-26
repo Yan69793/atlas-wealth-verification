@@ -109,10 +109,31 @@
   function getIPCA(month) { return IPCA[month] || 0; }
   function getIBOV(month) { return IBOV[month] || 0; }
 
-  // Último mês FECHADO (âncora do rescale demo e status default). Mantido em
-  // 2026-06 de propósito ao estender a janela: mudar a âncora reescalaria todos
-  // os números demo. Avançar só quando o mês virar de fato o corrente fechado.
-  var CURRENT_MONTH = '2026-06';
+  // Último mês FECHADO (âncora do rescale demo e status default). Avançar aqui
+  // reescala todos os números demo, porque a âncora do passo 2 é este mês.
+  //
+  // Jul/2026 é mês de ESTABILIDADE por desenho: sem roteiro de status, getStatus
+  // devolve LIBERAR para todo o mês corrente, reportedPlPrev fica igual ao PL
+  // anterior real, e a conta do produto fecha exata. Nenhuma carteira sai com
+  // divergência material, e nenhum achado é fabricado.
+  var CURRENT_MONTH = '2026-07';
+
+  // Mês em que o DEMO ABRE, que não é o mesmo conceito do mês corrente.
+  //
+  // Os dois já foram a mesma coisa, e isso custou caro: alguém avançou o mês
+  // corrente sem estender o roteiro de status, o mês de abertura caiu no gerador
+  // pseudoaleatório e saiu 40/40 LIBERAR. O prospect abria o demo justo na tela
+  // em que o produto declara não ter encontrado nada, que é o oposto do que se
+  // quer mostrar. tests/validate.js trava isso desde então.
+  //
+  // Com Jul/26 limpo de propósito, separar os dois é o que mantém as duas coisas
+  // verdadeiras ao mesmo tempo: o último mês fechado reconciliou (e essa é a boa
+  // notícia que se quer poder dizer), e a primeira tela continua sendo a de
+  // Jun/26, onde o produto mostra o que acha. Quem quiser ver julho troca no
+  // seletor. Esta constante governa SÓ onde o app aterrissa, nunca a extensão
+  // dos dados: janela de gráfico, histórico e limite de fabricação continuam
+  // olhando CURRENT_MONTH.
+  var OPENING_MONTH = '2026-06';
 
   function getCDI(month) { return CDI[month] || 0; }
 
@@ -235,7 +256,7 @@
 
   function setS(code, month, s) { STATUS_SCRIPT[code + '|' + month] = s; }
 
-  /* Jun/2026 — mês de abertura do demo (CURRENT_MONTH).
+  /* Jun/2026 — mês de abertura do demo (OPENING_MONTH).
    *
    * Precisa existir. Sem roteiro, o mês cai no gerador pseudoaleatório e Jun/26
    * saiu 40/40 LIBERAR, zero achado, o único mês assim em trinta. Quem abrisse
@@ -243,6 +264,10 @@
    * quando encontrar é o produto inteiro. Foi efeito colateral de alguém
    * avançar CURRENT_MONTH sem estender este roteiro, e tests/validate.js agora
    * falha se isso voltar a acontecer.
+   *
+   * Desde Jul/26 o mês de abertura deixou de ser o mês corrente: o corrente é
+   * mês de estabilidade e sai limpo de propósito. Este roteiro segue amarrado a
+   * OPENING_MONTH, que é onde o app aterrissa.
    *
    * A mistura é a da pitch: maioria limpa, um punhado para olhar, dois que não
    * saem antes de alguém resolver.
@@ -710,7 +735,15 @@
     ],
     LIBERAR: [
       function(ctx) {
-        return { severity:'INFO', text:'Variação de ' + ctx.varPct + '% no mês — acima da faixa histórica da carteira. Confirmado pelo gestor como realocação tática.' };
+        /* Em mês de estabilidade a composição é a MESMA do mês anterior, papel
+           por papel. Dizer "realocação tática" ali seria texto contradizendo o
+           comparador de posição na tela ao lado, que mostra zero entrada e zero
+           saída. A observação em si continua: a variação existe e o número dela
+           é verdadeiro, só a causa é outra. */
+        var causa = ctx.estavel
+          ? 'Composição inalterada no período: a variação vem da marcação a mercado.'
+          : 'Confirmado pelo gestor como realocação tática.';
+        return { severity:'INFO', text:'Variação de ' + ctx.varPct + '% no mês — acima da faixa histórica da carteira. ' + causa };
       }
     ]
   };
@@ -755,7 +788,10 @@
       varPct: (Math.abs(ret) * 100).toFixed(1),
       clsFrom: cls1, pct1: pct1, pct2: pct2,
       consecutiveMths: 2 + Math.floor(clsRng() * 3),
-      inst: inst
+      inst: inst,
+      /* Mês corrente com mês anterior existente é mês de estabilidade: a
+         composição foi reaproveitada em getComposition, não sorteada. */
+      estavel: (month === CURRENT_MONTH && mi > 0)
     };
     try { return templates[ti](ctx); } catch(e) { return { severity: status, text: 'Verificar carteira.' }; }
   }
@@ -788,6 +824,56 @@
     if (mi < 0) return [];
     var plCurr = pd.plArr[mi] || 0;
     if (plCurr <= 0) return [];
+
+    /* Mês corrente é mês de ESTABILIDADE: a carteira mantém exatamente os ativos
+       do mês anterior e o saldo anda só por marcação a mercado do período.
+
+       Antes disso cada mês sorteava um conjunto novo de papéis. O comparador de
+       posição, aberto entre dois meses, mostrava a carteira inteira trocando de
+       ativo: compra e venda que nunca aconteceram, num produto cuja frase é
+       "não mostre o patrimônio, prove o número". O sorteio continua valendo para
+       o histórico, onde ele nunca foi confrontado posição a posição; aqui o que
+       importa é o mês que o cliente confere.
+
+       Isto NÃO é o que faz julho sair sem divergência. A conta do produto vive
+       em reportedPlPrevArr/retArr/nnmArr, na materialização, e composição não a
+       alimenta. Julho fecha exato porque nenhuma carteira dele é CORRIGIR, e é
+       só CORRIGIR que injeta ajuste no PL anterior reportado. */
+    var miAnterior = mi - 1;
+    if (month === CURRENT_MONTH && miAnterior >= 0) {
+      var anterior = getComposition(code, MONTHS[miAnterior]);
+      if (anterior.length) {
+        var rngEst = subRng('estab|' + cacheKey);
+        /* Marcação por ativo, dispersa em torno de zero. O nível do PL do mês já
+           foi decidido na materialização; aqui só se distribui esse nível entre
+           os mesmos papéis, então a normalização abaixo é quem fecha a soma. */
+        var bruto = anterior.map(function (r) {
+          return { r: r, v: r.saldoFinal * (0.985 + rngEst() * 0.03) };
+        });
+        var somaBruto = bruto.reduce(function (s, x) { return s + x.v; }, 0);
+        var fatorEst = somaBruto > 0 ? plCurr / somaBruto : 0;
+        var plAnterior = anterior.reduce(function (s, r) { return s + r.saldoFinal; }, 0);
+        var estaveis = bruto.map(function (x) {
+          var saldoInicial = x.r.saldoFinal;
+          var saldoFinal = x.v * fatorEst;
+          var varBRL = saldoFinal - saldoInicial;
+          return {
+            name: x.r.name,
+            cls: x.r.cls,
+            institution: x.r.institution,
+            vencto: x.r.vencto,
+            saldoInicial: saldoInicial,
+            saldoFinal: saldoFinal,
+            varBRL: varBRL,
+            retAtivo: saldoInicial > 0 ? varBRL / saldoInicial : 0,
+            contrib: plAnterior > 0 ? varBRL / plAnterior : 0,
+            pct: plCurr > 0 ? saldoFinal / plCurr : 0,
+          };
+        });
+        _compCache[cacheKey] = estaveis;
+        return estaveis;
+      }
+    }
 
     var rng = subRng('comp|' + cacheKey);
     var p = _codeMap[code];
@@ -2105,6 +2191,7 @@
     getIPCA: getIPCA,
     getIBOV: getIBOV,
     CURRENT_MONTH: CURRENT_MONTH,
+    OPENING_MONTH: OPENING_MONTH,
     CATALOG: CATALOG,
     MANAGERS: MANAGERS,
     ASSETS: ASSETS,

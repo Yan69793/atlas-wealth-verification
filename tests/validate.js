@@ -780,21 +780,34 @@ ok('faixa de demonstração não está na lista de itens ocultos na impressão',
 ok('relatório exportado carrega o aviso de demonstração',
   /rpt-demo/.test(fs.readFileSync(path.join(ROOT, 'platform-report.jsx'), 'utf8')));
 
-// ─── 15. Mês de abertura do demo tem achado ─────────────────────────────────
+// ─── 15. Mês de abertura do demo tem achado, mês corrente é estável ─────────
 //
-// O demo abre em CURRENT_MONTH. Se esse mês não estiver no roteiro de status
-// escrito à mão, ele cai no gerador pseudoaleatório, e já aconteceu de sair
-// 40/40 LIBERAR. O prospect chega pela primeira tela e vê o produto declarando
-// que não encontrou nada, o que é o oposto do que se quer mostrar.
+// Dois conceitos que já foram um só, e essa fusão custou caro: alguém avançou
+// CURRENT_MONTH sem estender o roteiro de status, o mês de abertura caiu no
+// gerador pseudoaleatório e saiu 40/40 LIBERAR. O prospect chegava pela
+// primeira tela e via o produto declarando que não encontrou nada.
+//
+// Desde Jul/26 eles são separados de propósito:
+//   CURRENT_MONTH  último mês fechado, mês de ESTABILIDADE, limpo por desenho
+//   OPENING_MONTH  onde o app aterrissa, com a mistura da pitch
+//
+// Estes checks travam os dois lados. O de sempre, que a abertura tem achado.
+// E os novos, que o mês corrente continua limpo (sem roteiro de status) e que
+// o app realmente aterrissa na abertura, porque separar as constantes e
+// esquecer de mudar quem as lê devolveria o defeito inteiro em silêncio.
 
 // dataContent já foi lido antes; reaproveitado aqui.
-const mesAbertura = (dataContent.match(/var CURRENT_MONTH\s*=\s*'([\d-]+)'/) || [])[1];
+const mesCorrente = (dataContent.match(/var CURRENT_MONTH\s*=\s*'([\d-]+)'/) || [])[1];
+const mesAbertura = (dataContent.match(/var OPENING_MONTH\s*=\s*'([\d-]+)'/) || [])[1];
 
-ok('platform-data.js declara CURRENT_MONTH', Boolean(mesAbertura), mesAbertura || 'não encontrado');
+ok('platform-data.js declara CURRENT_MONTH', Boolean(mesCorrente), mesCorrente || 'não encontrado');
+ok('platform-data.js declara OPENING_MONTH', Boolean(mesAbertura), mesAbertura || 'não encontrado');
+ok('AtlasData exporta OPENING_MONTH', /OPENING_MONTH:\s*OPENING_MONTH/.test(dataContent));
+
+const roteiroTodo = [...dataContent.matchAll(/setS\(\s*'[^']+'\s*,\s*'([\d-]+)'\s*,\s*'([^']+)'/g)];
 
 if (mesAbertura) {
-  const noRoteiro = [...dataContent.matchAll(/setS\(\s*'[^']+'\s*,\s*'([\d-]+)'\s*,\s*'([^']+)'/g)]
-    .filter(m => m[1] === mesAbertura);
+  const noRoteiro = roteiroTodo.filter(m => m[1] === mesAbertura);
   const corrigir = noRoteiro.filter(m => m[2] === 'CORRIGIR').length;
   const alerta = noRoteiro.filter(m => m[2] === 'COM ALERTA').length;
 
@@ -806,6 +819,56 @@ if (mesAbertura) {
   ok('janela de recidiva alcança o mês de abertura',
     janelaRecidiva.includes(mesAbertura),
     janelaRecidiva.includes(mesAbertura) ? 'ok' : `janela termina antes de ${mesAbertura}`);
+}
+
+if (mesCorrente && mesAbertura) {
+  // Abrir num mês posterior ao último fechado seria abrir num dashboard vazio.
+  ok('mês de abertura não é posterior ao mês corrente',
+    mesAbertura <= mesCorrente, `abertura=${mesAbertura} corrente=${mesCorrente}`);
+
+  // Mês corrente limpo é decisão de desenho, não descuido: sem roteiro de
+  // status, getStatus devolve LIBERAR para ele inteiro. Um setS no mês corrente
+  // desfaria a estabilidade sem que nada mais avisasse.
+  const roteiroCorrente = roteiroTodo.filter(m => m[1] === mesCorrente);
+  ok(`mês corrente (${mesCorrente}) é mês de estabilidade, sem roteiro de status`,
+    roteiroCorrente.length === 0,
+    roteiroCorrente.length ? `${roteiroCorrente.length} entrada(s) de roteiro` : 'ok');
+
+  // Só CORRIGIR injeta ajuste no PL anterior reportado. Sem CORRIGIR no mês
+  // corrente, plEsperado bate com plCurr e a divergência do mês é zero. Este
+  // check prende a causa, não o efeito.
+  ok('só CORRIGIR injeta ajuste no PL anterior reportado',
+    /var reportedPlPrev = plPrev;\s*if \(status === 'CORRIGIR'\)/.test(dataContent));
+}
+
+// Composição do mês corrente reaproveita a do anterior: mesma carteira de
+// papéis, saldo andando só por marcação. Sem isso o comparador de posição
+// mostrava a carteira inteira trocando de ativo entre dois meses, compra e
+// venda que nunca aconteceram.
+ok('mês corrente reusa a composição do mês anterior, sem sortear ativo novo',
+  /if \(month === CURRENT_MONTH && miAnterior >= 0\)/.test(dataContent)
+  && /var anterior = getComposition\(code, MONTHS\[miAnterior\]\)/.test(dataContent));
+ok('a composição estável mantém nome, classe e instituição do mês anterior',
+  /name: x\.r\.name/.test(dataContent) && /institution: x\.r\.institution/.test(dataContent));
+// Texto que contradiz o dado ao lado é defeito, não estilo: a nota INFO do mês
+// corrente não pode alegar realocação num mês em que o comparador de posição
+// mostra zero entrada e zero saída.
+ok('nota INFO do mês estável não alega realocação que não houve',
+  /estavel: \(month === CURRENT_MONTH && mi > 0\)/.test(dataContent)
+  && dataContent.includes('Composição inalterada no período'));
+
+// Quem decide onde o app aterrissa tem de ler OPENING_MONTH.
+{
+  const utilsMes = fs.readFileSync(path.join(ROOT, 'platform-utils.jsx'), 'utf8');
+  ok('o mês inicial guardado no storage sai de OPENING_MONTH',
+    (utilsMes.match(/AtlasData\.OPENING_MONTH/g) || []).length >= 2);
+  ok('o fallback de mês fora da faixa cai na abertura, não no corrente',
+    /_abre = window\.AtlasData\.OPENING_MONTH/.test(appContent));
+  // A janela de gráfico continua olhando o mês corrente: é extensão de dado,
+  // não aterrissagem. Trocar isso encurtaria o histórico em um mês.
+  const dashMes = fs.readFileSync(path.join(ROOT, 'platform-dashboard.jsx'), 'utf8');
+  ok('a janela de gráfico continua ancorada no mês corrente',
+    /allM\.indexOf\(D\.CURRENT_MONTH\)/.test(dashMes));
 }
 
 // ─── 16. Marca neutra — o produto não assina com nome de casa ───────────────
