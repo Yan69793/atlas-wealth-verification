@@ -59,6 +59,7 @@ import './platform-valor-math.js';
   function ValorAssessor() {
     const [janelaSel, setJanelaSel] = useState(12);
     const [filtroMgr, setFiltroMgr] = useState('');
+    const [linhaAberta, setLinhaAberta] = useState(null);
 
     const meses = D && D.visibleMonths ? D.visibleMonths().months : [];
     const dataFim = meses.length ? meses[meses.length - 1] : '';
@@ -259,7 +260,18 @@ import './platform-valor-math.js';
                   <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                     {v.inacaoR$ > 0 ? fmtCompactBRL(v.inacaoR$) : '—'}
                   </td>
-                  <td className="cell-prose" style={{ fontSize: '0.786rem', maxWidth: 380 }}>{frase(v.deltaPp, v.inacaoR$)}</td>
+                  <td
+                    className={linhaAberta === v.code ? 'cell-prose' : undefined}
+                    style={{ fontSize: '0.786rem', maxWidth: 380, cursor: 'pointer' }}
+                    onClick={(e) => { e.stopPropagation(); setLinhaAberta(linhaAberta === v.code ? null : v.code); }}
+                    title={linhaAberta === v.code ? 'Clique para recolher' : 'Clique para ver a frase inteira'}
+                  >
+                    {linhaAberta === v.code
+                      ? frase(v.deltaPp, v.inacaoR$)
+                      : <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {frase(v.deltaPp, v.inacaoR$)}
+                        </span>}
+                  </td>
                 </tr>
               ))}
             </tbody>
