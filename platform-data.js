@@ -983,7 +983,7 @@
     'Ficha Cadastral','KYC','Perfil de Investimento','Perfil de Risco',
     'Declaração de Investidor Qualificado','Declaração de Investidor Profissional',
     'Comprovante de Residência','Contrato de Gestão','Documento de Identidade',
-    'Procuração','Declaração de Beneficiário Final'
+    'Procuração','Declaração de Beneficiário Final','Declaração de IR'
   ];
 
   var PENDING_STATUSES = ['Pendente','Em Análise','Aguardando Cliente','Vencido'];

@@ -1,8 +1,9 @@
 {
   "_formato": {
-    "o_que_e": "Exemplo do arquivo cadastro-pendencias.json que vive na RAIZ DA INSTÂNCIA, nunca aqui no produto. É a lista de pendências cadastrais do escritório, e é a única fonte do overlay platform-cadastro.js.",
+    "o_que_e": "Exemplo do arquivo cadastro-pendencias.json que vive na RAIZ DA INSTÂNCIA, nunca aqui no produto. É o ESTADO DO CADASTRO do escritório, não uma lista só de pendências: cada linha descreve um documento de uma carteira, com a data dele quando existe.",
+    "por_que_isso_importa": "Documento em dia sai do resultado, porque não é pendência. Documento vencido, sem data ou com status declarado vira linha do overlay. E documento que o custodiante exige e não aparece aqui sai como Pendente por falta. Se este arquivo fosse só de pendências, ausência significaria resolvido e o cálculo por falta viraria ruído.",
     "como_gerar": "node scripts/gerar-cadastro.mjs --dir <raiz-da-instancia>",
-    "aceita": "a lista nua (um array no topo do arquivo) ou este formato, com a chave \"pendencias\".",
+    "aceita": "a lista nua (um array no topo do arquivo) ou este formato, com as chaves opcionais custodiantes e carteiras mais a chave pendencias.",
     "campos_obrigatorios": {
       "code": "código da carteira, string não vazia. É a chave que liga a pendência à carteira.",
       "type": "um dos tipos de documento do escritório, exatamente como escrito na lista de scripts/gerar-cadastro.mjs."
@@ -11,8 +12,9 @@
       "status": "Pendente, Em Análise, Aguardando Cliente ou Vencido. Declarado manda sobre calculado.",
       "since": "YYYY-MM ou YYYY-MM-DD. Data do documento, que é o que a janela de validade mede.",
       "obs": "texto livre que a tela de Cadastro mostra na coluna Observação.",
-      "name": "apelido da carteira, passa direto para a tela.",
-      "segment": "Ultra, Large, Mid ou Small, passa direto para a tela."
+      "name": "apelido da carteira, passa direto para a tela. Basta numa linha por carteira.",
+      "segment": "Ultra, Large, Mid ou Small, passa direto para a tela. Basta numa linha por carteira.",
+      "custodiante": "custodiante da carteira. Vale para a carteira inteira, basta declarar numa linha."
     },
     "tipos": [
       "Ficha Cadastral",
@@ -25,54 +27,62 @@
       "Contrato de Gestão",
       "Documento de Identidade",
       "Procuração",
-      "Declaração de Beneficiário Final"
+      "Declaração de Beneficiário Final",
+      "Declaração de IR"
     ],
     "janela_de_validade_em_meses": {
       "Comprovante de Residência": 6,
       "Perfil de Investimento": 24,
       "Perfil de Risco": 24,
+      "Declaração de IR": 12,
       "_demais_tipos": "sem janela. A pendência é declarada pelo escritório e nunca calculada: inventar prazo para KYC ou procuração produz Vencido que ninguém consegue provar."
     },
+    "custodiante_da_carteira": "Três caminhos, do mais explícito para o mais derivado. 1, campo custodiante na própria linha. 2, o mapa carteiras abaixo. 3, a composição do platform-data-real.js, instituição de maior saldo. Sem nenhum dos três, a carteira não recebe cálculo por falta: sem saber o que o custodiante exige, ausência de documento não prova nada.",
+    "bloco_custodiantes": "Opcional e é ele que resolve a pendência aberta. O produto embarca um conjunto obrigatório PROVISÓRIO por custodiante, que não saiu do escritório. Declarar um custodiante aqui SUBSTITUI o conjunto dele por inteiro. Formato: { \"custodiantes\": { \"Mirabaud\": [\"Ficha Cadastral\", \"KYC\"] } }. Enquanto o bloco não vier, o overlay carrega custodiantesProvisorios verdadeiro.",
     "regras_que_pegam": [
       "Linha inválida aborta a geração inteira. Gravar só as linhas boas sumiria em silêncio com pendência que existe.",
       "Arquivo ausente ou vazio não gera overlay nenhum. Ausência de dado não é ausência de pendência, e o app fica marcando a pendência como estimativa, que é o estado honesto.",
-      "Sem status declarado e sem janela de validade, a linha cai em Pendente. Nunca em Vencido."
+      "Sem status declarado e sem janela de validade, a linha cai em Pendente. Nunca em Vencido.",
+      "Documento com data dentro da janela, ou com data e sem janela, está em dia e não entra no overlay."
     ],
+    "o_que_este_exemplo_prova": {
+      "ALPHA_01": "custodiante pelo mapa carteiras, cadastro inteiro na lista, e um Comprovante de Residência de 2025-01 que passa da janela de 6 meses. Sai 1 pendência, Vencido calculado.",
+      "BRAVO_FAM": "custodiante declarado na própria linha, dois documentos exigidos pelo Órama que não aparecem na lista, mais uma procuração com status declarado. Sai 3 pendências, 2 por falta e 1 declarada.",
+      "ALPHA_03": "custodiante pelo mapa, os dez documentos que o Bradesco Private exige, todos presentes e dentro da validade. Sai zero pendência, cadastro completo."
+    },
     "aviso": "Os códigos abaixo são do catálogo sintético do demo. Nenhum dado de cliente real entra em arquivo versionado."
   },
+
+  "carteiras": {
+    "ALPHA_01": "BTG",
+    "ALPHA_03": "Bradesco Private"
+  },
+
   "pendencias": [
-    {
-      "code": "ALPHA_01",
-      "name": "Alpha Gestão I",
-      "segment": "Large",
-      "type": "KYC",
-      "status": "Em Análise",
-      "since": "2026-05-20",
-      "obs": "Status declarado pelo escritório. Declarado sempre manda sobre calculado."
-    },
-    {
-      "code": "BRAVO_FAM",
-      "name": "Bravo Family Office",
-      "segment": "Ultra",
-      "type": "Comprovante de Residência",
-      "since": "2025-01-10",
-      "obs": "Sem status na lista. Comprovante vale 6 meses, e esta data tem 19, então nasce Vencido."
-    },
-    {
-      "code": "BRAVO_PV",
-      "name": "Bravo Patrimonial",
-      "segment": "Mid",
-      "type": "Perfil de Investimento",
-      "since": "2026-03-01",
-      "obs": "Sem status na lista. Suitability vale 24 meses e esta tem 5, então nasce Pendente, não Vencido."
-    },
-    {
-      "code": "ALPHA_03",
-      "name": "Alpha Gestão III",
-      "segment": "Small",
-      "type": "Procuração",
-      "since": "2019-05",
-      "obs": "Sem status e sem janela de validade. Cai em Pendente por mais velha que seja a data."
-    }
+    { "code": "ALPHA_01", "name": "Alpha Gestão I", "segment": "Large", "type": "Ficha Cadastral", "since": "2024-03-01" },
+    { "code": "ALPHA_01", "type": "Documento de Identidade", "since": "2023-08-15" },
+    { "code": "ALPHA_01", "type": "Comprovante de Residência", "since": "2025-01-10", "obs": "Único vencido da carteira: 19 meses contra janela de 6." },
+    { "code": "ALPHA_01", "type": "KYC", "since": "2026-02-10" },
+    { "code": "ALPHA_01", "type": "Perfil de Investimento", "since": "2026-01-20" },
+    { "code": "ALPHA_01", "type": "Perfil de Risco", "since": "2026-01-20" },
+    { "code": "ALPHA_01", "type": "Contrato de Gestão", "since": "2022-05-01" },
+    { "code": "ALPHA_01", "type": "Declaração de Investidor Qualificado", "since": "2026-03-01" },
+
+    { "code": "BRAVO_FAM", "name": "Bravo Family Office", "segment": "Ultra", "custodiante": "Órama", "type": "Ficha Cadastral", "since": "2025-06-01" },
+    { "code": "BRAVO_FAM", "type": "Documento de Identidade", "since": "2024-11-02" },
+    { "code": "BRAVO_FAM", "type": "Comprovante de Residência", "since": "2026-05-15" },
+    { "code": "BRAVO_FAM", "type": "Contrato de Gestão", "since": "2025-06-01" },
+    { "code": "BRAVO_FAM", "type": "Procuração", "status": "Aguardando Cliente", "obs": "Status declarado pelo escritório, independe do conjunto do custodiante." },
+
+    { "code": "ALPHA_03", "name": "Alpha Gestão III", "segment": "Mid", "type": "Ficha Cadastral", "since": "2024-02-01" },
+    { "code": "ALPHA_03", "type": "Documento de Identidade", "since": "2021-07-19" },
+    { "code": "ALPHA_03", "type": "Comprovante de Residência", "since": "2026-06-01" },
+    { "code": "ALPHA_03", "type": "KYC", "since": "2025-11-10" },
+    { "code": "ALPHA_03", "type": "Perfil de Investimento", "since": "2025-09-01" },
+    { "code": "ALPHA_03", "type": "Perfil de Risco", "since": "2025-09-01" },
+    { "code": "ALPHA_03", "type": "Contrato de Gestão", "since": "2024-02-01" },
+    { "code": "ALPHA_03", "type": "Procuração", "since": "2024-02-05" },
+    { "code": "ALPHA_03", "type": "Declaração de Beneficiário Final", "since": "2025-04-22" },
+    { "code": "ALPHA_03", "type": "Declaração de IR", "since": "2026-05-30" }
   ]
 }

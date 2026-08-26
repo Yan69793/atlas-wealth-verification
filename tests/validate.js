@@ -2415,16 +2415,24 @@ ok('R$ × dias não é formatado como moeda',
   ok('os dois lados apontam um para o outro em comentario',
     /gerar-cadastro\.mjs/.test(dataContent) && /platform-data\.js/.test(gen));
 
+  ok('o modelo tem os doze tipos, incluindo Declaracao de IR',
+    !!tiposGerador && tiposGerador.length === 12 && tiposGerador.includes('Declaração de IR'),
+    tiposGerador ? String(tiposGerador.length) : 'ausente');
+
   // ── Janela de validade só onde existe regra real ─────────────────────────
   const janelas = listaDe(gen, /const JANELA_MESES = \{([\s\S]*?)\};/) || [];
-  ok('janela de validade so nos tres tipos com regra objetiva',
+  ok('janela de validade so nos quatro tipos com regra objetiva',
     janelas.slice().sort().join('|') ===
-      ['Comprovante de Residência', 'Perfil de Investimento', 'Perfil de Risco'].sort().join('|'),
+      ['Comprovante de Residência', 'Perfil de Investimento', 'Perfil de Risco', 'Declaração de IR'].sort().join('|'),
     janelas.join(', '));
+  ok('os oito tipos sem regra objetiva ficam fora da janela',
+    !!tiposGerador && tiposGerador.filter((t) => !janelas.includes(t)).length === 8);
   ok('Vencido calculado exige janela E data, nunca so idade',
-    /if \(janela && idade !== null\)/.test(gen) && /idade >= janela \? 'Vencido' : 'Pendente'/.test(gen));
+    /if \(janela && idade !== null\) \{\s*if \(idade >= janela\) \{/.test(gen)
+    && /linhaSaida\(code, type, 'Vencido', since/.test(gen));
   ok('sem janela e sem status a linha cai em Pendente, nunca em Vencido',
-    /else \{\s*status = 'Pendente';/.test(gen));
+    /if \(since\) \{ emDia \+= 1; return; \}/.test(gen)
+    && /declarados \+= 1;\s*pendencias\.push\(linhaSaida\(code, type, 'Pendente', since/.test(gen));
 
   // ── Ausência de lista não vira ausência de pendência ─────────────────────
   ok('lista ausente ou vazia nao escreve overlay',
@@ -2462,6 +2470,103 @@ ok('R$ × dias não é formatado como moeda',
     const foraDoCatalogo = linhasEx.map((r) => r.code).filter((c) => !catalogo.has(c));
     ok('exemplo usa somente codigo do catalogo sintetico do demo',
       catalogo.size > 0 && foraDoCatalogo.length === 0, foraDoCatalogo.join(', ') || 'ok');
+  }
+
+  // ── Conjunto obrigatório por custodiante ─────────────────────────────────
+  //
+  // O conjunto embarcado no produto NÃO saiu do escritório. Estes checks
+  // existem para que ele não se disfarce de fonte: fica marcado como
+  // provisório e é substituído por inteiro quando a instância declarar o seu.
+  const custBloco = (/const CUSTODIANTES_PADRAO = \{([\s\S]*?)\n\};/.exec(gen) || [])[1] || '';
+  const custNomes = [...custBloco.matchAll(/^\s{2}'([^']+)':\s*\[/gm)].map((m) => m[1]);
+  ok('modelo cadastra conjunto obrigatorio para os quatro custodiantes',
+    ['Mirabaud', 'BTG', 'Bradesco Private', 'Órama'].every((c) => custNomes.includes(c)),
+    custNomes.join(', ') || 'nenhum');
+  ok('o conjunto embarcado no produto se declara PROVISORIO',
+    /PROVIS[ÓO]RIO/.test(gen) && /NÃO saíram do escritório/.test(gen));
+  ok('o bloco da instancia SUBSTITUI o conjunto, nao soma',
+    /CUSTODIANTES\[nome\] = tipos\.slice\(\);/.test(gen)
+    && /SUBSTITUI, não soma/.test(gen));
+  ok('o overlay carimba se o conjunto ainda e provisorio',
+    /custodiantesProvisorios,/.test(gen) && /custodiantesProvisorios = false;/.test(gen));
+  ok('tipo fora da lista dentro do bloco de custodiante aborta',
+    /tipo fora da lista do escritório/.test(gen));
+
+  // Carteira sem custodiante conhecido não recebe falta. Chutar o custodiante
+  // inventaria exigência, e exigência inventada vira pendência inventada.
+  ok('carteira sem custodiante nao recebe calculo por falta',
+    /if \(!cust\) \{ semCustodiante\.push\(code\); continue; \}/.test(gen));
+  ok('falta sai como Pendente, nunca como Vencido',
+    /porFalta: true,/.test(gen)
+    && /const faltando = exigidos\.filter\(\(t\) => !carteira\.tipos\.has\(t\)\);/.test(gen)
+    && !/porFalta[\s\S]{0,200}'Vencido'/.test(gen));
+  ok('documento em dia sai do resultado, em vez de virar pendencia',
+    /emDia \+= 1;/.test(gen) && /documento na mão, sem prazo objetivo/.test(gen));
+
+  // ── Fim a fim: o gerador roda contra o exemplo e o overlay nasce certo ───
+  //
+  // Regex prova o texto do gerador; isto prova o gerador. Roda de verdade numa
+  // pasta temporária, com data de referência fixa, e confere linha por linha.
+  {
+    const { execFileSync } = require('child_process');
+    const os = require('os');
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'atlas-cadastro-'));
+    let saida = null, overlay = null, erro = null;
+    try {
+      fs.copyFileSync(exPath, path.join(tmp, 'cadastro-pendencias.json'));
+      saida = execFileSync(process.execPath,
+        [path.join(ROOT, 'scripts/gerar-cadastro.mjs'), '--dir', tmp, '--hoje', '2026-08-26'],
+        { encoding: 'utf8' });
+      const w = {};
+      new Function('window', fs.readFileSync(path.join(tmp, 'platform-cadastro.js'), 'utf8'))(w);
+      overlay = w.ATLAS_CADASTRO_DATA;
+    } catch (e) {
+      erro = e.message;
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+
+    ok('gerador roda contra o exemplo e escreve o overlay', !!overlay, erro || 'ok');
+    if (overlay) {
+      const p = overlay.pendencias || [];
+      const acha = (code, type) => p.find((x) => x.code === code && x.type === type);
+
+      ok('overlay expoe o contrato que o consolidado le',
+        Array.isArray(p) && typeof overlay.geradoEm === 'string' && overlay.geradoEm === '2026-08-26');
+
+      ok('vencido POR DATA: comprovante de 2025-01 contra janela de 6 meses',
+        !!acha('ALPHA_01', 'Comprovante de Residência')
+        && acha('ALPHA_01', 'Comprovante de Residência').status === 'Vencido'
+        && acha('ALPHA_01', 'Comprovante de Residência').statusCalculado === true);
+
+      ok('pendente POR FALTA: exigido pelo custodiante e ausente da lista',
+        !!acha('BRAVO_FAM', 'KYC') && acha('BRAVO_FAM', 'KYC').status === 'Pendente'
+        && acha('BRAVO_FAM', 'KYC').porFalta === true
+        && !!acha('BRAVO_FAM', 'Perfil de Investimento'));
+
+      ok('status declarado manda sobre calculado',
+        !!acha('BRAVO_FAM', 'Procuração')
+        && acha('BRAVO_FAM', 'Procuração').status === 'Aguardando Cliente');
+
+      ok('cadastro completo nao gera pendencia nenhuma',
+        p.filter((x) => x.code === 'ALPHA_03').length === 0,
+        `ALPHA_03 gerou ${p.filter((x) => x.code === 'ALPHA_03').length}`);
+
+      ok('nenhuma pendencia por falta sai marcada como Vencido',
+        p.filter((x) => x.porFalta).every((x) => x.status === 'Pendente'));
+
+      ok('o exemplo resolve custodiante pelos dois caminhos declarados',
+        overlay.custodianteDaCarteira
+        && overlay.custodianteDaCarteira.ALPHA_01 === 'BTG'
+        && overlay.custodianteDaCarteira.BRAVO_FAM === 'Órama',
+        JSON.stringify(overlay.custodianteDaCarteira || {}));
+
+      ok('sem bloco da instancia o conjunto continua marcado como provisorio',
+        overlay.custodiantesProvisorios === true);
+
+      ok('o log do gerador nao imprime codigo de carteira',
+        typeof saida === 'string' && !/ALPHA_01|ALPHA_03|BRAVO_FAM/.test(saida));
+    }
   }
 
   // ── Comportamento: o overlay presente derruba a marca de estimativa ──────

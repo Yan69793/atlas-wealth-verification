@@ -17,6 +17,15 @@
  * window.ATLAS_CADASTRO_DATA.pendencias, cada linha com code, type, status,
  * since e obs, mais name e segment opcionais que passam direto.
  *
+ * O arquivo de entrada é o ESTADO DO CADASTRO, não uma lista de pendências
+ * -----------------------------------------------------------------------
+ * Isso importa e é fácil errar. Cada linha descreve um documento da carteira,
+ * com a data dele quando existe. Documento em dia sai do resultado, porque não
+ * é pendência. Documento vencido, sem data ou com status declarado vira linha
+ * do overlay. E documento que o custodiante EXIGE e não aparece na lista sai
+ * como pendência por falta. Se a lista fosse só de pendências, ausência
+ * significaria "resolvido" e o cálculo por falta produziria ruído.
+ *
  * A REGRA QUE NÃO PODE SER RELAXADA
  * ---------------------------------
  * Sem cadastro-pendencias.json, ou com ele vazio, este script NÃO escreve o
@@ -28,7 +37,9 @@
  *
  * Pela mesma razão, linha inválida ABORTA a geração inteira em vez de ser
  * pulada. Gravar as linhas boas e descartar as ruins em silêncio some com
- * pendência que existe no escritório.
+ * pendência que existe no escritório. E carteira sem custodiante conhecido não
+ * recebe cálculo por falta nenhum: sem saber o que é exigido, ausência de
+ * documento não prova nada.
  *
  * LGPD
  * ----
@@ -68,19 +79,62 @@ const TIPOS = [
   'Documento de Identidade',
   'Procuração',
   'Declaração de Beneficiário Final',
+  'Declaração de IR',
 ];
 
 const STATUSES = ['Pendente', 'Em Análise', 'Aguardando Cliente', 'Vencido'];
 
 /* Janela de validade, em meses, SÓ onde existe regra de verdade. Comprovante de
-   residência vale 6 meses e o perfil (suitability) é reavaliado a cada 24. Os
-   demais tipos não têm prazo objetivo: a pendência deles é declarada pelo
-   escritório e nunca calculada aqui. Inventar prazo para KYC ou procuração
-   produziria "Vencido" que ninguém consegue provar de onde veio. */
+   residência vale 6 meses, o perfil (suitability) é reavaliado a cada 24 e a
+   declaração de IR é anual. Os demais tipos não têm prazo objetivo: a pendência
+   deles é declarada pelo escritório e nunca calculada aqui. Inventar prazo para
+   KYC ou procuração produziria "Vencido" que ninguém consegue provar de onde
+   veio. */
 const JANELA_MESES = {
   'Comprovante de Residência': 6,
   'Perfil de Investimento': 24,
   'Perfil de Risco': 24,
+  'Declaração de IR': 12,
+};
+
+/* ─────────────────────────────────────────────────────────────────────────
+   CONJUNTO OBRIGATÓRIO POR CUSTODIANTE — PROVISÓRIO, LEIA ANTES DE USAR
+
+   Estes conjuntos NÃO saíram do escritório. São o padrão de abertura de conta
+   e suitability que a regulação brasileira desenha (cadastro, identificação,
+   comprovação de residência, KYC, perfil de investimento), mais o que cada
+   perfil de casa costuma pedir a mais. Servem para o modelo existir e ser
+   testável, não para valer como fonte.
+
+   O conjunto REAL de cada custodiante entra pela instância, não por aqui: o
+   cadastro-pendencias.json pode trazer um bloco "custodiantes" que SUBSTITUI
+   (não soma) o conjunto de quem for declarado ali. É assim que o conjunto do
+   escritório vira dado de instância, fora do git, sem ninguém adivinhar nada
+   dentro do produto.
+
+   Enquanto o bloco não vier, o overlay carrega `custodiantesProvisorios: true`
+   e a tela pode dizer isso. Pendência aberta no ESTADO. */
+const CUSTODIANTES_PADRAO = {
+  'Mirabaud': [
+    'Ficha Cadastral', 'Documento de Identidade', 'Comprovante de Residência',
+    'KYC', 'Perfil de Investimento', 'Perfil de Risco', 'Contrato de Gestão',
+    'Procuração', 'Declaração de Beneficiário Final',
+    'Declaração de Investidor Qualificado', 'Declaração de IR',
+  ],
+  'BTG': [
+    'Ficha Cadastral', 'Documento de Identidade', 'Comprovante de Residência',
+    'KYC', 'Perfil de Investimento', 'Perfil de Risco', 'Contrato de Gestão',
+    'Declaração de Investidor Qualificado',
+  ],
+  'Bradesco Private': [
+    'Ficha Cadastral', 'Documento de Identidade', 'Comprovante de Residência',
+    'KYC', 'Perfil de Investimento', 'Perfil de Risco', 'Contrato de Gestão',
+    'Procuração', 'Declaração de Beneficiário Final', 'Declaração de IR',
+  ],
+  'Órama': [
+    'Ficha Cadastral', 'Documento de Identidade', 'Comprovante de Residência',
+    'KYC', 'Perfil de Investimento', 'Contrato de Gestão',
+  ],
 };
 
 /* ── Argumentos ──────────────────────────────────────────────────────────── */
@@ -155,7 +209,93 @@ if (!linhas) {
 }
 if (linhas.length === 0) semLista('cadastro-pendencias.json está vazio.');
 
-/* ── Validação e normalização ────────────────────────────────────────────── */
+const erros = [];
+
+/* ── Conjunto obrigatório: padrão do produto, sobrescrito pela instância ─── */
+
+const CUSTODIANTES = {};
+for (const [nome, tipos] of Object.entries(CUSTODIANTES_PADRAO)) CUSTODIANTES[nome] = tipos.slice();
+
+const blocoCust = (!Array.isArray(bruto) && bruto?.custodiantes) || null;
+let custodiantesProvisorios = true;
+if (blocoCust) {
+  if (typeof blocoCust !== 'object' || Array.isArray(blocoCust)) {
+    erros.push('bloco "custodiantes": precisa ser um objeto de custodiante para lista de tipos.');
+  } else {
+    for (const [nome, tipos] of Object.entries(blocoCust)) {
+      if (!Array.isArray(tipos) || tipos.length === 0) {
+        erros.push(`custodiante "${nome}": precisa ser uma lista não vazia de tipos.`);
+        continue;
+      }
+      const fora = tipos.filter((t) => !TIPOS.includes(t));
+      if (fora.length) {
+        erros.push(`custodiante "${nome}": tipo fora da lista do escritório — ${fora.join(', ')}.`);
+        continue;
+      }
+      // SUBSTITUI, não soma: o conjunto do escritório é exatamente o declarado.
+      CUSTODIANTES[nome] = tipos.slice();
+    }
+    custodiantesProvisorios = false;
+  }
+}
+
+/* ── Custodiante de cada carteira ────────────────────────────────────────── */
+
+/* Ordem de precedência, da mais explícita para a mais derivada:
+     1. campo "custodiante" na própria linha
+     2. mapa "carteiras" no topo do arquivo
+     3. composição do platform-data-real.js, instituição de maior saldo
+   Sem nenhuma das três, a carteira fica sem conjunto obrigatório e não recebe
+   cálculo por falta. Chutar o custodiante inventaria exigência. */
+function custodiantesDaBase() {
+  const fonte = path.join(DIR, 'platform-data-real.js');
+  if (!fs.existsSync(fonte)) return { mapa: {}, motivo: 'platform-data-real.js ausente' };
+  const sandbox = { window: {} };
+  try {
+    new Function('window', fs.readFileSync(fonte, 'utf8'))(sandbox.window);
+  } catch (err) {
+    return { mapa: {}, motivo: 'platform-data-real.js ilegível: ' + err.message };
+  }
+  const real = sandbox.window._AtlasRealData || {};
+  const mapa = {};
+
+  // Forma A: a carteira já declara a instituição custodiante.
+  for (const p of (Array.isArray(real.portfolios) ? real.portfolios : [])) {
+    const code = typeof p?.code === 'string' ? p.code.trim() : '';
+    const inst = (typeof p?.custodiante === 'string' && p.custodiante.trim())
+      || (typeof p?.institution === 'string' && p.institution.trim()) || '';
+    if (code && inst) mapa[code] = inst;
+  }
+
+  // Forma B: composição por carteira; custodiante é a instituição com o maior
+  // saldo. Carteira dividida entre duas casas cai na de maior peso, e isso vai
+  // declarado no overlay para quem ler poder discordar.
+  const comps = real.compositions || real.composicoes || null;
+  if (comps && typeof comps === 'object') {
+    for (const [chave, linhasComp] of Object.entries(comps)) {
+      if (!Array.isArray(linhasComp)) continue;
+      const code = String(chave).split('|')[0].trim();
+      if (!code || mapa[code]) continue;
+      const soma = {};
+      for (const l of linhasComp) {
+        const inst = typeof l?.institution === 'string' ? l.institution.trim() : '';
+        const v = typeof l?.saldoFinal === 'number' && isFinite(l.saldoFinal) ? l.saldoFinal : 0;
+        if (inst) soma[inst] = (soma[inst] || 0) + v;
+      }
+      const top = Object.entries(soma).sort((a, b) => b[1] - a[1])[0];
+      if (top) mapa[code] = top[0];
+    }
+  }
+  return { mapa, motivo: Object.keys(mapa).length ? null : 'sem carteira com instituição legível' };
+}
+
+const mapaDeclarado = (!Array.isArray(bruto) && bruto?.carteiras) || {};
+if (mapaDeclarado && (typeof mapaDeclarado !== 'object' || Array.isArray(mapaDeclarado))) {
+  erros.push('bloco "carteiras": precisa ser um objeto de código de carteira para custodiante.');
+}
+const derivados = custodiantesDaBase();
+
+/* ── Validação e normalização das linhas ─────────────────────────────────── */
 
 function parseData(v) {
   if (typeof v !== 'string') return null;
@@ -176,10 +316,11 @@ function mesesDesde(since) {
   return m;
 }
 
-const erros = [];
 const pendencias = [];
+const porCarteira = new Map();   // code -> { custodiante, tipos:Set, name, segment }
 let calculados = 0;
-let assumidos = 0;
+let declarados = 0;
+let emDia = 0;
 
 linhas.forEach((r, i) => {
   const ref = `linha #${i + 1}`;              // índice, nunca o código (LGPD)
@@ -210,37 +351,98 @@ linhas.forEach((r, i) => {
     return;
   }
 
-  /* Status: declarado manda. Sem declaração, só a janela de validade autoriza
-     dizer "Vencido", e só quando existe data. Fora disso a linha cai em
-     "Pendente", que é o status neutro: a pendência foi declarada pelo
-     escritório e conta no total, mas não engrossa a contagem de vencidas, que é
-     a que escala a criticidade da carteira. */
-  let status = declarado;
-  let statusCalculado = false;
-  if (!status) {
-    const janela = JANELA_MESES[type];
-    const idade = since ? mesesDesde(since) : null;
-    if (janela && idade !== null) {
-      status = idade >= janela ? 'Vencido' : 'Pendente';
-      statusCalculado = true;
-      calculados += 1;
-    } else {
-      status = 'Pendente';
-      assumidos += 1;
-    }
+  const name = typeof r.name === 'string' && r.name.trim() ? r.name.trim() : null;
+  const segment = typeof r.segment === 'string' && r.segment.trim() ? r.segment.trim() : null;
+  const custLinha = typeof r.custodiante === 'string' && r.custodiante.trim() ? r.custodiante.trim() : null;
+
+  if (!porCarteira.has(code)) porCarteira.set(code, { custodiante: null, tipos: new Set(), name: null, segment: null });
+  const carteira = porCarteira.get(code);
+  carteira.tipos.add(type);
+  if (name && !carteira.name) carteira.name = name;
+  if (segment && !carteira.segment) carteira.segment = segment;
+  if (custLinha && !carteira.custodiante) carteira.custodiante = custLinha;
+
+  /* Status. Declarado manda sempre. Sem declaração, só a janela de validade
+     autoriza dizer "Vencido", e só quando existe data. Documento com data
+     dentro da janela, ou com data e sem janela, está EM DIA e sai do
+     resultado: não é pendência, e listar como pendência o que está resolvido
+     é tão errado quanto esconder o que não está. */
+  if (declarado) {
+    declarados += 1;
+    pendencias.push(linhaSaida(code, type, declarado, since, r.obs, name, segment, {}));
+    return;
   }
 
-  const linha = { code, type, status, since: since || null };
-  if (typeof r.name === 'string' && r.name.trim()) linha.name = r.name.trim();
-  if (typeof r.segment === 'string' && r.segment.trim()) linha.segment = r.segment.trim();
-  linha.obs = typeof r.obs === 'string' ? r.obs : '';
-  if (statusCalculado) linha.statusCalculado = true;
+  const janela = JANELA_MESES[type];
+  const idade = since ? mesesDesde(since) : null;
 
-  pendencias.push(linha);
+  if (janela && idade !== null) {
+    if (idade >= janela) {
+      calculados += 1;
+      pendencias.push(linhaSaida(code, type, 'Vencido', since, r.obs, name, segment, {
+        statusCalculado: true,
+        idadeMeses: idade,
+        janelaMeses: janela,
+      }));
+    } else {
+      emDia += 1;
+    }
+    return;
+  }
+
+  if (since) { emDia += 1; return; }   // documento na mão, sem prazo objetivo
+
+  // Sem status e sem data: declarado na lista, sem evidência do documento.
+  declarados += 1;
+  pendencias.push(linhaSaida(code, type, 'Pendente', since, r.obs, name, segment, {}));
 });
 
+function linhaSaida(code, type, status, since, obs, name, segment, extra) {
+  const l = { code, type, status, since: since || null };
+  if (name) l.name = name;
+  if (segment) l.segment = segment;
+  l.obs = typeof obs === 'string' ? obs : '';
+  return Object.assign(l, extra);
+}
+
+/* ── Pendência por falta: exigido pelo custodiante e ausente da lista ────── */
+
+const semCustodiante = [];
+const custodianteDesconhecido = new Set();
+let porFalta = 0;
+let completas = 0;
+
+for (const [code, carteira] of porCarteira) {
+  const cust = carteira.custodiante
+    || (typeof mapaDeclarado[code] === 'string' ? mapaDeclarado[code].trim() : null)
+    || derivados.mapa[code]
+    || null;
+
+  if (!cust) { semCustodiante.push(code); continue; }
+  carteira.custodiante = cust;
+
+  const exigidos = CUSTODIANTES[cust];
+  if (!exigidos) { custodianteDesconhecido.add(cust); continue; }
+
+  const faltando = exigidos.filter((t) => !carteira.tipos.has(t));
+  if (!faltando.length) {
+    // Todo exigido está na lista. Se além disso nada dela virou pendência, a
+    // carteira está com cadastro completo.
+    if (!pendencias.some((p) => p.code === code)) completas += 1;
+    continue;
+  }
+  for (const type of faltando) {
+    porFalta += 1;
+    pendencias.push(linhaSaida(code, type, 'Pendente', null, '', carteira.name, carteira.segment, {
+      porFalta: true,
+      custodiante: cust,
+      obs: `Documento exigido por ${cust} e ausente na lista de cadastro.`,
+    }));
+  }
+}
+
 if (erros.length) {
-  console.error(`\nABORTADO: ${erros.length} linha(s) inválida(s) em cadastro-pendencias.json.`);
+  console.error(`\nABORTADO: ${erros.length} problema(s) em cadastro-pendencias.json.`);
   for (const e of erros) console.error('  ' + e);
   console.error('\n  Nada foi escrito. Gravar só as linhas boas sumiria em silêncio com');
   console.error('  pendência que existe no escritório. Corrija a lista e rode de novo.');
@@ -249,11 +451,17 @@ if (erros.length) {
 
 /* ── Escrita do overlay ──────────────────────────────────────────────────── */
 
+const custodianteDaCarteira = {};
+for (const [code, c] of porCarteira) if (c.custodiante) custodianteDaCarteira[code] = c.custodiante;
+
 const payload = {
-  schema: 'cadastro/v1',
+  schema: 'cadastro/v2',
   geradoEm: hojeISO,
   fonte: 'cadastro-pendencias.json',
   janelasMeses: JANELA_MESES,
+  custodiantes: CUSTODIANTES,
+  custodiantesProvisorios,
+  custodianteDaCarteira,
   pendencias,
 };
 
@@ -270,7 +478,11 @@ const cabecalho = `/* platform-cadastro.js — GERADO por scripts/gerar-cadastro
 
    "Vencido" calculado só onde existe janela de validade real:
    ${Object.entries(JANELA_MESES).map(([t, m]) => `${t} ${m} meses`).join(', ')}.
-   Nos demais tipos a pendência é declarada pelo escritório, nunca calculada. */
+   Nos demais tipos a pendência é declarada pelo escritório, nunca calculada.
+
+   Conjunto obrigatório por custodiante: ${custodiantesProvisorios
+    ? 'PROVISÓRIO, padrão do produto. O conjunto real do escritório entra pelo\n   bloco "custodiantes" do cadastro-pendencias.json e substitui este.'
+    : 'declarado pela instância no bloco "custodiantes".'} */
 (function () {
   'use strict';
   window.ATLAS_CADASTRO_DATA = `;
@@ -284,11 +496,29 @@ for (const s of STATUSES) porStatus[s] = 0;
 for (const p of pendencias) porStatus[p.status] += 1;
 
 const carteiras = new Set(pendencias.map((p) => p.code)).size;
-const tipos = new Set(pendencias.map((p) => p.type)).size;
 
-console.log(`[cadastro] ${pendencias.length} pendência(s) em ${carteiras} carteira(s), ${tipos} tipo(s) → ${path.basename(SAIDA)}`);
+console.log(`[cadastro] ${pendencias.length} pendência(s) em ${carteiras} carteira(s) → ${path.basename(SAIDA)}`);
 console.log(`  data de referência do cálculo: ${hojeISO}`);
 for (const s of STATUSES) console.log(`  ${s.padEnd(20)} ${porStatus[s]}`);
-console.log(`  status calculado pela janela de validade: ${calculados}`);
-console.log(`  status assumido como Pendente (sem declaração e sem janela ou sem data): ${assumidos}`);
+console.log('');
+console.log(`  status declarado na lista:            ${declarados}`);
+console.log(`  Vencido calculado pela janela:        ${calculados}`);
+console.log(`  Pendente por falta no custodiante:    ${porFalta}`);
+console.log(`  documentos em dia, fora do resultado: ${emDia}`);
+console.log(`  carteiras na lista:                   ${porCarteira.size}`);
+console.log(`  carteiras com cadastro completo:      ${completas}`);
+console.log(`  conjunto por custodiante:             ${custodiantesProvisorios ? 'PROVISÓRIO (padrão do produto)' : 'declarado pela instância'}`);
+if (semCustodiante.length) {
+  console.log('');
+  console.log(`  ${semCustodiante.length} carteira(s) sem custodiante conhecido: nenhuma pendência por falta`);
+  console.log(`  foi calculada para elas. Sem saber o que o custodiante exige, ausência de`);
+  console.log(`  documento não prova nada. Declare em "carteiras" ou no campo "custodiante".`);
+  if (derivados.motivo) console.log(`  (derivação pela composição indisponível: ${derivados.motivo})`);
+}
+if (custodianteDesconhecido.size) {
+  console.log('');
+  console.log(`  custodiante(s) sem conjunto cadastrado: ${[...custodianteDesconhecido].join(', ')}`);
+  console.log('  Declare o conjunto deles no bloco "custodiantes" do arquivo de entrada.');
+}
+console.log('');
 console.log('  códigos e apelidos de carteira ficam fora do log (LGPD).');

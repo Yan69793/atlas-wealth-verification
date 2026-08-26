@@ -11,13 +11,15 @@ aqui, trate este arquivo como suspeito e rode o refresh do fim da página.
 ## Portão de verificação, medido hoje
 
 ```
-699/699 checks OK — todos os checks passaram
+719/719 checks OK — todos os checks passaram
 ℹ tests 278   ℹ suites 73   ℹ pass 278   ℹ fail 0   ℹ skipped 0
 ```
 
-Medido em 2026-08-26, depois da Fase 2 (Jul/26 como mês de estabilidade). 688
-para 699, os 11 novos separando mês corrente de mês de abertura e travando a
-estabilidade de julho. Ver a seção "Fase 2" mais abaixo.
+Medido em 2026-08-26, depois da Fase 2 inteira. 688 para 699 com Jul/26 como
+mês de estabilidade, e 699 para 719 com o modelo de cadastro por custodiante.
+Os 20 últimos incluem um teste fim a fim que roda o gerador de verdade contra
+o exemplo e confere o overlay linha por linha. Ver as seções "Fase 2" e
+"Overlay real de cadastro" mais abaixo.
 
 Antes disso era 688/688, depois do overlay real de cadastro. 659 para 688, os
 29 cobrindo as listas de negação do overlay, as regras do gerador e o
@@ -1025,27 +1027,39 @@ arquivo.
   raiz da instância, valida linha por linha e escreve `platform-cadastro.js`
   lá mesmo. Aceita `--dir` (raiz da instância) e `--hoje` (data de referência
   do cálculo de validade, para o exemplo ser reproduzível).
-- **Lista de tipos de documento do escritório**, onze: Ficha Cadastral, KYC,
+- **Lista de tipos de documento do escritório**, doze: Ficha Cadastral, KYC,
   Perfil de Investimento, Perfil de Risco, Declaração de Investidor
   Qualificado, Declaração de Investidor Profissional, Comprovante de
   Residência, Contrato de Gestão, Documento de Identidade, Procuração,
-  Declaração de Beneficiário Final. `PENDING_TYPES` em `platform-data.js`
-  (o conjunto que o demo sintético sorteia) foi recalibrado para a mesma
-  lista, com comentário cruzado nos dois lugares. Um check do portão compara
-  as duas listas e falha se divergirem: divergência mudaria o filtro "Tipo"
-  da tela de Cadastro quando a instância troca de sintético para real, e o
-  operador acharia que perdeu documento.
+  Declaração de Beneficiário Final, Declaração de IR. `PENDING_TYPES` em
+  `platform-data.js` (o conjunto que o demo sintético sorteia) foi
+  recalibrado para a mesma lista, com comentário cruzado nos dois lugares. Um
+  check do portão compara as duas listas e falha se divergirem: divergência
+  mudaria o filtro "Tipo" da tela de Cadastro quando a instância troca de
+  sintético para real, e o operador acharia que perdeu documento.
 - **Janela de validade só onde existe regra objetiva**: Comprovante de
-  Residência 6 meses, Perfil de Investimento e Perfil de Risco 24. Nos
-  outros oito tipos a pendência é declarada e nunca calculada. Inventar
-  prazo para KYC ou procuração produziria "Vencido" que ninguém consegue
-  provar de onde veio.
+  Residência 6 meses, Perfil de Investimento e Perfil de Risco 24,
+  Declaração de IR 12. Nos outros oito tipos a pendência é declarada e nunca
+  calculada. Inventar prazo para KYC ou procuração produziria "Vencido" que
+  ninguém consegue provar de onde veio.
+- **Conjunto obrigatório por custodiante**, quatro: Mirabaud, BTG, Bradesco
+  Private e Órama. Cada carteira tem um custodiante e cada custodiante exige
+  um subconjunto próprio do modelo. Documento exigido que não aparece na
+  lista sai como **Pendente por falta**, com o custodiante declarado na
+  linha. Ver o aviso sobre o conteúdo desses conjuntos logo abaixo.
+- **Custodiante da carteira**, três caminhos, do mais explícito para o mais
+  derivado: campo `custodiante` na própria linha, mapa `carteiras` no topo do
+  arquivo, ou a composição do `platform-data-real.js` pela instituição de
+  maior saldo. Sem nenhum dos três a carteira **não recebe cálculo por
+  falta**, e o gerador diz isso no log. Sem saber o que o custodiante exige,
+  ausência de documento não prova nada.
 - **`docs/cadastro-pendencias.exemplo.json`**, formato documentado dentro do
-  próprio arquivo, com quatro linhas que provam as quatro decisões: status
-  declarado manda, tipo com janela e data velha nasce Vencido, tipo com
-  janela e data recente nasce Pendente, tipo sem janela nasce Pendente por
-  mais velha que seja a data. Um check confere que todo código do exemplo
-  vem do catálogo sintético do demo.
+  próprio arquivo, com três carteiras que provam o modelo inteiro: uma com
+  comprovante vencido por data, uma com dois documentos pendentes por falta
+  mais um com status declarado, e uma com cadastro completo que gera zero
+  pendência. Um check confere que todo código do exemplo vem do catálogo
+  sintético do demo, e um teste fim a fim roda o gerador de verdade contra
+  ele e confere o overlay linha por linha.
 - **Listas de negação**, cinco lugares: `scripts/build-deploy.mjs`,
   `scripts/verify-build.mjs`, `scripts/deploy-cf.ps1`, `.gitignore` do
   produto e `.gitignore` da instância. Mais a lista `OVERLAYS` do
@@ -1053,7 +1067,19 @@ arquivo.
   servido. As duas edições da instância ficaram sem commit nesta rodada,
   sobem com o próximo commit de lá.
 
-### As três regras que não podem ser relaxadas
+### O arquivo de entrada é o estado do cadastro, não uma lista de pendências
+
+Isso é fácil de errar e muda tudo. Cada linha descreve um documento da
+carteira, com a data dele quando existe. Documento em dia **sai** do resultado,
+porque não é pendência. Documento vencido, sem data, ou com status declarado,
+vira linha do overlay. E documento exigido pelo custodiante que não aparece na
+lista vira pendência por falta. Se o arquivo fosse só de pendências, ausência
+significaria "resolvido" e o cálculo por falta viraria ruído.
+
+No exemplo, 21 dos 23 documentos listados estão em dia e não aparecem no
+overlay. Só 4 pendências nascem, e uma das carteiras sai com cadastro completo.
+
+### As quatro regras que não podem ser relaxadas
 
 1. **Arquivo ausente ou vazio não gera overlay nenhum.** Ausência de dado não
    é ausência de pendência. Overlay vazio faria a tela dizer "nenhuma
@@ -1062,7 +1088,10 @@ arquivo.
    honesto de estimativa marcada, que é pior de ler e certo de confiar.
 2. **Linha inválida aborta a geração inteira.** Gravar as boas e descartar as
    ruins em silêncio sumiria com pendência que existe no escritório.
-3. **O log do gerador só imprime contagem.** Código de carteira, apelido e
+3. **Carteira sem custodiante conhecido não recebe pendência por falta.**
+   Chutar o custodiante inventaria exigência, e exigência inventada vira
+   pendência inventada, que é exatamente o defeito que este trabalho fecha.
+4. **O log do gerador só imprime contagem.** Código de carteira, apelido e
    observação nunca saem na tela: log de gerador acaba colado em ticket. Erro
    de validação aponta pelo índice da linha, nunca pelo código.
 
@@ -1076,10 +1105,26 @@ check do portão trava isso nos dois scripts.
 
 ### O que falta, e não é código
 
-A lista de pendências do escritório. Enquanto `cadastro-pendencias.json` não
-existir na raiz da instância, o app continua marcando a pendência cadastral
-como estimativa e a mantém fora da ordenação de criticidade, que é o
+**1. A lista de cadastro do escritório.** Enquanto `cadastro-pendencias.json`
+não existir na raiz da instância, o app continua marcando a pendência
+cadastral como estimativa e a mantém fora da ordenação de criticidade, que é o
 comportamento correto e está travado por check.
+
+**2. O conjunto obrigatório real de cada custodiante.** Os conjuntos
+embarcados em `scripts/gerar-cadastro.mjs` **não saíram do escritório**. São o
+padrão de abertura de conta e suitability que a regulação brasileira desenha
+(cadastro, identificação, comprovante de residência, KYC, perfil de
+investimento), mais o que cada perfil de casa costuma pedir a mais. Servem
+para o modelo existir e ser testável, não para valer como fonte. O código diz
+isso em caixa alta, o overlay carrega `custodiantesProvisorios: true` e um
+check do portão exige as duas marcas.
+
+O conjunto real entra pela instância, não pelo produto: o
+`cadastro-pendencias.json` pode trazer um bloco `custodiantes` que
+**substitui** (não soma) o conjunto de quem for declarado ali. É assim que o
+conjunto do Mirabaud vira dado de instância, fora do git, sem ninguém
+adivinhar nada dentro do produto. Decidido com o dono em 2026-08-26, quando a
+pergunta foi feita e o conjunto real não estava disponível.
 
 ### Gap adjacente, não corrigido
 
@@ -1296,3 +1341,14 @@ e é o que impede a próxima pessoa de repetir.
   papel por papel, encerrando a compra e venda fabricada que o comparador de posição
   mostrava. Corrigida junto a nota INFO que alegava realocação tática num mês sem
   realocação nenhuma. 688 → 699 checks. Ver a seção "Fase 2" acima.
+- **2026-08-26, Fase 2, modelo de cadastro por custodiante.** O overlay de cadastro deixou
+  de ser lista de pendências e virou estado do cadastro: documento em dia sai do resultado,
+  documento exigido pelo custodiante e ausente da lista vira Pendente por falta. Doze tipos
+  de documento (entrou Declaração de IR, com janela de 12 meses), quatro custodiantes
+  (Mirabaud, BTG, Bradesco Private, Órama), e três caminhos para descobrir o custodiante da
+  carteira. Carteira sem custodiante conhecido não recebe cálculo por falta, de propósito.
+  Os conjuntos obrigatórios embarcados são PROVISÓRIOS e não saíram do escritório, o real
+  entra pelo bloco `custodiantes` da instância e substitui o padrão. Exemplo em `docs/`
+  reescrito com três carteiras que provam o modelo inteiro, e o portão ganhou um teste fim a
+  fim que roda o gerador de verdade e confere o overlay linha por linha. 699 → 719 checks.
+  Ver a seção "Overlay real de cadastro" acima.
