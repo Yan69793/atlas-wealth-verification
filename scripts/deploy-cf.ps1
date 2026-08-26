@@ -44,7 +44,7 @@ $root = Split-Path -Parent (Split-Path -Parent $PSCommandPath)
 
 if ($Target -eq 'pages' -and -not $ProjectName) {
   Write-Error "-Target pages exige -ProjectName."
-  return
+  exit 1
 }
 
 # Cada alvo le os assets de um lugar diferente, entao o pacote e montado no
@@ -54,7 +54,7 @@ if ($Target -eq 'worker') {
   $workerDir = Join-Path $root "demo-worker"
   if (-not (Test-Path (Join-Path $workerDir "wrangler.toml"))) {
     Write-Error "demo-worker/wrangler.toml ausente. Nada foi publicado."
-    return
+    exit 1
   }
 } else {
   $outRel = "dist-deploy"
@@ -68,7 +68,7 @@ try {
   node scripts/build-deploy.mjs --out $outRel
   if ($LASTEXITCODE -ne 0) {
     Write-Error "build-deploy.mjs abortou. Nada foi publicado."
-    return
+    exit 1
   }
 } finally {
   Pop-Location
@@ -80,7 +80,7 @@ $proibidos = @('platform-data-real.js', 'platform-data-audit.js', 'platform-hist
 $achados = Get-ChildItem -Recurse -File $out | Where-Object { $proibidos -contains $_.Name }
 if ($achados) {
   Write-Error ("Dado real no pacote, publicacao cancelada: " + ($achados.Name -join ', '))
-  return
+  exit 1
 }
 
 $count = (Get-ChildItem -Recurse -File $out).Count
