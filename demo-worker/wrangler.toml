@@ -4,9 +4,11 @@
 # instancia do cliente. Aquele tem R2 com dado real, Cloudflare Access, Service
 # Token e dominio proprio. Este aqui nao tem nada disso de proposito.
 #
-# Sem `main`: e um Worker so de assets estaticos. Nao existe codigo para
-# autenticar, nem para ler bucket, nem para decidir o que servir. O que nao
-# existe nao vaza e nao quebra.
+# Tem `main` desde 2026-08-30: src/index.js so checa um cookie de sessao e
+# devolve a tela de senha quando falta. Continua sem Access, sem R2, sem dado
+# real, o unico papel do codigo e nao deixar o link do demo aberto pra
+# qualquer um que o ache. Ver o cabecalho de src/index.js para o desenho e a
+# razao de nao ser o mesmo padrao removido do produto real.
 #
 # O diretorio public/ e montado por scripts/build-deploy.mjs, que deriva a
 # lista do proprio index.html, recusa os overlays de dado real por nome e
@@ -15,15 +17,30 @@
 # acabou publicado em 15/07/2026.
 
 name = "app-verificacao-carteiras-atlas"
+main = "src/index.js"
 compatibility_date = "2026-08-01"
 account_id = "7ac79fb1030e4e81115ef33c21a9b070"
 
-# Publico e sem Access, que e o ponto: o prospect abre o link e ve o sistema.
-# O que protege aqui nao e perimetro, e o fato de nao existir dado real dentro.
+# Publico e sem Access, que e o ponto: o prospect abre o link e ve o sistema
+# depois de digitar a senha do demo. O que protege dado nao e perimetro
+# nenhum, e o fato de nao existir dado real dentro (ver acima).
 workers_dev = true
+
+# DEMO_SENHA e obrigatoria, mas nao existe trava disso no wrangler.toml: o
+# wrangler nao tem bloco [secrets], secret se define por fora com
+# `npx wrangler secret put DEMO_SENHA --name app-verificacao-carteiras-atlas`
+# (o comando exato esta no cabecalho de src/index.js). A trava real fica no
+# runtime: src/index.js devolve 500 e nao serve nada quando o secret falta.
+# Sem a senha voce publica um Worker morto, nunca um aberto. Nao confiar em
+# config pra recusar deploy, o wrangler ignora bloco que ele nao conhece.
 
 [assets]
 directory = "./public"
+binding = "ASSETS"
+# Sem isto o Worker so roda pra caminho que NAO bate com arquivo estatico, e
+# "/" bate com index.html: a senha nunca seria pedida. run_worker_first forca
+# todo pedido a passar pelo src/index.js primeiro.
+run_worker_first = true
 # Rotas do app sao hash (#/dashboard), mas o fallback de SPA garante que
 # qualquer caminho servido devolva o index em vez de 404.
 not_found_handling = "single-page-application"

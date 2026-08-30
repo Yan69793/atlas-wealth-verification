@@ -172,6 +172,11 @@ desktop.ini
 /dist-deploy/
 /demo-worker/public/
 
+# Secret local do gate de senha do demo (nunca a senha real, so teste de wrangler dev)
+/demo-worker/.dev.vars
+/demo-worker/.dev.vars.*
+/demo-worker/.wrangler/
+
 # Artefatos do seed do demo do snapshot (sinteticos, regeneraveis)
 /snapshot-demo-data/
 AI_OPERATING_SYSTEM/

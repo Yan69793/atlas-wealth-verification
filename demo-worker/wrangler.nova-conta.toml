@@ -1,8 +1,10 @@
 # Gemeo do wrangler.toml para a conta nova (separacao Cloudflare, 2026-08-15).
 #
-# Mesmo Worker de assets estaticos do demo, publicado na conta dedicada do
-# ATLAS (6448fd4d57773e5e38cbd1a763283a90). O wrangler.toml original continua
+# Mesmo Worker do demo, publicado na conta dedicada do ATLAS
+# (6448fd4d57773e5e38cbd1a763283a90). O wrangler.toml original continua
 # publicando na conta antiga enquanto demo.multi-assets.com estiver no ar.
+# Gate de senha (src/index.js) espelhado aqui em 2026-08-30, ver o comentario
+# do wrangler.toml original para o porque.
 #
 # Deploy via scripts/deploy-nova-conta.ps1, que injeta o token da conta nova
 # a partir da variavel de ambiente CLOUDFLARE_API_TOKEN_ATLAS. Nunca rodar
@@ -12,15 +14,26 @@
 # Sem [[routes]] por enquanto: o dominio neutro entra aqui depois do
 # registro, como custom domain. Ate la, o endereco workers.dev da conta nova
 # serve de teste tecnico, igual ao da conta antiga.
+#
+# DEMO_SENHA e um secret por CONTA: setar na conta antiga (wrangler.toml) nao
+# propaga pra ca. Se este caminho for retomado, rodar de novo
+# `npx wrangler secret put DEMO_SENHA --name app-verificacao-carteiras-atlas`
+# com CLOUDFLARE_API_TOKEN_ATLAS no ambiente.
 
 name = "app-verificacao-carteiras-atlas"
+main = "src/index.js"
 compatibility_date = "2026-08-01"
 account_id = "6448fd4d57773e5e38cbd1a763283a90"
 
 # Publico e sem Access, pelo mesmo motivo do original: nao existe dado real
-# dentro do pacote, e o prospect precisa abrir o link e ver o sistema.
+# dentro do pacote, e o prospect precisa abrir o link, digitar a senha do
+# demo e ver o sistema.
 workers_dev = true
 
+# Nao ha bloco [secrets] aqui: o wrangler ignora (a trava real e o 500 no
+# runtime de src/index.js quando o secret falta, ver o wrangler.toml original).
 [assets]
 directory = "./public"
+binding = "ASSETS"
+run_worker_first = true
 not_found_handling = "single-page-application"
