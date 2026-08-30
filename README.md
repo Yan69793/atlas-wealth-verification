@@ -4,26 +4,35 @@ Plataforma de verificação mensal de carteiras de investimento — Meridian Adv
 
 ## Tecnologia
 
-App estático (HTML + JSX via Babel Standalone + Recharts). Sem etapa de build; rodando diretamente no browser via HTTP server local.
+SPA React buildado com Vite. O build gera `dist-app/` a partir de `src/main.jsx`. A ordem de import desse arquivo é o contrato de inicialização do app.
 
-- React 18.3.1 (UMD, CDN)
-- Recharts 2.12.7 (UMD, CDN)
-- Babel Standalone 7.29.0 (transpile JSX no browser)
+- React 18.3.1
+- React DOM 18.3.1
+- Recharts 2.12.7
+- Chart.js 4.4.0
+- Vite (build + dev)
+
+Os overlays de dado real (instância de cliente) ficam fora do bundle. São scripts clássicos injetados em runtime pela instância, nunca compilados para dentro.
 
 ## Como rodar localmente
 
 ```bash
-# Pré-requisito: Python 3 instalado
-npm run serve
-# Abre em http://localhost:7821
+npm install
+npm run dev
+# Vite com HMR, abre em http://localhost:5173 por padrão
+
+# build de produção (gera dist-app/):
+npm run build
+
+# servir o build localmente:
+npm run preview
 ```
 
 ## Como rodar os testes
 
 ```bash
 npm test
-# equivalente:
-node tests/validate.js
+# roda tests/validate.js (estrutural) e a suíte do audit-engine
 ```
 
 Os testes validam integridade estrutural dos arquivos (sem execução de browser).
@@ -84,6 +93,5 @@ Regras do fluxo de PDF:
 | Risco | Severidade | Observação |
 |---|---|---|
 | App sem autenticação própria | Médio | Por desenho. Servir com dado real exige perímetro na frente |
-| CDN sem fallback local | Baixo | App falha se unpkg.com offline |
+| CDN só para extras lazy-load | Baixo | SheetJS (XLSX), pdf.js (PDF) e analytics carregam sob demanda. Falha de CDN afeta só a importação |
 | `innerHTML` no módulo de relatório | Médio | Entrada deve ser confiável (dados internos) |
-| App sem bundle empacotado | Baixo | Babel compila JSX no browser em cada carregamento |
