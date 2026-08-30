@@ -8,6 +8,12 @@
       "port": 5178
     },
     {
+      "name": "atlas-preview",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "preview", "--", "--port", "5179", "--strictPort"],
+      "port": 5179
+    },
+    {
       "name": "atlas-spa",
       "runtimeExecutable": "python",
       "runtimeArgs": ["-m", "http.server", "7821", "--directory", "${workspaceFolder}"],
