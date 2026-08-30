@@ -11,11 +11,21 @@ aqui, trate este arquivo como suspeito e rode o refresh do fim da página.
 ## Portão de verificação, medido hoje
 
 ```
-728/728 checks OK — todos os checks passaram
-ℹ tests 278   ℹ suites 73   ℹ pass 278   ℹ fail 0   ℹ skipped 0
+772/772 checks OK — todos os checks passaram
+ℹ tests 292   ℹ suites 76   ℹ pass 292   ℹ fail 0   ℹ skipped 0
 ```
 
-Medido em 2026-08-26, depois da Fase 2 inteira. 688 para 699 com Jul/26 como
+Medido em 2026-08-30, depois da sprint de hardening pré-comercial (ver a seção
+dela abaixo). 728 para 772 checks: 3 do contrato de .gitignore da saída do
+cli.ts e 41 líquidos da troca do contrato de carga (42 checks de PAGE_LOADERS
+mais 1 de "nenhuma página estática em main.jsx", menos os 2 checks de ordem
+entre páginas irmãs removidos). 278 para 292 testes: 5 de protegerRoot
+(incluindo a topologia real do checkout do produto aninhado na instância), 6
+de pl-conciliacao (antes zero cobertura real, o único teste que tocava a regra
+fica pulado sem dado real), 3 de rentabilidade (o ramo de variação negativa
+extrema nunca tinha sido exercitado).
+
+Antes era 728/728, medido em 2026-08-26, depois da Fase 2 inteira. 688 para 699 com Jul/26 como
 mês de estabilidade, 699 para 719 com o modelo de cadastro por custodiante, e
 719 para 728 com a correção da aterrissagem e da âncora. Os novos incluem dois
 testes de comportamento, um que roda o gerador de cadastro de verdade contra o
@@ -102,6 +112,131 @@ disco. Agora nenhum dos três tem função, esta tabela é a fonte.
 `git submodule status` não funciona aqui. São gitlink sem entrada em `.gitmodules`, o
 comando aborta com "no submodule mapping found". Para ler o ponteiro use
 `git ls-tree HEAD <caminho>`.
+
+## Sprint de hardening pré-comercial (2026-08-30), não commitada
+
+Origem: o dono colou o histórico de outra sessão que alegava "5 otimizações
+críticas" nunca implementadas de verdade (números de teste inventados,
+nenhum rastro em commit). A investigação separou o real do falso, e a parte
+real virou esta sprint, com plano revisado 3 vezes pelo dono. É hardening
+técnico, não plano de comercialização, o próprio dono renomeou.
+
+O que entrou, por ponto:
+
+1. **LGPD, redução de vazamento acidental (não "LGPD resolvida").**
+   `protegerRoot()` tinha furo real: só checava `platform-app.jsx` direto no
+   nível informado, `--root <produto>/subpasta` passava batido. Agora sobe a
+   árvore checando em cada nível, parando no primeiro `.git` sem o marcador
+   do produto (a instância aninhada `verificacao-carteiras/` tem `.git`
+   próprio e continua permitida). 4 testes novos (raiz bloqueada, subpasta
+   bloqueada, instância permitida, pasta externa permitida). No
+   `cli-snapshot.ts`, o log de `cobertura` trocou nome de carteira por rank e
+   o aviso de RECUSADAS virou contagem; o comando `state` continua imprimindo
+   o snapshot completo de propósito, é a função dele. **`cli.ts` não foi
+   tocado, decisão do dono**: a ingestão mensal grava na raiz do produto de
+   propósito e depende do contrato do `.gitignore`, agora trancado por 3
+   checks novos no validate.js (/audits/, data.js, data.json).
+
+2. **Cobertura das regras de conciliação.** `pl-conciliacao.ts` tinha ZERO
+   cobertura na suíte real (o único teste que a tocava fica pulado sem
+   `ATLAS_FIXTURES`). Agora 5 testes diretos. `rentabilidade.ts` tinha o ramo
+   `rent < -0.15` nunca exercitado, agora 3 testes diretos incluindo a
+   fronteira exata.
+
+3. **Lazy-load das 21 páginas.** `src/main.jsx` não importa mais nenhuma
+   página estaticamente; `platform-app.jsx` ganhou `PAGE_LOADERS` (import()
+   por rota), prefetch em hover E foco de teclado (só nos links que
+   `faseDisponivel` deixou renderizar), estados loading/error por página com
+   "Tentar novamente" que na segunda falha vira "Recarregar aplicação"
+   (navegador guarda promessa de módulo rejeitada em cache). Bundle
+   principal: 1.289.744 → 805.270 bytes (-38%), mais 21 chunks pequenos que
+   só baixam quando a rota abre. Verificado na build de produção via
+   navegador: 21 rotas navegadas, chunk 404 simulado (erro com retry
+   funcionando, reload recuperando), navegação rápida entre rotas sem erro.
+   O contrato de carga no validate.js mudou junto: os 13 módulos estáticos
+   continuam checados por ordem literal (a mecânica ali não mudou), as 21
+   páginas agora são checadas por entrada em PAGE_LOADERS apontando pra
+   arquivo que existe em disco, e os 2 checks de ordem entre páginas irmãs
+   foram removidos porque o invariante deixou de existir.
+
+4. **Validação formal da conciliação, sem mudança de código.** A regra foi
+   investigada como candidata a otimização e está correta e O(1)/O(n) com
+   Map, nada a otimizar. Virou documento:
+   `audit-engine/docs/validacao-pl-conciliacao.md`, fórmula, invariantes,
+   casos-limite lado a lado com os testes do ponto 2.
+
+5. **Dashboard medido, decisão de não mexer.** Método único combinado com o
+   dono: duplo requestAnimationFrame até a pintura, build de produção, 40
+   linhas na tabela. Digitação na busca 6,5 a 16,5ms, ordenação 17,8ms,
+   limite era 100ms. Sem useMemo/React.memo adicionados, seria complexidade
+   sem ganho medível.
+
+**Revisão independente (code-reviewer, 2026-08-30): aprovada com 1 correção,
+aplicada.** O documento de validação afirmava que total ausente "tem alerta em
+outra regra", e não tem, nenhuma regra alerta isso hoje, o texto passou a
+registrar a limitação como limitação. Do resto da revisão: guarda nova no
+lazy-load para módulo que baixa mas não registra o componente (antes assentava
+no placeholder pra sempre, agora vira erro com retry), tela de carregamento
+própria (o placeholder dizia "Em desenvolvimento" durante o load, rótulo falso
+em conexão lenta), e dois testes trancados que a revisão exercitou à mão (o
+checkout do produto aninhado na instância, o caso `core/`, e plRef negativo).
+Ficou registrado sem correção: o "ver state para o detalhe" nos logs LGPD é
+ponteiro impreciso (state despeja o snapshot bruto, não o rank), e o check 7b
+valida chave→arquivo mas não chave→componente registrado (a guarda nova cobre
+isso em runtime; só 7 das 21 páginas têm check estático de registro).
+
+**Gaps registrados e NÃO fechados nesta sprint** (roadmap comercial, decisão
+de escopo do dono): controle de acesso por cliente, isolamento multiempresa,
+criptografia em repouso, retenção/eliminação, log de acesso/exportação, plano
+de resposta a incidente, RIPD, trilha de auditoria como funcionalidade,
+RBAC/MFA/SSO, onboarding autônomo, relatório executivo exportável, CI
+obrigatório com bloqueio de merge, ambientes separados, DPA, precificação.
+Nota técnica registrada: se um dia quiserem identificador rastreável nos logs
+em vez de remoção, hash simples de nome não é anonimização (permite
+correlação contínua), precisa ID opaco com tabela à parte ou HMAC com chave
+fora do código.
+
+## Gate de senha no demo comercial (2026-08-30), publicado
+
+Pedido do dono: "colocar uma landing page com senha para entrar no sistema". Aplica só ao
+demo (`demo.multi-assets.com`), não ao produto real. A instância do cliente já tem trava de
+verdade (Cloudflare Access) e a senha fixa no navegador que existia ali foi removida de
+propósito, ver a regra 4 de [[LEIA-PRIMEIRO]]; reintroduzir isso no produto está descartado.
+
+`demo-worker` até aqui era só assets estáticos, sem `main`, de propósito ("o que não existe
+não vaza e não quebra"). Isso mudou: `demo-worker/src/index.js` agora roda antes do binding
+`ASSETS` (`run_worker_first = true` no `wrangler.toml`) e só libera passagem com um cookie de
+sessão válido, calculado por HMAC-SHA256 sobre o secret `DEMO_SENHA` (nunca guarda a senha
+crua no cookie, e trocar o secret invalida toda sessão aberta). Sem Access, sem R2, sem dado
+real, a única mudança é essa checagem. Espelhado em `wrangler.nova-conta.toml` (conta
+suspensa, sem efeito enquanto não for retomada).
+
+Testado em `wrangler dev` local (com `--compatibility-date 2026-07-28` só na invocação, o
+wrangler instalado é mais velho que a data do projeto; não mexe no `wrangler.toml`): senha
+errada fica na tela e mostra aviso, senha certa entra e carrega o dashboard completo, sessão
+sobrevive a reload. `npm test` depois da mudança: 728/728 checks, 278/278 testes, mesma
+contagem de antes.
+
+**Os dois passos que faltavam foram feitos pelo dono, na mesma sessão:** secret `DEMO_SENHA`
+gravado via `wrangler secret put` (rodado na máquina dele, nunca passou por chat) e deploy
+publicado com `scripts/deploy-cf.ps1 -Target worker`, versão `d0b994a4-63ea-41ce-9879-b616ec6b4f92`.
+Confirmado por fora, sem cookie de sessão `demo.multi-assets.com` devolve a tela de senha, não
+o dashboard.
+
+**Efeito colateral descoberto no caminho, sem relação com o gate de senha:** o pacote publicado
+estava desatualizado, o `dist-app/` não tinha sido reconstruído depois das últimas mudanças em
+`platform-dashboard.jsx`, `platform-radar.jsx`, `platform-usuarios.jsx`, `platform-valor-assessor.jsx`
+e `platform-styles.css`. `build-deploy.mjs` recusou publicar bundle velho, `npm run build` resolveu.
+Vale como aviso geral: o hábito de rodar `npm run build` antes de `deploy-cf.ps1` não pode
+depender de lembrança, o script detecta mas não builda sozinho.
+
+**Outro efeito colateral, específico desta sessão:** um processo de teste local (`wrangler dev`
+usado para validar o gate antes de publicar) ficou vivo depois de eu achar que tinha matado
+tudo, e travou a pasta `demo-worker/public` na primeira tentativa de deploy do dono (erro EPERM
+no Node ao tentar apagar a pasta). Achado e encerrado antes da publicação real. Se
+`build-deploy.mjs` abortar com EPERM/permission denied em `demo-worker/public` de novo, o
+primeiro suspeito é processo `workerd`/`esbuild`/`wrangler` ainda vivo segurando handle na
+pasta.
 
 ## Decisões do dono, tomadas em 17/ago
 

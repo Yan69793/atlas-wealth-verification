@@ -162,6 +162,16 @@ ok('top5Quedas filtra plA > 0',
 // substitui a lista de <script> do index.html antigo. Página lê
 // window.AtlasData/AtlasUtils no topo do módulo; import fora de ordem = tela
 // branca. Estes checks travam a regressão do contrato.
+//
+// As 21 páginas saíram daqui em 2026-08-30 (lazy-load por rota, ver
+// PAGE_LOADERS em platform-app.jsx). O invariante de ordem ENTRE páginas
+// irmãs deixou de existir quando cada uma carrega sob demanda, independente
+// das outras, então os dois checks pareados que existiam pra isso (ex.:
+// "valor-assessor depois de caixa-parado") saíram junto, não é enfraquecer o
+// teste, é parar de checar uma relação que não é mais verdade sobre o
+// sistema. O que continua real — tokens/parsers/overlays/consolidado/utils
+// estáticos e em ordem, shell por último — continua com o mecanismo de
+// sempre, texto literal, porque a mecânica real não mudou aí.
 
 const mainJsxPath = path.join(ROOT, 'src', 'main.jsx');
 const mainJsx = fs.existsSync(mainJsxPath) ? fs.readFileSync(mainJsxPath, 'utf8') : '';
@@ -184,27 +194,6 @@ const CONTRATO = [
   // páginas porque todas elas leem dela.
   'platform-consolidado.js',
   'platform-utils.jsx',
-  'platform-ranking.jsx',
-  'platform-dashboard.jsx',
-  'platform-carteira.jsx',
-  'platform-report.jsx',
-  'platform-achados.jsx',
-  'platform-oportunidades.jsx',
-  'platform-vencimentos.jsx',
-  'platform-caixa-parado.jsx',
-  'platform-valor-assessor.jsx',
-  'platform-visita.jsx',
-  'platform-comparativo.jsx',
-  'platform-custos.jsx',
-  'platform-receitas.jsx',
-  'platform-cadastro.jsx',
-  'platform-busca.jsx',
-  'platform-import.jsx',
-  'platform-usuarios.jsx',
-  'platform-risco.jsx',
-  'platform-radar.jsx',
-  'platform-eventos.jsx',
-  'platform-tendencia.jsx',
   'platform-app.jsx',
 ];
 
@@ -212,7 +201,7 @@ const CONTRATO = [
    menciona nomes de módulo em comentário, e a checagem de ordem leria a
    menção como se fosse o import. */
 const ordem = CONTRATO.map((f) => mainJsx.indexOf("import '../" + f + "'"));
-ok('main.jsx importa todos os módulos do app',
+ok('main.jsx importa todos os módulos estáticos do app',
   ordem.every((i) => i !== -1),
   CONTRATO.filter((f) => mainJsx.indexOf("import '../" + f + "'") === -1).join(', ') || 'ok');
 
@@ -228,6 +217,45 @@ ok('main.jsx faz shim de Recharts para as páginas de gráfico',
 
 ok('main.jsx não depende de CDN',
   !/(unpkg\.com|jsdelivr\.net|cdnjs\.cloudflare\.com)/.test(mainJsx));
+
+const PAGINAS_LAZY_ARQUIVOS = [
+  'platform-ranking.jsx', 'platform-dashboard.jsx', 'platform-carteira.jsx',
+  'platform-report.jsx', 'platform-achados.jsx', 'platform-oportunidades.jsx',
+  'platform-vencimentos.jsx', 'platform-caixa-parado.jsx', 'platform-valor-assessor.jsx',
+  'platform-visita.jsx', 'platform-comparativo.jsx', 'platform-custos.jsx',
+  'platform-receitas.jsx', 'platform-cadastro.jsx', 'platform-busca.jsx',
+  'platform-import.jsx', 'platform-usuarios.jsx', 'platform-risco.jsx',
+  'platform-radar.jsx', 'platform-eventos.jsx', 'platform-tendencia.jsx',
+];
+ok('main.jsx não importa mais nenhuma página estática (todas viraram lazy-load)',
+  !PAGINAS_LAZY_ARQUIVOS.some((f) => mainJsx.includes("import '../" + f + "'")),
+  PAGINAS_LAZY_ARQUIVOS.filter((f) => mainJsx.includes("import '../" + f + "'")).join(', ') || 'ok');
+
+// ─── 7b. platform-app.jsx — PAGE_LOADERS cobre as 21 páginas de verdade ─────
+//
+// Invariante que substitui os dois checks de ordem removidos acima: cada
+// página navegável (mesma lista de PAGE_TITLES) tem entrada em PAGE_LOADERS
+// apontando pra um import() de arquivo que existe de verdade em disco. Pega
+// erro de digitação no caminho antes de alguém navegar pra lá em produção e
+// ver tela de erro em vez do simples typo que era.
+
+const appJsxPath = path.join(ROOT, 'platform-app.jsx');
+const appJsxSrc = fs.existsSync(appJsxPath) ? fs.readFileSync(appJsxPath, 'utf8') : '';
+
+const PAGINAS_NAVEGAVEIS = [
+  'dashboard', 'ranking', 'carteira', 'achados', 'oportunidades', 'vencimentos',
+  'caixa-parado', 'valor-assessor', 'visita', 'comparativo', 'receitas', 'cadastro',
+  'busca', 'risco', 'radar', 'eventos', 'importar', 'usuarios', 'tendencia',
+  'dev-relatorio', 'custos',
+];
+
+for (const chave of PAGINAS_NAVEGAVEIS) {
+  const m = new RegExp("['\"]?" + chave.replace(/[-]/g, '\\-') + "['\"]?\\s*:\\s*\\(\\)\\s*=>\\s*import\\(['\"]\\./([\\w-]+\\.jsx)['\"]\\)").exec(appJsxSrc);
+  ok(`PAGE_LOADERS tem entrada de import() pra "${chave}"`, Boolean(m), 'entrada ausente ou fora do formato esperado');
+  if (m) {
+    ok(`arquivo de "${chave}" (${m[1]}) existe em disco`, fs.existsSync(path.join(ROOT, m[1])));
+  }
+}
 
 // ─── 8. README — conteúdo mínimo ────────────────────────────────────────────
 
@@ -1275,8 +1303,9 @@ ok('página registra AtlasPages.ValorAssessor', valorPage.includes('AtlasPages.V
 ok('rota /valor-assessor em platform-app.jsx', appContent.includes("path === '/valor-assessor'"));
 ok('navegação contém Valor do assessor em platform-app.jsx', appContent.includes("label:'Valor do assessor'"));
 ok('título da página registrado', appContent.includes("'valor-assessor': 'Valor do assessor'"));
-ok('main.jsx importa a página após platform-caixa-parado.jsx',
-  mainJsx.indexOf("import '../platform-valor-assessor.jsx'") > mainJsx.indexOf("import '../platform-caixa-parado.jsx'"));
+// Check de ordem entre páginas irmãs removido em 2026-08-30: com lazy-load
+// por rota cada página carrega sob demanda, independente das outras, a
+// relação de ordem que este check trancava deixou de existir no sistema.
 ok('página usa o módulo de matemática', valorPage.includes('AtlasValorMath') && valorPage.includes('acumularSerie'));
 ok('página usa getRow (séries reais)', valorPage.includes('getRow'));
 ok('página soma a taxa da casa ao custo (8 camadas)', valorPage.includes('totalCost') && valorPage.includes('revenue'));
@@ -1311,8 +1340,9 @@ ok('sem mojibake: platform-visita.jsx', !MOJIBAKE.test(visitaPage));
 ok('página registra AtlasPages.Visita', visitaPage.includes('AtlasPages.Visita'));
 ok('rota /visita/ em platform-app.jsx', appContent.includes("startsWith('/visita/')"));
 ok('título da página registrado', appContent.includes("'visita': 'Visita'"));
-ok('main.jsx importa a página após platform-valor-assessor.jsx',
-  mainJsx.indexOf("import '../platform-visita.jsx'") > mainJsx.indexOf("import '../platform-valor-assessor.jsx'"));
+// Check de ordem entre páginas irmãs removido em 2026-08-30, mesmo motivo do
+// ponto acima (valor-assessor/caixa-parado): lazy-load por rota apaga a
+// relação de ordem que existia entre imports estáticos.
 ok('página da carteira oferece Modo visita', carteiraPage.includes('Modo visita') && carteiraPage.includes('/visita/'));
 ok('visita usa getRow (dados do mês)', visitaPage.includes('getRow'));
 ok('visita lê oportunidades por cliente', visitaPage.includes('ATLAS_OPORTUNIDADES_DATA') && visitaPage.includes('o.cliente'));
@@ -2708,6 +2738,25 @@ ok('R$ × dias não é formatado como moeda',
     && !lCom.motivos.some((m) => /estimado/.test(m)),
     lCom.motivos.join(' | '));
 }
+
+// ─── Contrato de saída do cli.ts (ingestão mensal) fora do git ─────────────
+//
+// audit-engine/src/cli.ts grava data.json, data.js e audits/<mes>/ direto na
+// raiz do produto, de propósito (ingest.ps1 sempre chama --out na raiz). Isso
+// é seguro só porque o .gitignore nega esses caminhos por nome; diferente do
+// pipeline novo (snapshot/), aqui não há recusa em código, protegerRoot() foi
+// deliberadamente mantido restrito ao snapshot/, onde gravar na raiz É erro.
+// Este check tranca essa dependência: se alguém tirar uma entrada do
+// .gitignore sem perceber a ligação, o portão pega antes do próximo ingest.
+
+const gitignoreCli = fs.readFileSync(path.join(ROOT, '.gitignore'), 'utf8').split(/\r?\n/).map((l) => l.trim());
+
+ok('.gitignore nega /audits/ (saída de cli.ts, dado real de cliente)',
+  gitignoreCli.includes('/audits/'));
+ok('.gitignore nega data.js (saída de cli.ts, dado real de cliente)',
+  gitignoreCli.includes('data.js'));
+ok('.gitignore nega data.json (saída de cli.ts, dado real de cliente)',
+  gitignoreCli.includes('data.json'));
 
 // ─── Resultado ──────────────────────────────────────────────────────────────
 

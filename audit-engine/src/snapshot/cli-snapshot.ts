@@ -185,13 +185,15 @@ async function main(): Promise<void> {
     for (const a of casa.atributos) {
       console.log(`  ${a.atributo.padEnd(16)} ${(a.fracao * 100).toFixed(1).padStart(6)}%  ${a.faixa}`);
     }
-    // Pior primeiro: é a fila de trabalho de quem preenche o ativo-map.
-    console.log('  --- carteiras (pior cobertura primeiro) ---');
-    for (const c of porCarteira) {
+    // Pior primeiro: é a fila de trabalho de quem preenche o ativo-map. Sem
+    // nome de carteira aqui de propósito (LGPD, saída pode ir pra log
+    // compartilhado); rank + percentual bastam pra fila, nome real via `state`.
+    console.log('  --- carteiras por rank (pior cobertura primeiro) ---');
+    porCarteira.forEach((c, i) => {
       console.log(
-        `  ${c.carteira.padEnd(20)} ${(c.fracaoMedia * 100).toFixed(1).padStart(6)}%  ${c.faixaGlobal}  (${c.posicoes} posicao/oes)`
+        `  #${String(i + 1).padStart(2)} ${(c.fracaoMedia * 100).toFixed(1).padStart(6)}%  ${c.faixaGlobal}  (${c.posicoes} posicao/oes)`
       );
-    }
+    });
     return;
   }
 
@@ -474,7 +476,9 @@ async function main(): Promise<void> {
         (args['dry-run'] ? ' (dry run, nada escrito)' : ` → ${saida}`)
     );
     if (recusadas.length) {
-      console.warn(`  RECUSADAS (nome de carteira): ${recusadas.join(', ')}`);
+      // Sem nome de carteira aqui de propósito (LGPD, saída pode ir pra log
+      // compartilhado); a contagem já sai na linha acima, detalhe via `state`.
+      console.warn(`  ${recusadas.length} recusada(s) por ser nome de carteira, ver "state" para o detalhe.`);
     }
     return;
   }

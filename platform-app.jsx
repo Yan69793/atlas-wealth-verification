@@ -228,6 +228,8 @@ import ReactDOM from 'react-dom/client';
         <button
           className={`sidebar-item${active ? ' active' : ''}`}
           onClick={() => { onNavigate(item.path); onClose && onClose(); }}
+          onMouseEnter={() => prefetchPage(item.id)}
+          onFocus={() => prefetchPage(item.id)}
           title={item.label}
         >
           <Icon name={item.icon} size={16} />
@@ -449,6 +451,144 @@ import ReactDOM from 'react-dom/client';
     usuarios:   'Usuários',
     'dev-relatorio': 'Relatório de Carteira',
   };
+
+  /* ============================================================
+     LAZY-LOAD DAS PÁGINAS
+     Antes: as 21 páginas entravam estáticas em src/main.jsx (~460KB de fonte
+     sempre baixados, mesmo mostrando uma por vez). Agora cada uma só carrega
+     quando a rota é visitada (ou o link ganha hover/foco, ver prefetchPage).
+     PAGE_LOADERS mapeia chave de rota → import() dinâmico do arquivo certo.
+     PAGE_COMPONENT_NAME mapeia a mesma chave → propriedade que o arquivo seta
+     em window.AtlasPages ao carregar (nomes não seguem um padrão único, ex.:
+     'importar' carrega platform-import.jsx e vira pages.Importar,
+     'dev-relatorio' carrega platform-report.jsx e vira pages.DevRelatorio).
+  ============================================================ */
+
+  const PAGE_LOADERS = {
+    dashboard:        () => import('./platform-dashboard.jsx'),
+    ranking:          () => import('./platform-ranking.jsx'),
+    carteira:         () => import('./platform-carteira.jsx'),
+    achados:          () => import('./platform-achados.jsx'),
+    oportunidades:    () => import('./platform-oportunidades.jsx'),
+    vencimentos:      () => import('./platform-vencimentos.jsx'),
+    'caixa-parado':   () => import('./platform-caixa-parado.jsx'),
+    'valor-assessor': () => import('./platform-valor-assessor.jsx'),
+    visita:           () => import('./platform-visita.jsx'),
+    comparativo:      () => import('./platform-comparativo.jsx'),
+    receitas:         () => import('./platform-receitas.jsx'),
+    cadastro:         () => import('./platform-cadastro.jsx'),
+    busca:            () => import('./platform-busca.jsx'),
+    risco:            () => import('./platform-risco.jsx'),
+    radar:            () => import('./platform-radar.jsx'),
+    eventos:          () => import('./platform-eventos.jsx'),
+    importar:         () => import('./platform-import.jsx'),
+    usuarios:         () => import('./platform-usuarios.jsx'),
+    tendencia:        () => import('./platform-tendencia.jsx'),
+    'dev-relatorio':  () => import('./platform-report.jsx'),
+    custos:           () => import('./platform-custos.jsx'),
+  };
+
+  const PAGE_COMPONENT_NAME = {
+    dashboard: 'Dashboard', ranking: 'Ranking', carteira: 'Carteira', achados: 'Achados',
+    oportunidades: 'Oportunidades', vencimentos: 'Vencimentos', 'caixa-parado': 'CaixaParado',
+    'valor-assessor': 'ValorAssessor', visita: 'Visita', comparativo: 'Comparativo',
+    receitas: 'Receitas', cadastro: 'Cadastro', busca: 'Busca', risco: 'Risco', radar: 'Radar',
+    eventos: 'Eventos', importar: 'Importar', usuarios: 'Usuarios', tendencia: 'Tendencia',
+    'dev-relatorio': 'DevRelatorio', custos: 'Custos',
+  };
+
+  function paginaJaCarregada(pageKey) {
+    const compName = PAGE_COMPONENT_NAME[pageKey];
+    return Boolean(compName && window.AtlasPages && window.AtlasPages[compName]);
+  }
+
+  /* Best-effort: chamado no hover/foco do link de navegação (ver NavItem).
+     Nunca mostra erro, se falhar a navegação de verdade tenta de novo e
+     trata o erro lá. Só chamado pra páginas que faseDisponivel já filtrou
+     como visíveis, então nunca baixa módulo que o usuário não pode ver. */
+  function prefetchPage(pageKey) {
+    if (paginaJaCarregada(pageKey)) return;
+    const loader = PAGE_LOADERS[pageKey];
+    if (!loader) return;
+    loader().catch(() => {});
+  }
+
+  /* Estado de carregamento da página ATUAL (não das prefetchadas). Um mapa
+     em ref em vez de um estado por página evita re-render de páginas que não
+     mudaram; forceRender dispara o re-render preciso quando o status da
+     página corrente muda. */
+  function usePageLoader(page) {
+    const [, forceRender] = useState(0);
+    const statusRef = useRef({});
+
+    function tentar(pageKey, retriedAgain) {
+      const loader = PAGE_LOADERS[pageKey];
+      if (!loader) return;
+      statusRef.current[pageKey] = 'loading';
+      forceRender(n => n + 1);
+      loader()
+        .then(() => {
+          if (!paginaJaCarregada(pageKey)) {
+            // Módulo baixou mas não registrou o componente esperado em
+            // window.AtlasPages (typo em PAGE_COMPONENT_NAME ou no arquivo).
+            // Sem esta guarda o app assentaria no placeholder pra sempre.
+            console.error(`[lazy-load] "${pageKey}" carregou mas não registrou window.AtlasPages.${PAGE_COMPONENT_NAME[pageKey]}`);
+            statusRef.current[pageKey] = retriedAgain ? 'error-retried' : 'error';
+            forceRender(n => n + 1);
+            return;
+          }
+          delete statusRef.current[pageKey];
+          forceRender(n => n + 1); // window.AtlasPages.X já setado, só falta re-renderizar
+        })
+        .catch(err => {
+          console.error(`[lazy-load] falha ao carregar a página "${pageKey}"${retriedAgain ? ' (nova tentativa)' : ''}:`, err && err.message ? err.message : err);
+          statusRef.current[pageKey] = retriedAgain ? 'error-retried' : 'error';
+          forceRender(n => n + 1);
+        });
+    }
+
+    useEffect(() => {
+      if (paginaJaCarregada(page)) return;
+      if (statusRef.current[page]) return; // já carregando ou com erro, só via retry
+      if (!PAGE_LOADERS[page]) return; // rota sem loader (ex.: desconhecida)
+      tentar(page, false);
+    }, [page]);
+
+    const status = statusRef.current[page] || null;
+    return {
+      status,
+      retry: () => {
+        // Segunda falha na mesma página: alguns navegadores guardam a
+        // promessa rejeitada em cache do módulo pra sempre pra essa URL,
+        // mesmo com a rede de volta. Recarregar a aplicação é o único jeito
+        // confiável de sair disso.
+        if (status === 'error-retried') { window.location.reload(); return; }
+        tentar(page, status === 'error');
+      },
+    };
+  }
+
+  /* Tela do intervalo entre pedir a rota e o chunk chegar. Componente próprio
+     em vez de PlaceholderPage porque aquele diz "Em desenvolvimento", que numa
+     conexão lenta viraria rótulo falso em tela entregue. */
+  function PageLoading({ title }) {
+    return (
+      <div className="page-load-error" role="status" style={{ padding: '2rem', textAlign: 'center' }}>
+        <p>Carregando {title ? title + '…' : '…'}</p>
+      </div>
+    );
+  }
+
+  function PageLoadError({ retry, tentouDeNovo }) {
+    return (
+      <div className="page-load-error" role="alert" style={{ padding: '2rem', textAlign: 'center' }}>
+        <p>Não foi possível carregar esta página.</p>
+        <button className="btn btn-primary" onClick={retry}>
+          {tentouDeNovo ? 'Recarregar aplicação' : 'Tentar novamente'}
+        </button>
+      </div>
+    );
+  }
 
   /* ============================================================
      FAIXA DE DEMONSTRAÇÃO
@@ -721,6 +861,7 @@ import ReactDOM from 'react-dom/client';
     }, [location.path]);
 
     const page = pageFromPath(location.path);
+    const { status: pageLoadStatus, retry: retryPageLoad } = usePageLoader(page);
 
     return (
       <AuthContext.Provider value={{ authed: true, logout: null }}>
@@ -728,7 +869,11 @@ import ReactDOM from 'react-dom/client';
           <ToastContext.Provider value={{ toasts, addToast }}>
             <AppShell page={page} onNavigate={path => { window.location.href = path; }}>
               <ErrorBoundary key={page + ':' + dataVersion}>
-                {renderPage(page, location)}
+                {pageLoadStatus === 'loading'
+                  ? <PageLoading title={PAGE_TITLES[page]} />
+                  : (pageLoadStatus === 'error' || pageLoadStatus === 'error-retried')
+                    ? <PageLoadError retry={retryPageLoad} tentouDeNovo={pageLoadStatus === 'error-retried'} />
+                    : renderPage(page, location)}
               </ErrorBoundary>
             </AppShell>
           </ToastContext.Provider>

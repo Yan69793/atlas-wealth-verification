@@ -65,13 +65,30 @@ export function tipoPeriodo(data: string): 'diario' | 'mensal' | null {
  * Recusa root que caia dentro do repo do produto. A regra inviolável do
  * CLAUDE.md é que dado real nunca toca a árvore do produto; sem esta trava,
  * `--root .` rodado de dentro do repo gravaria audits/ com nome de carteira
- * no working tree. A assinatura do produto é a presença de platform-app.jsx.
+ * no working tree. A assinatura do produto é a presença de platform-app.jsx,
+ * checada em cada nível ao subir a árvore, então uma subpasta sem o arquivo
+ * direto nela ainda é pega quando a subida encontra a raiz do produto.
+ *
+ * A subida para no primeiro `.git` que não seja o do produto, não na raiz do
+ * sistema de arquivos: a instância de cliente vive aninhada dentro da pasta
+ * do produto (`verificacao-carteiras/`) como repo git próprio, sem
+ * `platform-app.jsx`. Sem essa parada, subir além desse `.git` acharia o
+ * produto lá em cima e bloquearia o uso normal da instância.
  */
 export function protegerRoot(root: string): void {
-  if (fs.existsSync(path.join(root, 'platform-app.jsx'))) {
-    throw new Error(
-      `--root "${root}" cai dentro do repo do produto. Artefatos de snapshot nunca sao gravados la.`
-    );
+  let dir = path.resolve(root);
+  for (;;) {
+    if (fs.existsSync(path.join(dir, 'platform-app.jsx'))) {
+      throw new Error(
+        `--root "${root}" cai dentro do repo do produto (raiz em "${dir}"). Artefatos de snapshot nunca sao gravados la.`
+      );
+    }
+    if (fs.existsSync(path.join(dir, '.git'))) {
+      return; // fronteira de outro repo (ex.: instancia), sem sinal do produto aqui, permitido
+    }
+    const pai = path.dirname(dir);
+    if (pai === dir) return; // raiz do filesystem sem achar nada
+    dir = pai;
   }
 }
 

@@ -67,28 +67,11 @@ import '../platform-consolidado.js';
 /* 4. Utilitários, ícones, gráficos, UI primitives */
 import '../platform-utils.jsx';
 
-/* 5. Páginas (registram window.AtlasPages.*) */
-import '../platform-ranking.jsx';
-import '../platform-dashboard.jsx';
-import '../platform-carteira.jsx';
-import '../platform-report.jsx';
-import '../platform-achados.jsx';
-import '../platform-oportunidades.jsx';
-import '../platform-vencimentos.jsx';
-import '../platform-caixa-parado.jsx';
-import '../platform-valor-assessor.jsx';
-import '../platform-visita.jsx';
-import '../platform-comparativo.jsx';
-import '../platform-custos.jsx';
-import '../platform-receitas.jsx';
-import '../platform-cadastro.jsx';
-import '../platform-busca.jsx';
-import '../platform-import.jsx';
-import '../platform-usuarios.jsx';
-import '../platform-risco.jsx';
-import '../platform-radar.jsx';
-import '../platform-eventos.jsx';
-import '../platform-tendencia.jsx';
+/* 5. Páginas: removidas daqui em 2026-08-30 (lazy-load por rota). Cada
+   platform-X.jsx (registra window.AtlasPages.*) agora só é baixado quando a
+   rota é visitada ou o link ganha hover/foco, via PAGE_LOADERS em
+   platform-app.jsx. tests/validate.js verifica que as 21 páginas continuam
+   com entrada lá, apontando pra arquivo que existe de verdade. */
 
 /* 6. App shell — POR ÚLTIMO (monta o ReactDOM) */
 import '../platform-app.jsx';
