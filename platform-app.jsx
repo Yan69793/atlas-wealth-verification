@@ -283,6 +283,21 @@ import ReactDOM from 'react-dom/client';
      TOPBAR
   ============================================================ */
 
+  // Sair do sistema. O cliente nao guarda sessao (perimetro e Cloudflare
+  // Access); a unica sessao de app e o cookie HttpOnly do demo, que so o
+  // worker consegue expirar. A rota /sair no worker do demo zera o cookie;
+  // sem ela (modo dev/instancia) e so refresh, e quem decide o acesso e o
+  // perimetro externo. Nunca compara credencial no navegador: e teatro.
+  function sairDoSistema() {
+    try {
+      fetch('/sair', { method: 'POST', credentials: 'same-origin' })
+        .catch(function () {})
+        .then(function () { window.location.reload(); });
+    } catch (e) {
+      window.location.reload();
+    }
+  }
+
   function Topbar({ title, onMenuClick }) {
     const { selectedMonth, setSelectedMonth } = useMonth();
     const { Icon } = window.AtlasIcons;
@@ -301,6 +316,15 @@ import ReactDOM from 'react-dom/client';
       <header className="topbar">
         <button className="topbar-hamburger" onClick={onMenuClick} aria-label="Abrir menu">
           <Icon name="menu" size={20} />
+        </button>
+
+        <button
+          className="btn btn--ghost topbar-back"
+          onClick={() => window.history.back()}
+          title="Voltar para a página anterior"
+          style={{ padding: '6px 10px', minHeight: 36, marginRight: 10 }}
+        >
+          <span style={{ fontSize: '0.857rem' }}>← Voltar</span>
         </button>
 
         <div className="topbar-title">{title}</div>
@@ -351,6 +375,15 @@ import ReactDOM from 'react-dom/client';
         >
           <Icon name="trending_up" size={16} />
           <span style={{ fontSize: '0.786rem' }}>Tela cheia</span>
+        </button>
+
+        <button
+          className="btn btn--ghost topbar-sair"
+          onClick={sairDoSistema}
+          title="Sair do sistema"
+          style={{ padding: '6px 10px', minHeight: 36, marginLeft: 10, color: '#8B1A1A' }}
+        >
+          <span style={{ fontSize: '0.786rem' }}>Sair</span>
         </button>
       </header>
     );

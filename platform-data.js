@@ -81,30 +81,33 @@
     '2025-09':0.0116,'2025-10':0.0116,'2025-11':0.0116,'2025-12':0.0116,
     '2026-01':0.0116,'2026-02':0.0116,'2026-03':0.0115,'2026-04':0.0113,
     '2026-05':0.0113,'2026-06':0.0111,
-    // Jul–Dez/26: placeholder só para a demo (repete o último CDI conhecido).
-    // Para dado real, o CDI vem do overlay (D.cdiRates em injectRealData), não daqui.
-    '2026-07':0.0111,'2026-08':0.0111,'2026-09':0.0111,
-    '2026-10':0.0111,'2026-11':0.0111,'2026-12':0.0111
+    // Jul/26 e Ago/26 soma do CDI diario (Banco Central SGS serie 12, acumulado
+    // dos dias uteis do mes), captura 2026-09-01.
+    '2026-07':0.012152,'2026-08':0.010931,
   };
 
   // Benchmarks de mercado (retorno mensal, ratio decimal). So dado real e sourced
-  // entra aqui, nunca valor inventado. Cobrem 2024-01..2026-06; mes sem serie
+  // entra aqui, nunca valor inventado. Cobrem 2024-01..2026-08; mes sem serie
   // retorna 0 (getIBOV/getIPCA), entao a acumulacao no relatorio nao inventa.
-  // IPCA: variacao mensal, Banco Central SGS serie 433 (IBGE), captura 2026-07-17.
+  // IPCA: variacao mensal, Banco Central SGS serie 433 (IBGE), captura 2026-07-17;
+  //   Agos/26 ainda nao publicado pelo IBGE em 2026-09-01, entao fica ausente.
   var IPCA = {
     '2024-01':0.0042,'2024-02':0.0083,'2024-03':0.0016,'2024-04':0.0038,'2024-05':0.0046,'2024-06':0.0021,
     '2024-07':0.0038,'2024-08':-0.0002,'2024-09':0.0044,'2024-10':0.0056,'2024-11':0.0039,'2024-12':0.0052,
     '2025-01':0.0016,'2025-02':0.0131,'2025-03':0.0056,'2025-04':0.0043,'2025-05':0.0026,'2025-06':0.0024,
     '2025-07':0.0026,'2025-08':-0.0011,'2025-09':0.0048,'2025-10':0.0009,'2025-11':0.0018,'2025-12':0.0033,
-    '2026-01':0.0033,'2026-02':0.007,'2026-03':0.0088,'2026-04':0.0067,'2026-05':0.0058,'2026-06':0.0016
+    '2026-01':0.0033,'2026-02':0.007,'2026-03':0.0088,'2026-04':0.0067,'2026-05':0.0058,'2026-06':0.0016,
+    '2026-07':0.0007
   };
   // IBOV: retorno mensal do Ibovespa, Yahoo Finance ^BVSP (close mensal), captura 2026-07-17.
+  //   Jul/26 e Ago/26 capturados em 2026-09-01 do mesmo close mensal (^BVSP, Yahoo Finance).
   var IBOV = {
     '2024-01':-0.047941,'2024-02':0.009925,'2024-03':-0.007084,'2024-04':-0.017033,'2024-05':-0.030383,'2024-06':0.014816,
     '2024-07':0.030224,'2024-08':0.065428,'2024-09':-0.030793,'2024-10':-0.015954,'2024-11':-0.031184,'2024-12':-0.042851,
     '2025-01':0.048652,'2025-02':-0.026448,'2025-03':0.060758,'2025-04':0.036903,'2025-05':0.014511,'2025-06':0.01334,
     '2025-07':-0.041655,'2025-08':0.062756,'2025-09':0.034047,'2025-10':0.022587,'2025-11':0.063742,'2025-12':0.012906,
-    '2026-01':0.125611,'2026-02':0.040929,'2026-03':-0.007018,'2026-04':-0.000768,'2026-05':-0.07223,'2026-06':-0.01015
+    '2026-01':0.125611,'2026-02':0.040929,'2026-03':-0.007018,'2026-04':-0.000768,'2026-05':-0.07223,'2026-06':-0.01015,
+    '2026-07':0.034734,'2026-08':-0.003258
   };
   function getIPCA(month) { return IPCA[month] || 0; }
   function getIBOV(month) { return IBOV[month] || 0; }
@@ -116,7 +119,10 @@
   // devolve LIBERAR para todo o mês corrente, reportedPlPrev fica igual ao PL
   // anterior real, e a conta do produto fecha exata. Nenhuma carteira sai com
   // divergência material, e nenhum achado é fabricado.
-  var CURRENT_MONTH = '2026-07';
+  //
+  // Agos/2026 segue o mesmo desenho de estabilidade (composição idêntica à de
+  // julho, saldo andando só por marcação a mercado com o CDI real de agosto).
+  var CURRENT_MONTH = '2026-08';
 
   // Mês em que o DEMO ABRE, que não é o mesmo conceito do mês corrente.
   //
@@ -316,6 +322,57 @@
   setS('TIGRE_FAM',   '2025-07', 'COM ALERTA');
   setS('BRAVO_FAM',   '2025-11', 'COM ALERTA');
   setS('PRADO_HLD',   '2026-01', 'COM ALERTA');
+
+  /* Jul/2026 — mês de estabilidade anterior ao corrente (mesmos ativos).
+   *
+   * Julho era o mês corrente quando o desenho de estabilidade nasceu, e o
+   * getStatus devolvia LIBERAR para ele inteiro por ser o corrente. Com Agosto
+   * assumindo o posto de mês corrente, julho voltaria para o gerador
+   * pseudoaleatório e viraria 35 LIBERAR / 3 ALERTA / 2 CORRIGIR, apagando a
+   * estabilidade que o produto documentou. A premissa do dono vale para julho
+   * ("todas as carteiras mantiveram os MESMOS ATIVOS"): todas as 40 mantêm a
+   * posição e fecham em LIBERAR, sem roteiro de divergência.
+   */
+  setS('ALPHA_01',    '2026-07', 'LIBERAR');
+  setS('ALPHA_02',    '2026-07', 'LIBERAR');
+  setS('ALPHA_03',    '2026-07', 'LIBERAR');
+  setS('BRAVO_FAM',   '2026-07', 'LIBERAR');
+  setS('BRAVO_PV',    '2026-07', 'LIBERAR');
+  setS('CEDRO_HLD',   '2026-07', 'LIBERAR');
+  setS('CEDRO_CAP',   '2026-07', 'LIBERAR');
+  setS('DUNAS_CAP',   '2026-07', 'LIBERAR');
+  setS('DUNAS_FAM',   '2026-07', 'LIBERAR');
+  setS('ESTRELA_PV',  '2026-07', 'LIBERAR');
+  setS('ESTRELA_HLD', '2026-07', 'LIBERAR');
+  setS('FAROL_INV',   '2026-07', 'LIBERAR');
+  setS('FAROL_FAM',   '2026-07', 'LIBERAR');
+  setS('GAMMA_MID',   '2026-07', 'LIBERAR');
+  setS('GAMMA_LRG',   '2026-07', 'LIBERAR');
+  setS('HELIOS_01',   '2026-07', 'LIBERAR');
+  setS('HELIOS_02',   '2026-07', 'LIBERAR');
+  setS('INDIGO_CAP',  '2026-07', 'LIBERAR');
+  setS('JOIA_FAM',    '2026-07', 'LIBERAR');
+  setS('JOIA_HLD',    '2026-07', 'LIBERAR');
+  setS('KAPPA_PV',    '2026-07', 'LIBERAR');
+  setS('KAPPA_INV',   '2026-07', 'LIBERAR');
+  setS('LUMIA_01',    '2026-07', 'LIBERAR');
+  setS('LUMIA_02',    '2026-07', 'LIBERAR');
+  setS('MARTE_FAM',   '2026-07', 'LIBERAR');
+  setS('NOVA_CAP',    '2026-07', 'LIBERAR');
+  setS('NOVA_PV',     '2026-07', 'LIBERAR');
+  setS('ORION_01',    '2026-07', 'LIBERAR');
+  setS('ORION_02',    '2026-07', 'LIBERAR');
+  setS('PRADO_HLD',   '2026-07', 'LIBERAR');
+  setS('PRADO_FAM',   '2026-07', 'LIBERAR');
+  setS('QUASAR_CAP',  '2026-07', 'LIBERAR');
+  setS('RIO_01',      '2026-07', 'LIBERAR');
+  setS('RIO_02',      '2026-07', 'LIBERAR');
+  setS('SOLAR_PV',    '2026-07', 'LIBERAR');
+  setS('SOLAR_INV',   '2026-07', 'LIBERAR');
+  setS('TIGRE_FAM',   '2026-07', 'LIBERAR');
+  setS('UMBRA_01',    '2026-07', 'LIBERAR');
+  setS('UMBRA_02',    '2026-07', 'LIBERAR');
+  setS('COMETA_FAM',  '2026-07', 'LIBERAR');
 
   function getStatus(code, month) {
     var key = code + '|' + month;

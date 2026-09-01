@@ -40,6 +40,7 @@ const COOKIE_NAME = 'atlas_demo_sessao';
 const TOKEN_INFO = 'atlas-demo-sessao-v1';
 const LOGIN_PATH = '/entrar';
 const CADASTRAR_PATH = '/cadastrar';
+const SAIR_PATH = '/sair';
 
 // Painel do dono. Secret, cookie e string de contexto do HMAC sao TODOS
 // separados dos do demo, de proposito: com o mesmo segredo ou a mesma string,
@@ -109,6 +110,7 @@ export default {
     if (request.method === 'POST') {
       if (url.pathname === CADASTRAR_PATH) return handleCadastrar(request, env, url, ctx);
       if (url.pathname === LOGIN_PATH) return handleEntrar(request, env, url, ctx);
+      if (url.pathname === SAIR_PATH) return handleSair(request, env, url);
     }
 
     // Decoracao publica (cartao de previa e fundos da tela). Vem antes da
@@ -270,6 +272,16 @@ function respostaComCookie(url, token) {
 
 function redirectComErro(url, codigo) {
   return Response.redirect(new URL(`/?erro=${codigo}`, url), 303);
+}
+
+// Sair: expira o cookie de sessao do demo (HttpOnly, so o worker o apaga) e
+// devolve o browser para a tela de acesso. Sem corpo: o cliente so chama e
+// recebe 303 com o Set-Cookie zerado, depois recarrega.
+function handleSair(request, env, url) {
+  const secure = url.protocol === 'https:' ? '; Secure' : '';
+  const headers = new Headers({ Location: '/' });
+  headers.append('Set-Cookie', `${COOKIE_NAME}=; Path=/; HttpOnly${secure}; SameSite=Lax; Max-Age=0`);
+  return new Response(null, { status: 303, headers });
 }
 
 // ----- Hash de senha (PBKDF2-SHA256) -----

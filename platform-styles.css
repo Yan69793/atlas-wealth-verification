@@ -282,6 +282,12 @@ input, select, textarea {
   flex: 1;
 }
 
+.topbar-back,
+.topbar-sair {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
 .topbar-month-select {
   display: flex;
   align-items: center;

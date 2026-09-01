@@ -2,6 +2,37 @@
 
 **Data-base: 2026-09-01.** Colhido rodando os comandos, não de memória.
 
+## 2026-09-01 — demo estendido a Ago/26 + botões de navegação/saída
+
+- `CURRENT_MONTH` avançou para `2026-08` (último mês fechado real); `OPENING_MONTH`
+  ficou `2026-06` (demo segue abrindo no mês da pitch). Medido depois da troca:
+  junho R$ 1,200000 bi (24/12/4, âncora), julho R$ 1,211988 bi (40 LIBERAR, div 0%),
+  agosto R$ 1,226927 bi (40 LIBERAR, div 0%).
+- Como julho deixou de ser o mês corrente, ganhou roteiro explícito (40 LIBERAR)
+  para não voltar ao gerador pseudoaleatório e apagar a estabilidade documentada.
+- Dados de mercado reais gravados em `platform-data.js` (captura 2026-09-01):
+  IBOV jul +0,034734 e ago -0,003258 (Yahoo ^BVSP); CDI jul 0,012152 e ago 0,010931
+  (BCB SGS 12, soma dos dias úteis); IPCA jul 0,0007 (ago ainda não publicado pelo
+  IBGE, fica ausente — sem inventar).
+- **Botões novos no shell** (todas as páginas): "← Voltar" na topbar
+  (`window.history.back()`) e "Sair" com a rota `POST /sair` no `demo-worker`, que
+  zera o cookie `atlas_demo_sessao` (HttpOnly) e devolve à tela de acesso. Sem rota
+  (dev/instância), "Sair" só recarrega e o perímetro Cloudflare Access decide, pois
+  o cliente não guarda sessão por desenho.
+- Portão: `npm test` 812/812 checks + 355 testes, fail 0; `npm run build` e
+  `verify-build` verdes; sintaxe ESM do worker validada.
+
+### Pendência — instância real até Ago/26 (decisão 2026-09-01)
+
+O dono decidiu gerar jul/ago "via pipeline com book reutilizado + retorno real de
+mercado" (decisão `dec-396f259d446cd11a`). **Não executado nesta sessão.** A
+instância tem audit.json reais só até `2026-06`; não há book do custodiante de
+07/08 (`Mirabáud/` vai até 05.26). Executar o caminho aprovado exige operar a
+pipeline LGPD (book reutilizado → `ciclo-mensal.ps1 -Mes 2026-07/08` → build-historico
+→ sync-overlays → gen-index) e depois o deploy da instância — ação externa que
+depende das credenciais Cloudflare do fluxo já usado. Registrado como pendência
+aberta; demo já publicado está pronto para o mesmo fluxo de deploy quando autorizado.
+
 Fonte única do estado do projeto. Se outro arquivo divergir deste, este ganha. Se você chegou
 sem contexto, leia [[LEIA-PRIMEIRO]] primeiro. Para achar coisa, [[MAPA]].
 
