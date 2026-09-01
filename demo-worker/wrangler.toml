@@ -18,9 +18,10 @@ name = "app-verificacao-carteiras-atlas"
 compatibility_date = "2026-08-01"
 account_id = "7ac79fb1030e4e81115ef33c21a9b070"
 
-# Publico e sem Access, que e o ponto: o prospect abre o link e ve o sistema.
-# O que protege aqui nao e perimetro, e o fato de nao existir dado real dentro.
-workers_dev = true
+# O demo comercial usa exclusivamente o dominio canonico abaixo.
+# O endereco workers.dev fica desabilitado para nao existir uma segunda URL
+# publica para o mesmo ambiente.
+workers_dev = false
 
 [assets]
 directory = "./public"
@@ -28,16 +29,7 @@ directory = "./public"
 # qualquer caminho servido devolva o index em vez de 404.
 not_found_handling = "single-page-application"
 
-# Endereco do demo. Zona neutra de proposito: multi-assets.com nao carrega o
-# nome da consultoria, o que acompanha a decisao de marca neutra do produto.
-#
-# NAO usar szuchmacher.com.br aqui. A instancia do cliente vive em
-# atlas.szuchmacher.com.br, e um demo vizinho entregaria o endereco dela a
-# quem recebesse o link. Esta protegida por Access, mas nao ha motivo para
-# anunciar onde ela fica.
-#
-# O apice multi-assets.com e o www ja pertencem ao worker sz-sites. Este
-# registro cria so o subdominio e nao encosta nos dois.
+# URL canonica e unica do ambiente demo.
 [[routes]]
 pattern = "demo.multi-assets.com"
 custom_domain = true
