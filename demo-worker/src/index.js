@@ -34,11 +34,25 @@
 //   npx wrangler secret put DEMO_EMAIL        -- destinatario do aviso (o dono)
 
 import { paginaLogin } from './landing.js';
+import { paginaAdminPorta, paginaAdminPainel } from './admin.js';
 
 const COOKIE_NAME = 'atlas_demo_sessao';
 const TOKEN_INFO = 'atlas-demo-sessao-v1';
 const LOGIN_PATH = '/entrar';
 const CADASTRAR_PATH = '/cadastrar';
+
+// Painel do dono. Secret, cookie e string de contexto do HMAC sao TODOS
+// separados dos do demo, de proposito: com o mesmo segredo ou a mesma string,
+// um cookie de visitante do demo passaria a valer como cookie de admin, porque
+// a assinatura bateria. Separado, um token de um lado nunca valida do outro.
+const ADMIN_PATH = '/admin';
+const ADMIN_LOGIN_PATH = '/admin/entrar';
+const ADMIN_COOKIE = 'atlas_admin_sessao';
+const TOKEN_ADMIN_INFO = 'atlas-demo-admin-v1';
+
+// Janela do painel. Fixa, porque parametro de dias na querystring so serviria
+// para alguem varrer o banco com range gigante.
+const ADMIN_DIAS = 30;
 
 // Arquivos servidos ANTES da checagem de sessao. Sao tres decoracoes sem dado
 // nenhum dentro: o cartao de previa do link e as duas artes de fundo da tela de
@@ -73,7 +87,7 @@ const SALT_BYTES = 16;
 const EMAIL_FROM = 'ATLAS Demo <demo@multi-assets.com>';
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     if (!env.DEMO_SENHA) {
       return new Response(
         'Configuracao ausente: defina o secret DEMO_SENHA neste Worker antes de publicar.',
@@ -83,32 +97,52 @@ export default {
 
     const url = new URL(request.url);
 
+    // Painel do dono, ANTES de tudo. Nunca cai em env.ASSETS.fetch e nunca
+    // entra em PUBLICOS: e o unico ramo do Worker que le dado pessoal.
+    if (url.pathname === ADMIN_PATH || url.pathname === ADMIN_LOGIN_PATH) {
+      return rotaAdmin(request, env, url);
+    }
+
     // POST de autenticacao roteado aqui, ANTES do ASSETS. O fallback de SPA
     // (not_found_handling = single-page-application) nao pode engolir POST:
     // sem este roteamento previo, env.ASSETS.fetch serviria o index.
     if (request.method === 'POST') {
-      if (url.pathname === CADASTRAR_PATH) return handleCadastrar(request, env, url);
-      if (url.pathname === LOGIN_PATH) return handleEntrar(request, env, url);
+      if (url.pathname === CADASTRAR_PATH) return handleCadastrar(request, env, url, ctx);
+      if (url.pathname === LOGIN_PATH) return handleEntrar(request, env, url, ctx);
     }
 
     // Decoracao publica (cartao de previa e fundos da tela). Vem antes da
     // checagem porque o robo do WhatsApp e do LinkedIn nunca tera cookie, e a
     // propria tela de acesso precisa da imagem para desenhar.
+    // NAO conta evento: sao os assets da propria tela, e conta-los inflaria a
+    // visita pelo numero de imagens que o navegador busca.
     if (request.method === 'GET' && PUBLICOS.has(url.pathname)) {
       return env.ASSETS.fetch(request);
     }
 
     if (await estaAutenticado(request, env)) {
+      if (ehDocumento(url.pathname)) contar(env, ctx, 'app_aberto');
       return env.ASSETS.fetch(request);
     }
 
+    if (ehDocumento(url.pathname)) contar(env, ctx, 'tela');
     return paginaResposta(url.searchParams.get('erro'));
   },
 };
 
-async function handleCadastrar(request, env, url) {
+/* Documento, nao asset.
+   Com run_worker_first todo arquivo passa por aqui, entao contar sem este
+   filtro daria uma "visita" por imagem, por folha de estilo e por pedaco de
+   bundle. So o documento conta. As rotas do app sao hash (#/dashboard), entao
+   a raiz cobre a navegacao inteira de quem ja entrou. */
+const ehDocumento = (pathname) => pathname === '/' || pathname === '/index.html';
+
+async function handleCadastrar(request, env, url, ctx) {
   if (!env.DB) return redirectComErro(url, 'erro-interno');
-  if (bodyGrande(request)) return redirectComErro(url, 'payload-grande');
+  if (bodyGrande(request)) {
+    contar(env, ctx, 'cadastro_erro', 'payload-grande');
+    return redirectComErro(url, 'payload-grande');
+  }
 
   const form = await request.formData();
   const nome = String(form.get('nome') || '').trim().slice(0, 120);
@@ -116,7 +150,10 @@ async function handleCadastrar(request, env, url) {
   const senha = String(form.get('senha') || '');
 
   const erro = validarCadastro(nome, email, senha);
-  if (erro) return redirectComErro(url, erro);
+  if (erro) {
+    contar(env, ctx, 'cadastro_erro', erro);
+    return redirectComErro(url, erro);
+  }
 
   const hash = await hashSenha(senha);
   const r = await env.DB.prepare(
@@ -126,8 +163,11 @@ async function handleCadastrar(request, env, url) {
   // INSERT OR IGNORE sem SELECT previo: sem corrida de checar-e-gravar. Se o
   // email ja existe, nada muda e o cadastro nao entra de novo.
   if (r.meta.changes === 0) {
+    contar(env, ctx, 'cadastro_erro', 'email-existe');
     return redirectComErro(url, 'email-existe');
   }
+
+  contar(env, ctx, 'cadastro_ok');
 
   // Aviso ao dono, nao bloqueia o cadastro: falha sozinha em dev ou ausencia.
   notificarCadastro(env, { nome, email }).catch((e) => {
@@ -137,7 +177,7 @@ async function handleCadastrar(request, env, url) {
   return respostaComCookie(url, await assinarCookie(email, env.DEMO_SENHA));
 }
 
-async function handleEntrar(request, env, url) {
+async function handleEntrar(request, env, url, ctx) {
   if (!env.DB) return redirectComErro(url, 'erro-interno');
   if (bodyGrande(request)) return redirectComErro(url, 'payload-grande');
 
@@ -151,10 +191,15 @@ async function handleEntrar(request, env, url) {
   if (!linha || !(await verificarSenha(senha, linha.senha_hash))) {
     // Email inexistente e senha errada caem na mesma resposta, para nao
     // revelar qual dos dois falhou. O sleep dura tempo de parede, nao CPU.
+    // O contador tambem nao separa os dois casos, pelo mesmo motivo: o painel
+    // do dono nao precisa saber, e gravar a diferenca criaria um oraculo de
+    // "este email existe" para quem tivesse acesso ao banco.
+    contar(env, ctx, 'login_erro', 'credenciais');
     await sleep(400);
     return redirectComErro(url, 'credenciais');
   }
 
+  contar(env, ctx, 'login_ok');
   return respostaComCookie(url, await assinarCookie(email, env.DEMO_SENHA));
 }
 
@@ -312,6 +357,165 @@ async function notificarCadastro(env, { nome, email }) {
 }
 
 const sleep = (ms) => new Promise((resolver) => setTimeout(resolver, ms));
+
+// ----- Contadores agregados do funil -----
+//
+// NAO e log de acesso. A tabela `eventos` nao tem coluna de pessoa, de email,
+// de IP nem de sessao (ver demo-worker/migrations/0002_eventos.sql). O que se
+// guarda e "no dia X o evento Y aconteceu N vezes", e mais nada. Quem
+// acrescentar aqui uma coluna que ligue evento a pessoa muda a natureza
+// juridica da tabela sob LGPD, nao so o schema.
+//
+// Roda em ctx.waitUntil, fora do caminho da resposta. O cabecalho deste
+// arquivo registra que o gate e stateless de proposito, "o gate nao le o D1
+// por request, cada asset serve rapido", e o PBKDF2 ja gasta ~7ms dos 10ms de
+// CPU do plano free. Gravar antes de responder desfaria as duas coisas.
+//
+// Falha de contador nunca derruba requisicao, mesmo criterio do
+// notificarCadastro. Metrica quebrada e um problema. Demo fora do ar por causa
+// da metrica seria pior.
+
+// Fuso de Sao Paulo, nao UTC. O dono le o funil no fuso dele, e um cadastro das
+// 21h cairia em "amanha" no relatorio se a chave do dia fosse UTC.
+const diaEm = (quando) => {
+  try {
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(quando);
+  } catch {
+    return quando.toISOString().slice(0, 10);
+  }
+};
+
+const diaDeHoje = () => diaEm(new Date());
+const diasAtras = (n) => diaEm(new Date(Date.now() - n * 86400000));
+
+function contar(env, ctx, evento, detalhe = '') {
+  if (!env.DB) return;
+
+  const gravar = env.DB.prepare(
+    'INSERT INTO eventos (dia, evento, detalhe, total) VALUES (?, ?, ?, 1) '
+    + 'ON CONFLICT(dia, evento, detalhe) DO UPDATE SET total = total + 1'
+  )
+    .bind(diaDeHoje(), evento, String(detalhe || '').slice(0, 40))
+    .run()
+    .catch((e) => console.error('contador falhou (nao bloqueia a resposta):', e));
+
+  if (ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(gravar);
+}
+
+// ----- Painel do dono -----
+//
+// Perimetro por secret proprio (escolha do dono; a recomendacao tinha sido
+// Cloudflare Access, que e o que ja protege a instancia). Endurecimentos que
+// vieram junto: segredo separado do demo, cookie com Path preso a /admin,
+// SameSite=Strict, sessao de 12h em vez dos 30 dias do demo, comparacao em
+// tempo constante e atraso na senha errada.
+//
+// Este e o unico ramo do Worker que le dado pessoal. Nunca chama
+// env.ASSETS.fetch e nunca entra em PUBLICOS.
+
+const assinarAdmin = (segredo) => hmacHex(segredo, 'admin\n' + TOKEN_ADMIN_INFO);
+
+function cookieAdminHeader(token, url) {
+  const secure = url.protocol === 'https:' ? '; Secure' : '';
+  // Path preso ao painel: o cookie nem e enviado nas rotas do demo. Max-Age de
+  // 12h contra os 30 dias do demo, porque aqui a sessao da acesso a nome e
+  // email de quem se cadastrou, nao a um ambiente sintetico.
+  return `${ADMIN_COOKIE}=${token}; Path=${ADMIN_PATH}; HttpOnly${secure}; SameSite=Strict; Max-Age=43200`;
+}
+
+async function adminAutenticado(request, env) {
+  const cabecalho = request.headers.get('Cookie') || '';
+  const par = cabecalho.split(';').map((p) => p.trim()).find((p) => p.startsWith(`${ADMIN_COOKIE}=`));
+  if (!par) return false;
+  const valor = par.slice(ADMIN_COOKIE.length + 1);
+  if (valor.length !== 64) return false; // hex de HMAC-SHA256, tamanho fixo
+  return compararSeguro(valor, await assinarAdmin(env.ADMIN_SENHA));
+}
+
+function respostaAdmin(corpo, status = 200, tipo = 'text/html; charset=utf-8') {
+  return new Response(corpo, {
+    status,
+    headers: {
+      'Content-Type': tipo,
+      // Sem img-src: o painel nao tem imagem nenhuma. Mais apertada que a da
+      // tela de acesso de proposito.
+      'Content-Security-Policy':
+        "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
+      'X-Robots-Tag': 'noindex, nofollow',
+      'Cache-Control': 'no-store, private',
+    },
+  });
+}
+
+async function rotaAdmin(request, env, url) {
+  if (!env.ADMIN_SENHA) {
+    return respostaAdmin(
+      'Configuracao ausente: defina o secret ADMIN_SENHA neste Worker antes de usar o painel.',
+      500,
+      'text/plain; charset=utf-8'
+    );
+  }
+
+  if (request.method === 'POST' && url.pathname === ADMIN_LOGIN_PATH) {
+    if (bodyGrande(request)) return Response.redirect(new URL(`${ADMIN_PATH}?erro=1`, url), 303);
+
+    const form = await request.formData();
+    const senha = String(form.get('senha') || '');
+
+    if (!(await compararSeguro(senha, env.ADMIN_SENHA))) {
+      await sleep(400);
+      return Response.redirect(new URL(`${ADMIN_PATH}?erro=1`, url), 303);
+    }
+
+    const headers = new Headers({ Location: ADMIN_PATH });
+    headers.append('Set-Cookie', cookieAdminHeader(await assinarAdmin(env.ADMIN_SENHA), url));
+    return new Response(null, { status: 303, headers });
+  }
+
+  if (request.method !== 'GET') {
+    return respostaAdmin('metodo nao permitido', 405, 'text/plain; charset=utf-8');
+  }
+
+  if (!(await adminAutenticado(request, env))) {
+    return respostaAdmin(paginaAdminPorta({
+      erro: url.searchParams.get('erro'),
+      entrarPath: ADMIN_LOGIN_PATH,
+    }));
+  }
+
+  if (!env.DB) return respostaAdmin('Banco indisponivel.', 503, 'text/plain; charset=utf-8');
+
+  return respostaAdmin(paginaAdminPainel(await lerPainel(env)));
+}
+
+async function lerPainel(env) {
+  const desde = diasAtras(ADMIN_DIAS);
+
+  const [serie, erros, cadastros] = await Promise.all([
+    env.DB.prepare(
+      'SELECT dia, evento, SUM(total) AS total FROM eventos WHERE dia >= ? GROUP BY dia, evento'
+    ).bind(desde).all(),
+    env.DB.prepare(
+      "SELECT evento, detalhe, SUM(total) AS total FROM eventos "
+      + "WHERE dia >= ? AND evento LIKE '%\\_erro' ESCAPE '\\' "
+      + 'GROUP BY evento, detalhe ORDER BY total DESC LIMIT 30'
+    ).bind(desde).all(),
+    // LIMIT deliberado: o painel e para ler o funil, nao para exportar a base.
+    env.DB.prepare('SELECT nome, email, criado_em FROM cadastros ORDER BY criado_em DESC LIMIT 200').all(),
+  ]);
+
+  const linhas = serie.results || [];
+  const totais = {};
+  for (const l of linhas) totais[l.evento] = (totais[l.evento] || 0) + Number(l.total || 0);
+
+  return {
+    dias: ADMIN_DIAS,
+    totais,
+    serie: linhas,
+    erros: erros.results || [],
+    cadastros: cadastros.results || [],
+  };
+}
 
 // ----- Resposta da tela de entrada -----
 //

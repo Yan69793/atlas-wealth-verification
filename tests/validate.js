@@ -1073,7 +1073,12 @@ ok('liberação pública roda antes da checagem de sessão',
   gateJs.indexOf('PUBLICOS.has(') < gateJs.indexOf('await estaAutenticado('));
 
 // CSP da tela de acesso.
-const cspLanding = (gateJs.match(/'Content-Security-Policy':\s*\n?\s*"([^"]+)"/) || [])[1] || '';
+// Recorta a partir de paginaResposta: desde que o painel entrou, existem duas
+// CSP no arquivo, e a primeira do texto passou a ser a do /admin (que não tem
+// img-src porque não tem imagem). Pegar "a primeira" aqui media a resposta
+// errada e o check falhava sem nada estar quebrado.
+const trechoLanding = gateJs.slice(gateJs.indexOf('function paginaResposta'));
+const cspLanding = (trechoLanding.match(/'Content-Security-Policy':\s*\n?\s*"([^"]+)"/) || [])[1] || '';
 
 ok('CSP da tela de acesso mantém default-src none', /default-src 'none'/.test(cspLanding), cspLanding);
 ok('CSP da tela de acesso libera imagem só do próprio domínio',
@@ -1105,6 +1110,57 @@ ok('alvo de toque de campo e botão tem ao menos 48px',
 // essa garantia acaba.
 ok('visual da tela vive fora do arquivo do portão',
   /import \{ paginaLogin \} from '\.\/landing\.js'/.test(gateJs) && !/<!doctype html>/i.test(gateJs));
+
+// ─── 17c. Painel do dono: perímetro e natureza dos contadores ──────────────
+//
+// O comportamento está em tests/admin-perimetro.test.mjs. Aqui ficam as
+// invariantes que só se enxergam no texto do código e no schema, e que se
+// violadas mudam a natureza do que o sistema guarda.
+
+const adminJs = fs.readFileSync(path.join(ROOT, 'demo-worker/src/admin.js'), 'utf8');
+const migracaoEventos = fs.readFileSync(path.join(ROOT, 'demo-worker/migrations/0002_eventos.sql'), 'utf8');
+
+// O ponto de LGPD da Fase 0. Contador agregado não é dado pessoal; log de
+// acesso por pessoa é. A diferença mora nestas colunas não existirem.
+for (const coluna of ['email', 'ip', 'user_agent', 'sessao', 'nome', 'cookie']) {
+  ok(`tabela de eventos não tem coluna ${coluna} (contador, não log de acesso)`,
+    !new RegExp(`^\\s*${coluna}\\b`, 'im').test(migracaoEventos),
+    'coluna que liga evento a pessoa muda a natureza jurídica da tabela');
+}
+
+ok('contador incrementa por UPSERT, sem ler antes (sem corrida)',
+  /ON CONFLICT\(dia, evento, detalhe\) DO UPDATE SET total = total \+ 1/.test(gateJs));
+
+// O gate é stateless de propósito. Gravar métrica no caminho da resposta
+// desfaz isso e come do teto de 10 ms de CPU do plano free.
+ok('contador roda em ctx.waitUntil, fora do caminho da resposta',
+  /ctx\.waitUntil\(gravar\)/.test(gateJs));
+ok('o fetch recebe ctx (sem ele não existe waitUntil)',
+  /async fetch\(request, env, ctx\)/.test(gateJs));
+
+// Perímetros separados: mesmo segredo ou mesma string de contexto faria um
+// cookie de visitante do demo valer como cookie de admin.
+ok('painel usa secret próprio, nunca o do demo',
+  /env\.ADMIN_SENHA/.test(gateJs) && !/assinarAdmin\(env\.DEMO_SENHA\)/.test(gateJs));
+ok('painel usa string de contexto HMAC própria',
+  /TOKEN_ADMIN_INFO = 'atlas-demo-admin-v1'/.test(gateJs)
+  && /TOKEN_INFO = 'atlas-demo-sessao-v1'/.test(gateJs));
+ok('cookie do painel é preso a /admin, Strict e curto',
+  /Path=\$\{ADMIN_PATH\}/.test(gateJs) && /SameSite=Strict/.test(gateJs) && /Max-Age=43200/.test(gateJs));
+
+// O painel lê nome e email. Não pode virar rota pública nem ser servido pelo
+// binding de assets.
+ok('rotas do painel ficam fora da lista pública',
+  !publicos.some((p) => p.startsWith('/admin')), publicos.join(', '));
+ok('painel é roteado antes de qualquer chamada ao ASSETS',
+  gateJs.indexOf('return rotaAdmin(') < gateJs.indexOf('return env.ASSETS.fetch(request)'));
+
+ok('painel não carrega JavaScript', !/<script/i.test(adminJs));
+
+// Métrica que não existe não pode aparecer como zero. "Começou a preencher"
+// não é observável no servidor, e a tela diz isso.
+ok('painel declara que "começou a preencher" não é medido',
+  /não é observável|Não existe medição/i.test(adminJs));
 
 // ─── 18. Artefato buildado (dist-app) — se existir, é verificado ────────────
 //

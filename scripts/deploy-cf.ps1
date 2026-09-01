@@ -110,6 +110,10 @@ if ($Target -eq 'worker') {
     if (-not ($secrets -match 'DEMO_SENHA'))     { $faltando += 'DEMO_SENHA' }
     if (-not ($secrets -match 'RESEND_API_KEY')) { $faltando += 'RESEND_API_KEY' }
     if (-not ($secrets -match 'DEMO_EMAIL'))     { $faltando += 'DEMO_EMAIL' }
+    # ADMIN_SENHA guarda o painel /admin, que e o unico ramo do Worker que le
+    # nome e email dos cadastrados. Sem o secret o painel responde 500 e nao
+    # vaza nada, mas publicar assim entrega um painel morto sem avisar.
+    if (-not ($secrets -match 'ADMIN_SENHA'))    { $faltando += 'ADMIN_SENHA' }
     if ($LASTEXITCODE -ne 0 -or $faltando.Count -gt 0) {
       Write-Error ("Secrets ausentes neste Worker: " + ($faltando -join ', ') + ". Rode antes: npx wrangler secret put <NOME> --name app-verificacao-carteiras-atlas")
       exit 1

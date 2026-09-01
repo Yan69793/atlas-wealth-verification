@@ -463,7 +463,7 @@ export function paginaLogin({ erro, cadastrarPath, loginPath }) {
         </div>
       </div>
 
-      <p class="lgpd">Seus dados (nome e email) são usados só para liberar o acesso ao demo e para avisar o dono do novo cadastro. Podem ser apagados quando você pedir. O demo contém apenas dados sintéticos; nenhum dado seu aparece nele.</p>
+      <p class="lgpd">Nome e email são usados apenas para liberar o acesso e comunicar a solicitação ao responsável. Não há compartilhamento com terceiros nem uso para outra finalidade, e a exclusão pode ser solicitada a qualquer momento. O ambiente opera somente com dados sintéticos, sem informação real de cliente.</p>
     </section>
   </main>
 </body>
