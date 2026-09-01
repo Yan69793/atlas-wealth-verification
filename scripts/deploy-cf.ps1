@@ -120,7 +120,7 @@ if ($Target -eq 'worker') {
     }
     npx wrangler deploy
     if ($LASTEXITCODE -eq 0) {
-      Write-Host "`nPublicado. O endereco workers.dev sai impresso acima." -ForegroundColor Green
+      Write-Host "`nPublicado. Demo em https://demo.multi-assets.com/ (o endereco workers.dev impresso acima e so o canal tecnico)." -ForegroundColor Green
     } else {
       Write-Error "Publicacao falhou com codigo $LASTEXITCODE."
     }

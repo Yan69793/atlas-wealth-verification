@@ -2,7 +2,7 @@
 
 **Versão:** 0.1 · **Ambiente:** Protótipo / Demo  
 **Repositório:** https://github.com/Yan69793/atlas-wealth-verification  
-**Acesso:** local, via `npm run serve` (http://localhost:7821). Nao ha deploy publico.
+**Acesso:** demo publico em https://demo.multi-assets.com/ (cadastro na primeira visita). Local, via `npm run serve` (http://localhost:7821).
 
 ---
 
