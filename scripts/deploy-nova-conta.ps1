@@ -88,13 +88,16 @@ try {
     }
 
     Write-Host "Publicando na conta nova (wrangler.nova-conta.toml)..." -ForegroundColor Cyan
-    # Trava real do DEMO_SENHA (o wrangler nao tem [secrets]). Secret e por
+    # Trava real dos secrets (o wrangler nao tem [secrets]). Secret e por
     # CONTA: o da conta antiga nao propaga pra ca, entao a checagem usa o
     # config da conta nova.
     $secrets = npx wrangler secret list -c wrangler.nova-conta.toml 2>&1
-    $temSenha = $secrets -match 'DEMO_SENHA'
-    if ($LASTEXITCODE -ne 0 -or -not $temSenha) {
-      Write-Error "Secret DEMO_SENHA nao definido na conta nova. Rode antes: npx wrangler secret put DEMO_SENHA --name app-verificacao-carteiras-atlas (com CLOUDFLARE_API_TOKEN_ATLAS no ambiente)."
+    $faltando = @()
+    if (-not ($secrets -match 'DEMO_SENHA'))     { $faltando += 'DEMO_SENHA' }
+    if (-not ($secrets -match 'RESEND_API_KEY')) { $faltando += 'RESEND_API_KEY' }
+    if (-not ($secrets -match 'DEMO_EMAIL'))     { $faltando += 'DEMO_EMAIL' }
+    if ($LASTEXITCODE -ne 0 -or $faltando.Count -gt 0) {
+      Write-Error ("Secrets ausentes na conta nova: " + ($faltando -join ', ') + ". Rode antes: npx wrangler secret put <NOME> --name app-verificacao-carteiras-atlas (com CLOUDFLARE_API_TOKEN_ATLAS no ambiente).")
       return
     }
     npx wrangler deploy -c wrangler.nova-conta.toml --no-autoconfig

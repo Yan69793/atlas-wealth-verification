@@ -18,7 +18,7 @@ Conta única: `7ac79fb1030e4e81115ef33c21a9b070`.
 | `app-verificacao-carteiras-atlas.prospects-intel.workers.dev` | mesmo Worker do demo | aberto | não existe no pacote |
 | `atlas.szuchmacher.com.br` | instância do cliente | Cloudflare Access | 302 para o Access |
 | `atlas-instancia.prospects-intel.workers.dev` | mesma instância, endereço técnico | **sem Access** | 401 pelo próprio Worker |
-| `atlas-wealth-verification.pages.dev` | projeto legado, ainda em uso | Cloudflare Access | 302 para o Access |
+| `atlas-wealth-verification.pages.dev` | projeto legado, aposentado em 2026-08-31 | redireciona (302) para `demo.multi-assets.com` | não existe no pacote |
 
 `atlas-wealth` (`atlas-wealth-63u.pages.dev`) foi apagado em 2026-08-10. Era
 cópia pública de julho, com nome de casa fixado no `<title>`, contradizendo a
@@ -132,21 +132,22 @@ domain na zona multi-assets.com). `workers_dev = true`, aberto de propósito
 
 ### Access (Zero Trust)
 
-Três aplicações têm relação com o ATLAS:
+Uma aplicação tem relação com o ATLAS:
 
 - **ATLAS — instância do cliente** (`atlas.szuchmacher.com.br`): 3 políticas
   (Yan, gerente, e service token `atlas-verificacao-claude` com decisão
   non_identity). Este é o perímetro real da instância.
-- **atlas-wealth-verification.pages.dev**: projeto Pages legado, com Access
-  (acessos Fabio e Meyer).
-- **atlas-wealth-verification (previews) — LGPD**: `*.pages.dev`, Access.
+- **atlas-wealth-verification.pages.dev** e **atlas-wealth-verification
+  (previews)**: apps de Access removidas em 2026-08-31, quando o projeto
+  legado passou a redirecionar para `demo.multi-assets.com`.
 - Service token `atlas-verificacao-claude` (`a9c25b80-ff06-42ba-bc46-d15ed3b4c6e5`),
   expira 2027-08-06, habilitado.
 
 ### Pages
 
-`atlas-wealth-verification.pages.dev` é o projeto legado do ATLAS, ainda em
-uso, com Access. O projeto `radar-credito` (VIX Radar, `vixradar.com`) tem na
+`atlas-wealth-verification.pages.dev` é o projeto legado do ATLAS, aposentado
+em 2026-08-31: publica um `_redirects` que leva a `demo.multi-assets.com`, sem
+Access. O projeto `radar-credito` (VIX Radar, `vixradar.com`) tem na
 configuração de produção uma variável `CLOUDFLARE_API_TOKEN`; o valor não é
 legível por API, então a dependência com a chave exposta fica NÃO COMPROVADA
 até o dono conferir a máscara no painel.
@@ -243,3 +244,14 @@ Ordem sugerida, cada item é manual e não delegável:
   token na máquina como `CLOUDFLARE_API_TOKEN_ATLAS`. As branches
   feat/separacao-cloudflare e fix/workers-dev-off ficam no GitHub como
   histórico do plano, prontas para reabrir se a decisão mudar.
+
+## Progresso em 2026-08-31
+
+- Demo legado aposentado: `atlas-wealth-verification.pages.dev` passou a
+  redirecionar (302) para `demo.multi-assets.com` com um `_redirects` publicado
+  no projeto Pages, e as apps de Access do domínio (principal e previews) foram
+  removidas. Quem abre o link antigo cai no demo novo, com o gate de senha.
+- Apps de Access órfãs da instância antiga apagadas: `verificacao-carteiras.pages.dev`
+  e `verificacao-carteiras (previews)`, apontando para o projeto Pages já apagado.
+- Nenhum dado real tocado. A instância `atlas.szuchmacher.com.br` segue com o
+  perímetro Access intacto.
