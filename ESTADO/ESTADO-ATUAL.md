@@ -13,10 +13,13 @@ aqui, trate este arquivo como suspeito e rode o refresh do fim da página.
 O portão agora tem três etapas, não duas. `npm test` roda as três em sequência.
 
 ```
-803/803 checks OK — todos os checks passaram
+812/812 checks OK — todos os checks passaram
 ℹ tests 63    ℹ suites 12   ℹ pass 63    ℹ fail 0   ℹ skipped 0
 ℹ tests 292   ℹ suites 76   ℹ pass 292   ℹ fail 0   ℹ skipped 0
 ```
+
+Os 9 checks a mais (803 → 812) são da camada de movimento decorativo sobre a arte de fundo,
+ver a seção dela abaixo.
 
 Medido em 2026-09-01, no fechamento do painel do dono (ver a seção dele abaixo). Os 16 checks
 e os 16 testes acrescidos desde a tela de acesso são do perímetro do painel e da natureza dos
@@ -491,6 +494,62 @@ npx wrangler d1 execute atlas-demo-cadastros --remote --file=migrations/0002_eve
 não compartilhamento e direito de exclusão em registro institucional.
 
 Portão depois de tudo: 803/803 checks, 63/63 testes de comportamento, 292/292 do audit-engine.
+Subiu para 812/812 na entrega seguinte, ver a seção abaixo.
+
+## Arte de fundo nova e movimento decorativo na tela de acesso (2026-09-01), publicada
+
+Commit `36fdc8d`, Version ID `58a6d97b-b0f2-4a0e-8dfb-46b6bd2673c8`. Pedido do dono: fazer a
+arte parecer viva ("IA interpretando patrimônio e sinais de mercado em tempo real"), sem
+JavaScript, sem tocar CSP, sem mexer em login.
+
+**A arte trocou.** O dono forneceu duas imagens novas (ChatGPT, não Higgsfield desta vez),
+convertidas para `docs/go-to-market/atlas-bg-desktop.webp`/`atlas-bg-mobile.webp`, mesmo
+caminho, mesmo nome — `EXTRAS_BINARIO`, `.gitignore` e `build-deploy.mjs` não precisaram de
+nenhuma linha nova, a allowlist cobre pelo caminho, não pelo conteúdo. Composição mais rica
+que a anterior, nó dourado, linha de conexão, núcleo de brilho, textura topográfica sutil.
+112,98 KB e 55,74 KB (eram 42,6 e 13,8), mais pesado porque a arte tem mais detalhe fino, sem
+banding no degradê escuro.
+
+**Movimento é SVG inline, não vídeo nem canvas.** A arte é raster, não dá para animar "este nó
+específico" dentro de um `.webp` sem máscara por elemento. Dois `<svg>` inline em
+`demo-worker/src/landing.js` (único arquivo de código tocado), um por composição, viewBox na
+resolução nativa de cada arte com `preserveAspectRatio="xMidYMid slice"` — reproduz o mesmo
+corte do `object-fit:cover` da imagem, então as formas ficam registradas com os clusters reais
+da textura em qualquer proporção de tela. Inline e não arquivo separado: zero requisição nova,
+zero entrada em `EXTRAS_BINARIO`, zero mudança de CSP, SVG dentro do HTML não é recurso
+externo. `index.js` não mudou uma linha.
+
+Nó pulsando (opacidade+escala, delay negativo por elemento, assíncrono desde o primeiro
+frame), linha com `stroke-dashoffset` fluindo devagar, núcleo respirando exatamente sobre o
+brilho que a arte já tem no canto inferior direito, dois blob de micro-brilho com
+`mix-blend-mode: screen` (só nestes dois, não na camada toda, custo de composição real em tela
+cheia) sobre a textura de mercado, partícula com fade lento. Só `opacity`/`transform`, nunca
+`filter` animado em elemento cheio de tela.
+
+**Sincronizado com a câmera.** O overlay usa a mesma `animation: dolly` e as mesmas variáveis
+`--z-inicio`/`--escala-inicio`/`--dolly` do fundo, então acompanha a aproximação em vez de
+flutuar solto. Confirmado ao vivo, não só declarado: `overlayTransformNow` bate `matrix3d`
+idêntico ao da imagem a cada frame lido.
+
+**O buraco que o teste antigo não pegava.** SVG aceita atributo de evento (`onclick=`,
+`onmouseover=`...) como markup válido mesmo sem `<script>` em lugar nenhum — é JavaScript
+entrando sem passar pelo check `!/<script/i.test(landingJs)` que já existia. Os 9 checks novos
+em `tests/validate.js` travam isso e mais quatro coisas: `pointer-events:none` e
+`aria-hidden` nas duas camadas, nenhuma `@keyframes` nova anima `filter`, nenhuma forma
+referencia recurso externo, `prefers-reduced-motion` neutraliza as formas do overlay, os dois
+SVG existem no viewBox nativo de cada arte e sincronizados com o `dolly`.
+
+Verificado ao vivo em produção depois do deploy, não só nos testes: CLS 0, zero overflow-x em
+todos os breakpoints, 2 requisições por carga (igual antes), 18 formas animadas no desktop e
+15 no mobile, foco de teclado percorre só os 7 campos do formulário (zero elemento focável
+dentro do overlay), console limpo, os três binários publicados com content-type, assinatura de
+bytes e tamanho corretos.
+
+`prefers-reduced-motion` fica coberto só pelo teste estático — a ferramenta de browser desta
+sessão não tem jeito documentado de forçar essa media feature em runtime, então não houve
+verificação visual ao vivo desse modo, só a garantia estrutural do CSS.
+
+Portão depois de tudo: 812/812 checks, 63/63 testes de comportamento, 292/292 do audit-engine.
 
 ## Por que a landing não vale para `atlas.szuchmacher.com.br`
 
