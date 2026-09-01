@@ -14,15 +14,25 @@
 // as duas telas sem pedir fonte externa, o que a CSP desta pagina nao permite.
 //
 // Movimento: o hero do multi-assets.com faz a aproximacao dentro de um video.
-// Aqui nao ha video (o plano da conta Higgsfield recusa modelo de video), e a
-// mesma sensacao e reproduzida em CSS com translateZ sob perspectiva, que e
-// aproximacao de camera de verdade e nao um scale achatado. So transform e
-// opacity, sem biblioteca, sem JavaScript (a CSP nao tem script-src).
+// Aqui nao ha video, e a mesma sensacao de camera e reproduzida em CSS com
+// translateZ sob perspectiva, aproximacao de verdade e nao um scale achatado.
 //
-// O fundo e arte sintetica gerada no Higgsfield, nunca captura de tela: nao ha
-// dado de carteira nenhum dentro dela. Duas composicoes distintas, a de celular
-// foi enquadrada com as velas no topo e no rodape e uma faixa central vazia,
-// que e onde o formulario cai. Nao e o desktop cortado.
+// Por cima do fundo, dois <svg> inline (um por composicao, mesmo criterio do
+// <picture><source> abaixo) desenham uma camada de movimento decorativo: no
+// pulsando, linha com fluxo, nucleo respirando, brilho sutil sobre a textura
+// de mercado, particula com fade. So opacity/transform, nunca filter animado
+// em elemento cheio de tela. Inline por ser a solucao de menor complexidade,
+// zero requisicao nova, zero entrada em EXTRAS_BINARIO, zero mudanca de CSP:
+// SVG dentro do HTML nao e recurso externo, nao passa por img-src nem por
+// script-src. Continua sem JavaScript (a CSP nao tem script-src) e sem
+// biblioteca: os keyframes leem as MESMAS variaveis --z-inicio/--escala-inicio
+// /--dolly do fundo, entao a camada nova acompanha a mesma aproximacao de
+// camera em vez de flutuar solta por cima da arte.
+//
+// O fundo e arte sintetica (nao ha dado de carteira nenhum dentro dela). Duas
+// composicoes distintas, a de celular tem layout proprio, nao e o desktop
+// cortado. As duas reservam uma faixa central calma, onde o formulario cai;
+// os nos/linhas/particulas novos ficam so na margem, nunca nessa faixa.
 
 const BG_DESKTOP = '/atlas-bg-desktop.webp';
 const BG_MOBILE = '/atlas-bg-mobile.webp';
@@ -117,6 +127,114 @@ body {
 @keyframes dolly {
   from { transform: translate3d(0, 0.8%, var(--z-inicio)) scale(var(--escala-inicio)); }
   to   { transform: translate3d(0, 0, 0) scale(1.02); }
+}
+
+/* ---------- Camada de movimento (overlay) ----------
+   Dois <svg> inline, um por composicao (mesmo espirito do <picture><source>:
+   celular tem layout proprio, nao e o desktop cortado). O escondido por
+   display:none nao anima nem custa frame, entao nao ha dois conjuntos de
+   animacao rodando ao mesmo tempo. */
+.overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  transform: translate3d(0, 0, var(--z-inicio)) scale(var(--escala-inicio));
+  will-change: transform;
+  animation: dolly var(--dolly) cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.overlay--desktop { display: none; }
+
+@media (min-width: 768px) {
+  .overlay--mobile { display: none; }
+  .overlay--desktop { display: block; }
+}
+
+/* Atraso/duracao por node, para o pulso nao nascer sincronizado. Delay
+   negativo comeca a animacao ja em andamento no primeiro frame, entao a
+   assincronia existe desde o load, nao so depois de alguns ciclos. */
+.t1 { animation-delay: -1.4s; animation-duration: 6.5s; }
+.t2 { animation-delay: -3.1s; animation-duration: 7.5s; }
+.t3 { animation-delay: -0.6s; animation-duration: 8.5s; }
+.t4 { animation-delay: -4.2s; animation-duration: 5.8s; }
+.t5 { animation-delay: -2.3s; animation-duration: 9s; }
+.t6 { animation-delay: -5.5s; animation-duration: 7s; }
+
+.no {
+  fill: var(--ouro-claro);
+  opacity: .55;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation-name: no-pulsar;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+@keyframes no-pulsar {
+  0%, 100% { opacity: .5; transform: scale(1); }
+  50%      { opacity: 1;  transform: scale(1.4); }
+}
+
+/* dasharray fixo (curto + vazio) em vez de calculado por path: para linha
+   curta e sutil como estas, um leve descompasso no ponto de emenda nao se
+   nota, e evita medir o comprimento exato de cada curva. */
+.linha {
+  fill: none;
+  stroke: var(--ouro);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  opacity: .5;
+  stroke-dasharray: 7 340;
+  animation-name: fluir;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+@keyframes fluir { to { stroke-dashoffset: -347; } }
+
+.nucleo {
+  opacity: .55;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: nucleo-respirar 8s ease-in-out infinite;
+}
+
+@keyframes nucleo-respirar {
+  0%, 100% { opacity: .45; transform: scale(1); }
+  50%      { opacity: .8;  transform: scale(1.14); }
+}
+
+/* Unico grupo com mix-blend-mode, e so nele: blend em elemento cheio de tela
+   tem custo de composicao real, e as outras camadas ja leem como brilho com
+   dourado semitransparente simples, sem precisar somar luz com o fundo. Aqui
+   precisa, porque o objetivo e "acender" a textura de mercado que ja existe
+   na arte, nao desenhar um borrao por cima dela. */
+.brilho {
+  opacity: .2;
+  mix-blend-mode: screen;
+  animation-name: brilho-sutil;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+@keyframes brilho-sutil {
+  0%, 100% { opacity: .16; }
+  50%      { opacity: .36; }
+}
+
+.particula {
+  opacity: 0;
+  fill: var(--ouro-claro);
+  animation-name: particula-fade;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+@keyframes particula-fade {
+  0%, 100% { opacity: 0; }
+  50%      { opacity: .5; }
 }
 
 /* ---------- Veu de leitura ----------
@@ -384,6 +502,13 @@ input:focus-visible { outline: 2px solid var(--ouro-claro); outline-offset: 2px;
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
   }
+  .overlay {
+    animation: none;
+    transform: scale(1.02);
+  }
+  .overlay circle, .overlay path {
+    animation: none;
+  }
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
@@ -396,6 +521,79 @@ const escapar = (s) =>
   String(s).replace(/[&<>"']/g, (c) =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]
   );
+
+// Camada de movimento, desktop. viewBox na resolucao nativa da arte
+// (1672x941) + preserveAspectRatio="xMidYMid slice" reproduz o mesmo corte
+// que object-fit:cover faz na imagem, entao coordenada de pixel aqui cai
+// sobre o cluster real da textura em qualquer proporcao de tela. Coordenadas
+// tiradas a olho da propria arte: no principal de cada canto + um secundario,
+// o nucleo exatamente sobre o brilho que ja existe no canto inferior direito.
+// Estatico, sem entrada de usuario nenhuma: nao precisa passar por escapar().
+const overlayDesktop = `<svg class="overlay overlay--desktop" width="1672" height="941"
+     viewBox="0 0 1672 941" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+  <defs>
+    <radialGradient id="nucleoGradD" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#F4D998" stop-opacity="0.9" />
+      <stop offset="35%" stop-color="#D8BC84" stop-opacity="0.5" />
+      <stop offset="100%" stop-color="#D8BC84" stop-opacity="0" />
+    </radialGradient>
+    <radialGradient id="brilhoGradD" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#D8BC84" stop-opacity="0.85" />
+      <stop offset="100%" stop-color="#D8BC84" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+  <circle class="brilho" cx="180" cy="150" r="90" fill="url(#brilhoGradD)" />
+  <circle class="brilho" cx="350" cy="830" r="80" fill="url(#brilhoGradD)" />
+  <path class="linha t2" d="M83,200 Q185,230 288,262" />
+  <path class="linha t4" d="M1211,100 Q1360,90 1515,83" />
+  <path class="linha t6" d="M204,649 Q340,720 483,789" />
+  <circle class="no t1" cx="288" cy="262" r="5" />
+  <circle class="no t3" cx="83" cy="200" r="3" />
+  <circle class="no t2" cx="1211" cy="100" r="5" />
+  <circle class="no t5" cx="1515" cy="83" r="3" />
+  <circle class="no t4" cx="204" cy="649" r="5" />
+  <circle class="no t6" cx="483" cy="789" r="3" />
+  <circle class="no t1" cx="1385" cy="601" r="3.5" />
+  <circle class="nucleo" cx="1324" cy="562" r="70" fill="url(#nucleoGradD)" />
+  <circle class="particula t2" cx="150" cy="380" r="2" />
+  <circle class="particula t4" cx="1590" cy="250" r="1.8" />
+  <circle class="particula t6" cx="120" cy="550" r="2" />
+  <circle class="particula t3" cx="1450" cy="750" r="1.8" />
+  <circle class="particula t5" cx="480" cy="880" r="2" />
+</svg>`;
+
+// Camada de movimento, mobile. Mesma tecnica, viewBox 941x1672 (nativo da
+// arte de celular), composicao propria: os quatro clusters ficam mais perto
+// das bordas verticais porque a imagem e mais estreita.
+const overlayMobile = `<svg class="overlay overlay--mobile" width="941" height="1672"
+     viewBox="0 0 941 1672" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+  <defs>
+    <radialGradient id="nucleoGradM" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#F4D998" stop-opacity="0.9" />
+      <stop offset="35%" stop-color="#D8BC84" stop-opacity="0.5" />
+      <stop offset="100%" stop-color="#D8BC84" stop-opacity="0" />
+    </radialGradient>
+    <radialGradient id="brilhoGradM" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#D8BC84" stop-opacity="0.85" />
+      <stop offset="100%" stop-color="#D8BC84" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+  <circle class="brilho" cx="110" cy="140" r="55" fill="url(#brilhoGradM)" />
+  <circle class="brilho" cx="200" cy="1330" r="50" fill="url(#brilhoGradM)" />
+  <path class="linha t2" d="M62,109 Q120,140 165,171" />
+  <path class="linha t5" d="M795,267 Q820,300 835,330" />
+  <circle class="no t1" cx="165" cy="171" r="4.5" />
+  <circle class="no t3" cx="62" cy="109" r="3" />
+  <circle class="no t2" cx="795" cy="267" r="4.5" />
+  <circle class="no t4" cx="835" cy="330" r="3" />
+  <circle class="no t6" cx="170" cy="1273" r="4.5" />
+  <circle class="no t1" cx="307" cy="1386" r="3" />
+  <circle class="nucleo" cx="694" cy="1284" r="42" fill="url(#nucleoGradM)" />
+  <circle class="particula t2" cx="75" cy="420" r="1.8" />
+  <circle class="particula t4" cx="860" cy="420" r="1.6" />
+  <circle class="particula t6" cx="90" cy="1150" r="1.8" />
+  <circle class="particula t3" cx="830" cy="1000" r="1.6" />
+</svg>`;
 
 /**
  * HTML da tela de acesso.
@@ -427,6 +625,8 @@ export function paginaLogin({ erro, cadastrarPath, loginPath }) {
       <img class="cena__img" src="${BG_DESKTOP}" alt="" width="1920" height="1080"
            decoding="async" fetchpriority="high" />
     </picture>
+    ${overlayMobile}
+    ${overlayDesktop}
   </div>
   <div class="veu" aria-hidden="true"></div>
 

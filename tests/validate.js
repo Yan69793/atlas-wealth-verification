@@ -1111,6 +1111,59 @@ ok('alvo de toque de campo e botão tem ao menos 48px',
 ok('visual da tela vive fora do arquivo do portão',
   /import \{ paginaLogin \} from '\.\/landing\.js'/.test(gateJs) && !/<!doctype html>/i.test(gateJs));
 
+// ─── 17b.2 Camada de movimento (overlay SVG) da tela de acesso ─────────────
+//
+// A arte de fundo ganhou nó pulsando, linha fluindo, núcleo respirando e
+// partícula com fade, tudo em SVG inline sobre a imagem, em 2026-09-01. Cinco
+// coisas podem quebrar em silêncio aqui, e por isso travam neste portão:
+//
+//   1. SVG aceita atributo de evento (onclick=, onmouseover=...) como
+//      markup válido, sem precisar de <script> em lugar nenhum. É um jeito
+//      de JavaScript entrar na tela que o check de <script> não pega.
+//   2. A camada decorativa passa a capturar clique ou passa a ser lida por
+//      leitor de tela, competindo com o formulário que ela deveria só
+//      decorar por trás.
+//   3. Alguém anima `filter` numa `@keyframes` nova — custo de composição
+//      real num elemento que cobre a tela inteira, o motivo de esta tela
+//      nunca ter usado filter animado.
+//   4. Uma forma do overlay passa a referenciar arquivo externo, o que
+//      reabriria a CSP (img-src) que este SVG inline foi desenhado para
+//      não precisar tocar.
+//   5. `prefers-reduced-motion` para de neutralizar as formas novas.
+
+ok('overlay não introduz atributo de evento inline (on*=)',
+  !/\son\w+\s*=/i.test(landingJs));
+
+ok('camada decorativa não intercepta ponteiro',
+  /\.overlay\s*\{[^}]*pointer-events:\s*none/.test(landingJs));
+
+ok('os dois SVG do overlay são decorativos para leitor de tela',
+  (landingJs.match(/<svg class="overlay[^"]*"[^>]*aria-hidden="true"/g) || []).length === 2);
+
+{
+  const keyframesComFilter = [...landingJs.matchAll(/@keyframes\s+[\w-]+\s*\{([\s\S]*?)\n\}/g)]
+    .filter(([, corpo]) => /filter\s*:/.test(corpo));
+  ok('nenhuma @keyframes anima filter (custo de composição em elemento cheio de tela)',
+    keyframesComFilter.length === 0,
+    keyframesComFilter.map((m) => m[0].split('{')[0].trim()).join(', '));
+}
+
+ok('overlay não referencia recurso externo (só forma nativa do SVG)',
+  !/<image\b/i.test(landingJs) && !/xlink:href\s*=\s*"(?!#)/i.test(landingJs));
+
+ok('prefers-reduced-motion neutraliza as formas do overlay',
+  /@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.overlay circle, \.overlay path \{\s*animation: none;/.test(landingJs));
+
+ok('os dois SVG do overlay existem, um por composição, no viewBox nativo de cada arte',
+  landingJs.includes('viewBox="0 0 1672 941"') && landingJs.includes('viewBox="0 0 941 1672"'));
+
+ok('overlay desktop fica escondido por padrão e revelado só a partir de 768px',
+  /\.overlay--desktop \{ display: none; \}/.test(landingJs)
+  && /@media \(min-width: 768px\) \{\s*\.overlay--mobile \{ display: none; \}\s*\.overlay--desktop \{ display: block; \}/.test(landingJs));
+
+ok('overlay usa a MESMA animação dolly do fundo (fica registrado com a arte ao aproximar)',
+  /\.overlay \{[^}]*animation: dolly var\(--dolly\)/.test(landingJs));
+
 // ─── 17c. Painel do dono: perímetro e natureza dos contadores ──────────────
 //
 // O comportamento está em tests/admin-perimetro.test.mjs. Aqui ficam as
