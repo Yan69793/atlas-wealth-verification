@@ -1,6 +1,6 @@
 # ESTADO ATUAL do ATLAS
 
-**Data-base: 2026-08-26.** Colhido rodando os comandos, não de memória.
+**Data-base: 2026-09-01.** Colhido rodando os comandos, não de memória.
 
 Fonte única do estado do projeto. Se outro arquivo divergir deste, este ganha. Se você chegou
 sem contexto, leia [[LEIA-PRIMEIRO]] primeiro. Para achar coisa, [[MAPA]].
@@ -10,12 +10,28 @@ aqui, trate este arquivo como suspeito e rode o refresh do fim da página.
 
 ## Portão de verificação, medido hoje
 
+O portão agora tem três etapas, não duas. `npm test` roda as três em sequência.
+
 ```
-772/772 checks OK — todos os checks passaram
+787/787 checks OK — todos os checks passaram
+ℹ tests 47    ℹ suites 9    ℹ pass 47    ℹ fail 0   ℹ skipped 0
 ℹ tests 292   ℹ suites 76   ℹ pass 292   ℹ fail 0   ℹ skipped 0
 ```
 
-Medido em 2026-08-30, depois da sprint de hardening pré-comercial (ver a seção
+Medido em 2026-09-01, no fechamento da tela de acesso com fundo (ver a seção dela abaixo).
+
+A etapa do meio é nova, `node --test` sobre `tests/politica-binarios.test.mjs` e
+`tests/social-preview.test.mjs`. Ela existe porque `tests/validate.js` é CommonJS e não
+consegue importar o módulo ESM da política de binários, então só sabia conferir a allowlist
+procurando o nome do arquivo dentro do código-fonte do build por regex. Esse tipo de check
+continua verde quando a lista muda de arquivo, que foi exatamente o que aconteceu ao mover a
+lista para `scripts/politica-binarios.mjs`. Os testes novos importam o valor.
+
+O número dos checks estáticos CAIU de 800 para 787 de propósito. Saíram os que conferiam a
+allowlist por casamento de texto, e o que eles cobriam virou 47 testes de comportamento, com
+caso de aprovação e de reprovação para cada regra. Menos check, mais cobertura.
+
+Antes era 772/772, medido em 2026-08-30, depois da sprint de hardening pré-comercial (ver a seção
 dela abaixo). 728 para 772 checks: 3 do contrato de .gitignore da saída do
 cli.ts e 41 líquidos da troca do contrato de carga (42 checks de PAGE_LOADERS
 mais 1 de "nenhuma página estática em main.jsx", menos os 2 checks de ordem
@@ -237,6 +253,192 @@ no Node ao tentar apagar a pasta). Achado e encerrado antes da publicação real
 `build-deploy.mjs` abortar com EPERM/permission denied em `demo-worker/public` de novo, o
 primeiro suspeito é processo `workerd`/`esbuild`/`wrangler` ainda vivo segurando handle na
 pasta.
+
+## Cadastro por conta própria no demo (2026-09-01), publicado
+
+Pedido do dono: o demo vai para prospectos, e com a senha única compartilhada ninguém sabia
+quem entrava. Trocar por conta própria por cliente (nome, email, senha escolhida pelo
+cliente), com o dono avisado por email a cada cadastro novo. Três decisões confirmadas: aviso
+por email (sem tela de administrador), cadastrou entra na hora (sem aprovação manual), a
+senha única compartilhada sai.
+
+O que entrou:
+
+- **D1 novo `atlas-demo-cadastros`**, tabela `cadastros` (id, nome, email UNIQUE NOCASE,
+  senha_hash, criado_em), migration `demo-worker/migrations/0001_cadastros.sql`. Banco
+  próprio de propósito, `verificacao-db` segue intocado. Binding `env.DB` no Worker.
+- **`demo-worker/src/index.js` reescrito.** `POST /cadastrar` e `POST /entrar` roteados antes
+  do ASSETS. Senha com PBKDF2-SHA256, 60.000 iterações (medido dentro do cap de CPU do plano
+  free), salt aleatório 16 bytes por usuário, formato versionável
+  `pbkdf2$<salt>$<iter>$<hash>`, comparação em tempo constante. Sessão stateless por cookie
+  HMAC-SHA256 (`atlas_demo_sessao = email:hmac`), assinada com `DEMO_SENHA`, que deixou de ser
+  senha compartilhada e virou chave de assinatura.
+- **Tela de entrada com dois formulários** (criar acesso / já tenho acesso) e aviso LGPD
+  curto: nome e email servem só para liberar o acesso e avisar o dono, podem ser apagados a
+  pedido. Sem JavaScript, CSP estrita mantida.
+- **Aviso por email via Resend** (nome, email, data) para o `DEMO_EMAIL` do dono,
+  fire-and-forget, falha de envio não bloqueia o cadastro. Secrets novos `RESEND_API_KEY` e
+  `DEMO_EMAIL`, gravados pelo dono via `wrangler secret put` (nunca passaram por chat). Os
+  guards de `deploy-cf.ps1` e `deploy-nova-conta.ps1` passaram a exigir os três secrets.
+
+Dado pessoal só no D1, fora do git. Caminho LGPD de exclusão a pedido do cliente, documentado
+no topo do `index.js` do Worker e aqui:
+
+```
+npx wrangler d1 execute atlas-demo-cadastros --remote --command "DELETE FROM cadastros WHERE email = '<email>'"
+```
+
+Trade-offs registrados: sessão sem revogação individual (estateless, barato e rápido, ok
+porque o demo só tem dado sintético); exclusão deixa cookie residual até o Max-Age de 30 dias;
+60k iterações é abaixo do ideal de segurança mas dentro do cap free, e o iter versionado no
+hash permite subir para 100k+ ao migrar para Workers Paid sem rehash.
+
+Publicado com `scripts/deploy-cf.ps1 -Target worker`, versão
+`8f9c3782-359a-4cda-92a2-d2bf14336a6b`. Conferido no ar: sem cookie a tela de cadastro
+aparece com os dois formulários, cadastro responde 303 e grava o cookie, com o cookie o app e
+a apresentação abrem, e a linha do teste está no banco remoto com hash começando em `pbkdf2$`
+e email em minúsculo. `npm test` depois da mudança: 772/772 checks, 292/292 testes, mesma
+contagem da sprint de hardening.
+
+Efeitos colaterais no caminho, corrigidos:
+
+1. **O guard novo dos secrets tinha bug de PowerShell.** `$secrets -notmatch 'NOME'` sobre o
+   JSON de várias linhas que o `wrangler secret list` devolve acusa sempre "ausente", porque
+   sempre existe linha que não contém o nome. O guard barrou o deploy com os três segredos
+   presentes. Corrigido para `-not ($secrets -match 'NOME')` nos dois scripts. Vale a lição de
+   método da sprint de hardening: teste verde não prova comportamento, e aqui o guard nem tinha
+   teste.
+2. **O EPERM em `demo-worker/public` voltou a acontecer, desta vez mais teimoso.** Derrubar a
+   tarefa do `wrangler dev` não mata a árvore inteira: npx wrapper, wrangler e o `workerd`
+   sobrevivem ao fim do processo pai. Foi preciso `taskkill /PID <npx> /T /F` na raiz da
+   árvore. A lição do gate de senha continua valendo, agora com o detalhe: matar o pai do dev
+   não basta.
+3. **A migration do banco caiu no deny-by-default e ficou fora do repo.** O
+   `demo-worker/migrations/0001_cadastros.sql` foi criado, mas o `.gitignore` do produto nega
+   tudo que não está na lista de liberados e `.sql` não estava nela. O schema ficou existindo
+   só no remoto, e um clone sem o arquivo não conseguiria recriar o banco. Liberado de
+   propósito na seção 3 do `.gitignore` (`!/demo-worker/migrations/*.sql`), é DDL puro sem
+   dado, não fura a política LGPD. Conferido com `git status` após a correção.
+
+Ficou uma conta de teste no banco (nome "Teste Demo", email `teste-demo@exemplo.com`) criada
+na validação do ar, mantida para o dono conferir o email do aviso na caixa dele. Remover
+quando quiser com o comando acima.
+
+## Tela de acesso do demo com fundo cinematográfico (2026-09-01), publicada
+
+Commit `3073c91` na `feat/separacao-cloudflare`, publicado no Worker
+`app-verificacao-carteiras-atlas`, Version ID `36a6d6c8-6b8b-4629-9be8-c0845c70ec8d`.
+Local e `origin` no mesmo hash. Nada mergeado na master.
+
+O commit carrega, além do trabalho desta entrega, o que já estava no ar sem commit e sem o
+qual um clone limpo não reproduz produção: o binding D1 do cadastro em `wrangler.toml`, o
+schema `demo-worker/migrations/0001_cadastros.sql` (existia só no disco e no banco remoto,
+nunca tinha recebido `git add`), a trava dos três secrets no `deploy-cf.ps1`, a descrição
+social do `index.html` e os overlays novos na lista de negação do `vite.config.mjs`. Sem
+isso, publicar a partir de um checkout limpo subiria um Worker sem banco e o cadastro
+responderia erro interno. Ficaram deliberadamente de fora `AGENTS.md`,
+`docs/separacao-cloudflare.md`, `apresentacao-atlas.html`, `wrangler.nova-conta.toml`,
+`deploy-nova-conta.ps1` e o gitlink `verificacao-carteiras`, que não têm relação com esta
+entrega e seguem sem commit.
+
+Smoke de produção em 2026-09-01, tudo verde: landing com formulário, os dois fundos
+referenciados, CSP com `img-src 'self'` e sem `script-src`, `atlas-card.png` em `image/png`
+com assinatura e tamanho válidos, os dois `.webp` em `image/webp` idem, nenhum fallback de
+HTML 200 em asset, `/index.html`, `/apresentacao.html` e `/sub/atlas-card.png` fechados,
+login recusando credencial inexistente e cadastro validando antes de gravar.
+
+**O que mudou.** O HTML e o CSS da tela saíram de `demo-worker/src/index.js` para
+`demo-worker/src/landing.js`. O arquivo do portão ficou só com autenticação e o envelope
+HTTP. Nenhuma regra de sessão, hash, cookie ou validação foi tocada, e os dois forms mantêm
+método, action e nomes de campo. Provado localmente: POST sem nome devolve
+`?erro=nome-vazio`, POST com credencial inexistente devolve `?erro=credenciais`.
+
+**Fundo.** Duas artes geradas no Higgsfield (modelo `z_image`), 42,6 KB no desktop e 13,8 KB
+no celular, WebP. A do celular é composição própria, com as velas no topo e no rodapé e a
+faixa do meio vazia, não é o desktop recortado. Movimento por CSS, `translateZ` sob
+`perspective`, 22s no desktop e 16s no celular, só `transform`. Reproduz a aproximação lenta
+do hero do multi-assets.com, que lá é vídeo. Vídeo aqui não foi possível: o plano da conta
+Higgsfield é free e recusa todo modelo de vídeo com `job_minimum_basic_plan_required`.
+
+**Perímetro.** `PUBLICOS` em `index.js` libera três caminhos ANTES da checagem de sessão, por
+igualdade exata e só GET. É o mínimo para a tela desenhar e para o robô de link ver o cartão.
+Nunca prefixo: `/assets/` liberado serviria o bundle inteiro sem cookie.
+
+**Cartão de prévia consertado de tabela.** Com `run_worker_first` o Worker respondia a
+`/atlas-card.png` com o HTML da tela, 200, sem 404 e sem sintoma nenhum de dentro. Quem
+mandava o link no WhatsApp via retângulo sem figura e só descobriria pelo prospect. Medido em
+produção antes do conserto, o endereço do cartão e a raiz devolviam os mesmos 3990 bytes.
+Depois do deploy, `demo.multi-assets.com/atlas-card.png` responde `image/png` com assinatura
+PNG nos primeiros bytes. O link comercial volta a chegar com figura.
+
+**CSP.** Ganhou `img-src 'self'` e nada mais de folga. `base-uri 'none'` e
+`frame-ancestors 'none'` entraram fechados, que é aperto, não folga. Segue sem `script-src`,
+sem `media-src`, sem `data:` e sem `blob:`.
+
+**A armadilha do deny-by-default pegou de novo, e agora está fechada.** Mesma história do
+`.sql` da migration, três parágrafos acima: os dois `.webp` nasceram ignorados pelo `*` da
+linha 18 e sumiriam do commit. No disco funcionava, num clone limpo o build abortaria.
+
+A correção não foi só liberar os dois arquivos. O teste foi invertido, como a própria nota
+anterior sugeriu: em vez de conferir arquivo por arquivo, a publicação agora recusa QUALQUER
+item da allowlist que o git não conheça. Foi assim que o defeito apareceu, aliás. Os dois
+`.webp` estavam des-ignorados mas nunca tinham recebido `git add`, e a trava nova pegou isso
+no primeiro deploy de teste, com a mensagem dizendo o que fazer.
+
+**Fonte de verdade única para binário publicável.** A lista morava em `build-deploy.mjs`, a
+política de extensões era uma regex escrita à mão logo abaixo dela, e `tests/validate.js`
+conferia a lista procurando o nome do arquivo no código-fonte do build. Três lugares, sendo
+que o terceiro checava o primeiro pela aparência do código. Tudo isso virou
+`scripts/politica-binarios.mjs`, módulo puro, sem `node:fs` e sem `child_process`, que recebe
+os predicados de ambiente por parâmetro. É o que permite testar os caminhos de reprovação sem
+montar árvore de arquivo nem repositório git de mentira.
+
+A publicação passou a recusar item da allowlist que não exista no disco, que o git não
+conheça, que tenha extensão fora da política de liberação (só png, jpg, jpeg, webp, avif, mp4
+e webm) ou que não chegue na saída depois da cópia. A quarta condição é a que fecha o buraco
+do cartão de prévia pelo lado do build.
+
+Sobrou uma repetição, inevitável: o Worker roda no edge e não pode importar módulo de build,
+então ele mantém a lista como literal. `tests/social-preview.test.mjs` lê esse literal do
+fonte e compara com a política item a item, e falha se divergirem.
+
+**Varredura do build endurecida.** A trava final só conhecia PNG e JPG. `.webp`, `.avif`,
+`.mp4` e `.webm` passavam direto, então captura de tela com dado de cliente salva em webp
+seria publicada sem ninguém reclamar. Agora todos abortam se não estiverem declarados. A
+regra de barrar é mais ampla que a de liberar de propósito: barra pdf, xls, doc, zip, gif,
+bmp, tiff e mov também, e nenhum desses pode entrar na allowlist nem sendo declarado.
+
+**Regressão do cartão travada por comportamento.** `tests/social-preview.test.mjs` chama o
+handler do Worker direto, sem cookie, e cobra quatro coisas de cada asset social: status 200,
+content-type do formato, assinatura nos primeiros bytes e tamanho mínimo plausível. Conferir
+só o status não pegaria nada, o defeito ERA 200. Provado em 2026-09-01 removendo
+`/atlas-card.png` da lista pública: 4 testes ficam vermelhos e o de status continua verde,
+que é a demonstração de por que ele sozinho não serve.
+
+**Segundo domínio ficou de fora, por decisão do dono.** Ver a seção seguinte.
+
+## Por que a landing não vale para `atlas.szuchmacher.com.br`
+
+Levantado em 2026-09-01 e decidido pelo dono no mesmo dia: manter o Access, aplicar só no
+demo.
+
+Aquele domínio **não tem tela de login neste repositório**. Quem barra o visitante é o
+Cloudflare Access, no edge, antes do Worker rodar. Sem JWT o domínio responde 302 para
+`tapetier-pages.cloudflareaccess.com/cdn-cgi/access/login/atlas.szuchmacher.com.br`, e
+`src/index.js` da instância nunca é chamado. A tela que o diretor vê é branca, da Cloudflare,
+com o título "Log in to ATLAS — instância do cliente", e o que dá para mudar nela são logo,
+cor de fundo e texto, pelo painel do Zero Trust. Não aceita imagem de fundo, vídeo nem CSS.
+
+A fronteira exata, para quem for mexer nisso depois:
+
+| Camada | Quem controla | Onde |
+|---|---|---|
+| Login, sessão do Access, cookie `CF_Authorization` | Cloudflare | painel Zero Trust, app `4192ab65` |
+| Validação do JWT, `aud`, rate limit, injeção de overlay, CSP do app | o projeto | `verificacao-carteiras/worker/src/index.js` |
+
+As duas únicas formas de a landing aparecer lá seriam tirar o Access da frente ou reconfigurar
+a aplicação para proteger só as rotas do app e deixar a raiz pública. As duas mexem no
+perímetro que protege dado real de cliente, e por isso ficaram fora.
 
 ## Decisões do dono, tomadas em 17/ago
 
@@ -1424,6 +1626,12 @@ da instância saiu do ar (404) e o domínio próprio segue servido pelo Cloudfla
 Chave Cloudflare que ficou exposta em 10 de agosto foi revogada pelo dono em 15 de agosto
 (id `6a8d3ce39ed73eb9d71088e35b1a9187`, final `c17`). Cópias textuais do valor foram
 sanitizadas e verificadas, zero ocorrência restante no workspace e nas memórias.
+
+Em 31 de agosto de 2026 o demo legado `atlas-wealth-verification.pages.dev` foi aposentado
+com redirecionamento (302) para `demo.multi-assets.com`, e as apps de Access do domínio
+legado (principal e previews) foram removidas. As apps órfãs da instância antiga
+(`verificacao-carteiras.pages.dev` e previews, projeto Pages apagado) também saíram.
+A instância `atlas.szuchmacher.com.br` segue intocada.
 
 ## Dado real e origem
 
