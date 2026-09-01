@@ -26,6 +26,12 @@
       "port": 7822
     },
     {
+      "name": "atlas-demo-worker",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["wrangler", "dev", "--config", "${workspaceFolder}/demo-worker/wrangler.toml", "--port", "8788", "--ip", "127.0.0.1", "--compatibility-date", "2026-07-28"],
+      "port": 8788
+    },
+    {
       "name": "atlas-go-to-market",
       "runtimeExecutable": "python",
       "runtimeArgs": ["-m", "http.server", "7823", "--directory", "${workspaceFolder}/docs/go-to-market"],

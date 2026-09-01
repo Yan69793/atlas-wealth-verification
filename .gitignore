@@ -48,6 +48,20 @@
 # e um clone sem o arquivo não conseguiria publicar.
 !/docs/go-to-market/atlas-card.png
 
+# Artes de fundo da tela de acesso do demo. Mesmo critério do cartão acima:
+# geradas no Higgsfield a partir de um texto, nunca capturadas de tela, então
+# não há dado de carteira dentro. Precisam ser versionadas porque o build da
+# publicação as declara em EXTRAS_BINARIO e aborta se faltarem, e um clone sem
+# elas não conseguiria publicar o demo. São duas porque o enquadramento de
+# celular é uma composição própria, não o desktop recortado.
+!/docs/go-to-market/atlas-bg-desktop.webp
+!/docs/go-to-market/atlas-bg-mobile.webp
+
+# Schema do banco do demo (DDL puro, sem dado). As migrations do
+# demo-worker definem as tabelas do D1 e precisam existir num clone
+# para um banco novo ser criado do zero.
+!/demo-worker/migrations/*.sql
+
 # =====================================================================
 # 4) RE-NEGAÇÃO — vem DEPOIS de propósito: sobrepõe a seção 3.
 #    Diretório negado não é percorrido, então nada dentro dele volta.

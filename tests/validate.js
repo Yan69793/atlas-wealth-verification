@@ -1013,11 +1013,98 @@ for (const [nome, html] of [['index.html', indexHtml], ['apresentação', aprese
 }
 
 // O build copia o cartão por declaração nominal, não porque o index o
-// referencia: og:image usa content=, e a allowlist do build lê src/href.
-// Se alguém tirar a declaração, o cartão some da publicação sem sintoma.
+// referencia: og:image usa content=, e a allowlist do build lê src/href. Se
+// alguém tirar a declaração, o cartão some da publicação sem sintoma.
+//
+// Essa declaração era conferida aqui por regex no fonte de scripts/build-deploy.mjs
+// até 2026-09-01. Saiu: a lista mudou de arquivo (scripts/politica-binarios.mjs) e o
+// check continuou verde procurando um nome que ainda aparecia no texto, que é o
+// modo de falhar típico de teste que lê código-fonte em vez de importar o valor.
+// Agora quem cobra isso é tests/politica-binarios.test.mjs, importando a lista.
 const buildDeploy = fs.readFileSync(path.join(ROOT, 'scripts/build-deploy.mjs'), 'utf8');
-ok('build da publicação declara o cartão como binário liberado',
-  new RegExp(`EXTRAS_BINARIO[\\s\\S]{0,400}${CARD.replace(/[./]/g, '\\$&')}`).test(buildDeploy));
+
+// ─── 17b. Tela de acesso do demo: perímetro e CSP ──────────────────────────
+//
+// O que a allowlist de binários promete (arquivo existe, está versionado, tem
+// extensão liberada, chega na saída, bate com a assinatura do formato) NÃO é
+// conferido aqui. Vive em tests/politica-binarios.test.mjs, que importa
+// scripts/politica-binarios.mjs de verdade em vez de procurar o nome do arquivo
+// dentro do código-fonte do build por regex, que era o que este bloco fazia até
+// 2026-09-01. Casar texto de fonte cria uma segunda lista, escrita noutra
+// linguagem, que continua verde depois que a lista de verdade muda de forma.
+//
+// Aqui ficam só as travas da TELA, que são de outra natureza:
+//
+//   1. A lista de caminhos públicos do Worker vira prefixo. Um '/assets/'
+//      liberado por engano serve o bundle inteiro do app sem cookie nenhum,
+//      que é exatamente o que o portão existe para impedir.
+//   2. A CSP afrouxa além do necessário. A página não tem JavaScript, então
+//      script-src não pode aparecer, e imagem de terceiro não pode entrar.
+//   3. O visual volta para dentro do arquivo do portão, ou o celular perde a
+//      composição própria e vira recorte do desktop.
+
+const landingPath = path.join(ROOT, 'demo-worker/src/landing.js');
+const gatePath = path.join(ROOT, 'demo-worker/src/index.js');
+const landingJs = fs.readFileSync(landingPath, 'utf8');
+const gateJs = fs.readFileSync(gatePath, 'utf8');
+
+// Perímetro: lista pública por igualdade exata, nunca por prefixo.
+const blocoPublicos = (gateJs.match(/const PUBLICOS = new Set\(\[([\s\S]*?)\]\)/) || [])[1] || '';
+const publicos = [...blocoPublicos.matchAll(/'([^']+)'/g)].map((m) => m[1]);
+
+ok('Worker do demo tem lista de caminhos públicos', publicos.length > 0);
+
+// A conferência de que esta lista bate item a item com a política vive em
+// tests/social-preview.test.mjs, que consegue importar o módulo. Aqui fica a
+// forma, que é o que dá para checar sem ESM.
+ok('lista pública não usa curinga nem prefixo',
+  publicos.every((p) => !/[*]/.test(p) && !p.endsWith('/')), publicos.join(', '));
+
+ok('checagem da lista pública é por igualdade exata (Set.has), não startsWith',
+  /PUBLICOS\.has\(/.test(gateJs) && !/PUBLICOS[\s\S]{0,200}startsWith/.test(gateJs));
+
+ok('liberação pública vale só para GET',
+  /request\.method === 'GET' && PUBLICOS\.has\(/.test(gateJs));
+
+// A liberação pública tem de vir ANTES da checagem de sessão, senão o robô do
+// WhatsApp continua recebendo HTML no lugar da imagem — o defeito que ela veio
+// consertar.
+ok('liberação pública roda antes da checagem de sessão',
+  gateJs.indexOf('PUBLICOS.has(') < gateJs.indexOf('await estaAutenticado('));
+
+// CSP da tela de acesso.
+const cspLanding = (gateJs.match(/'Content-Security-Policy':\s*\n?\s*"([^"]+)"/) || [])[1] || '';
+
+ok('CSP da tela de acesso mantém default-src none', /default-src 'none'/.test(cspLanding), cspLanding);
+ok('CSP da tela de acesso libera imagem só do próprio domínio',
+  /img-src 'self'/.test(cspLanding) && !/img-src[^;]*(https?:|data:|blob:|\*)/.test(cspLanding), cspLanding);
+ok('CSP da tela de acesso não abre script-src (a página não tem JavaScript)',
+  !/script-src/.test(cspLanding), cspLanding);
+ok('CSP da tela de acesso prende form-action ao próprio domínio',
+  /form-action 'self'/.test(cspLanding), cspLanding);
+ok('tela de acesso não carrega JavaScript', !/<script/i.test(landingJs));
+
+// Acessibilidade e desempenho da animação: são requisito, não enfeite.
+ok('tela de acesso respeita prefers-reduced-motion',
+  /@media \(prefers-reduced-motion: reduce\)/.test(landingJs));
+// Art direction de verdade: <source> com media query trocando o ARQUIVO. Um
+// object-fit recortando o desktop passaria despercebido sem esta checagem, e
+// era exatamente o que não se queria no celular.
+ok('tela de acesso tem composição própria de celular, não recorte do desktop',
+  /<source media="\(max-width: 767px\)" srcset="\$\{BG_MOBILE\}"/.test(landingJs)
+  && /const BG_MOBILE = '\/atlas-bg-mobile\.webp'/.test(landingJs));
+ok('imagem de fundo declara width e height (trava CLS)',
+  /class="cena__img"[\s\S]{0,200}width="1920" height="1080"/.test(landingJs));
+ok('campos usam 16px para não disparar zoom do iOS',
+  /input \{[\s\S]{0,400}font-size: 16px/.test(landingJs));
+ok('alvo de toque de campo e botão tem ao menos 48px',
+  (landingJs.match(/min-height: 48px/g) || []).length >= 2);
+
+// A separação entre portão e visual é o que permite mexer em pixel sem reabrir
+// o arquivo que decide autenticação. Se o HTML voltar para dentro do portão,
+// essa garantia acaba.
+ok('visual da tela vive fora do arquivo do portão',
+  /import \{ paginaLogin \} from '\.\/landing\.js'/.test(gateJs) && !/<!doctype html>/i.test(gateJs));
 
 // ─── 18. Artefato buildado (dist-app) — se existir, é verificado ────────────
 //

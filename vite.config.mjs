@@ -26,6 +26,13 @@ const OVERLAY_PREFIXES = [
   'platform-data-real.js',
   'platform-data-audit.js',
   'platform-historico.js',
+  'platform-radar.js',
+  'platform-credito.js',
+  'platform-oportunidades.js',
+  'platform-vencimentos.js',
+  'platform-caixa-parado.js',
+  'platform-receita-drop.js',
+  'platform-cadastro.js',
 ];
 
 const CSP = [

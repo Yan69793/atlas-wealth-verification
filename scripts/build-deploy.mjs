@@ -19,8 +19,14 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { verificarDist } from './verify-build.mjs';
+import {
+  EXTRAS_BINARIO,
+  problemasDosExtras,
+  suspeitosNaSaida,
+} from './politica-binarios.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
@@ -62,26 +68,62 @@ const EXTRAS_ARQUIVO = [
   { de: 'docs/go-to-market/apresentacao-atlas.html', para: 'apresentacao.html' },
 ];
 
-/* Binários liberados, um por vez, com destino explícito.
-   A varredura final aborta em qualquer PNG/JPG porque foi exatamente assim que
-   captura de tela com dado real de cliente já foi parar em URL pública, e essa
-   trava não muda.
+/* A lista de binários liberados e a política de extensões vivem em
+   ./politica-binarios.mjs, importadas acima. Ficavam aqui até 2026-09-01, com
+   uma cópia em regex logo abaixo e uma terceira cópia em tests/validate.js que
+   conferia esta por casamento de texto no fonte. Três lugares, um deles
+   conferindo o outro pela aparência do código: agora é um só. */
 
-   A exceção existe por um motivo só: o cartão de prévia do link precisa ser
-   imagem de verdade num endereço absoluto. WhatsApp e LinkedIn ignoram data URI
-   no og:image e não renderizam SVG, então não há como resolver isso dentro do
-   HTML. Sem o cartão, o link comercial chega ao prospect como um retângulo de
-   texto cinza.
+/* Arquivo conhecido pelo git (índice ou HEAD).
+   Existe porque o .gitignore deste repo é deny-by-default: arquivo novo nasce
+   IGNORADO e desaparece do commit em silêncio. Já mordeu três vezes, com o
+   .sql da migration e com os dois .webp da tela de acesso. Em todas, funcionava
+   na máquina de quem criou e quebrava em clone limpo, que é o pior tipo de
+   falha porque só aparece longe de quem pode consertar. */
+const versionadoNoGit = (rel) => {
+  try {
+    execFileSync('git', ['ls-files', '--error-unmatch', '--', rel], {
+      cwd: ROOT,
+      stdio: ['ignore', 'ignore', 'ignore'],
+    });
+    return true;
+  } catch {
+    return false;
+  }
+};
 
-   O que mantém isso seguro é a arte não vir de tela nenhuma: o arquivo é
-   desenhado por scripts/gera-card-social.py, que não lê dado de carteira. Cada
-   arquivo aqui é nominal. Binário que não esteja nesta lista continua abortando
-   a publicação. */
-const EXTRAS_BINARIO = [
-  { de: 'docs/go-to-market/atlas-card.png', para: 'atlas-card.png' },
-];
+const gitDisponivel = () => {
+  try {
+    execFileSync('git', ['rev-parse', '--git-dir'], { cwd: ROOT, stdio: ['ignore', 'ignore', 'ignore'] });
+    return true;
+  } catch {
+    return false;
+  }
+};
 
 /* ── 1. O build tem de existir e estar limpo antes de qualquer cópia ────── */
+
+/* A allowlist de binários é conferida ANTES de qualquer cópia. Conferir depois
+   deixaria a saída meio montada no disco quando abortasse, e a próxima rodada
+   partiria de um diretório sujo. */
+if (!gitDisponivel()) {
+  console.error('\nABORTADO: git não respondeu na raiz do projeto.');
+  console.error('  A publicação confere que todo binário liberado está versionado, e sem git');
+  console.error('  essa checagem não roda. Publique a partir do repositório.');
+  process.exit(1);
+}
+
+{
+  const problemas = problemasDosExtras(EXTRAS_BINARIO, {
+    existe: (rel) => fs.existsSync(path.join(ROOT, rel)),
+    versionado: versionadoNoGit,
+  });
+  if (problemas.length) {
+    console.error('\nABORTADO: a allowlist de binários (scripts/politica-binarios.mjs) está inconsistente:');
+    for (const p of problemas) console.error(`  ${p.de} -> ${p.para}\n    ${p.problema}`);
+    process.exit(1);
+  }
+}
 
 if (!fs.existsSync(path.join(DIST, 'index.html'))) {
   console.error('\nABORTADO: dist-app/index.html ausente. Rode `npm run build` antes de publicar.');
@@ -230,19 +272,40 @@ if (tagsRemovidas.length) console.log(`  ${tagsRemovidas.length} tags opcionais 
 /* ── 4. Trava final: varre a saída atrás de qualquer coisa indevida ───────
    A comparação é pelo caminho relativo à saída, não pelo nome do arquivo: um
    atlas-card.png que apareça numa subpasta não é o cartão declarado e continua
-   abortando. */
-const binariosLiberados = new Set(EXTRAS_BINARIO.map((e) => path.normalize(e.para)));
-const suspeitos = [];
+   abortando.
+
+   A política de extensões que decide o que é binário mora em
+   politica-binarios.mjs, junto da allowlist. Ficava aqui como regex à mão, uma
+   segunda escrita da mesma regra. */
+const relativos = [];
 const anda = (dir) => {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, e.name);
     if (e.isDirectory()) { anda(full); continue; }
-    const rel = path.relative(OUT, full);
-    if (/\.(pdf|xlsx?|docx|zip|png|jpe?g)$/i.test(e.name) && !binariosLiberados.has(rel)) suspeitos.push(rel);
-    if (NUNCA.some((r) => r.test(e.name))) suspeitos.push(rel);
+    relativos.push(path.relative(OUT, full));
   }
 };
 anda(OUT);
+
+const suspeitos = [
+  ...suspeitosNaSaida(relativos, EXTRAS_BINARIO.map((e) => e.para)),
+  ...relativos.filter((rel) => NUNCA.some((r) => r.test(path.basename(rel)))),
+];
+
+/* Declarado na allowlist mas ausente da saída. É a quarta condição da política,
+   e a única que só dá para conferir depois da cópia: o arquivo existe no disco,
+   está versionado, tem extensão liberada, e mesmo assim não chegou lá porque
+   alguém mexeu na etapa de cópia. Sem esta checagem a publicação sai com o
+   endereço respondendo o index do demo no lugar da imagem, que é exatamente o
+   defeito do cartão de prévia. */
+const ausentesNaSaida = problemasDosExtras(EXTRAS_BINARIO, {
+  naSaida: (destino) => fs.existsSync(path.join(OUT, destino)),
+});
+if (ausentesNaSaida.length) {
+  console.error('\nABORTADO: binário declarado não chegou na saída da publicação:');
+  for (const p of ausentesNaSaida) console.error(`  ${p.para}: ${p.problema}`);
+  process.exit(1);
+}
 
 if (suspeitos.length) {
   console.error('\nABORTADO: arquivos que nao podem ser publicados chegaram na saida:');

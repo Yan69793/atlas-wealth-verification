@@ -100,14 +100,18 @@ if ($Target -eq 'worker') {
   Write-Host "`nPublicando como Worker (demo-worker/wrangler.toml)..." -ForegroundColor Cyan
   Push-Location $workerDir
   try {
-    # Trava real do DEMO_SENHA. O wrangler nao tem bloco [secrets] e nao
-    # recusa publicar sem o secret, entao a checagem mora aqui: sem DEMO_SENHA
-    # o deploy para em vez de subir um Worker que responde 500 pra todo mundo.
-    # O nome do Worker vem do wrangler.toml, nao e repetido aqui de proposito.
+    # Trava real dos secrets. O wrangler nao tem bloco [secrets] e nao recusa
+    # publicar sem eles, entao a checagem mora aqui: sem DEMO_SENHA o Worker
+    # sobe respondendo 500 pra todo mundo, e sem RESEND_API_KEY/DEMO_EMAIL o
+    # aviso de novo cadastro nunca sai. O nome do Worker vem do wrangler.toml,
+    # nao e repetido aqui de proposito.
     $secrets = npx wrangler secret list 2>&1
-    $temSenha = $secrets -match 'DEMO_SENHA'
-    if ($LASTEXITCODE -ne 0 -or -not $temSenha) {
-      Write-Error "Secret DEMO_SENHA nao definido neste Worker. Rode antes: npx wrangler secret put DEMO_SENHA --name app-verificacao-carteiras-atlas"
+    $faltando = @()
+    if (-not ($secrets -match 'DEMO_SENHA'))     { $faltando += 'DEMO_SENHA' }
+    if (-not ($secrets -match 'RESEND_API_KEY')) { $faltando += 'RESEND_API_KEY' }
+    if (-not ($secrets -match 'DEMO_EMAIL'))     { $faltando += 'DEMO_EMAIL' }
+    if ($LASTEXITCODE -ne 0 -or $faltando.Count -gt 0) {
+      Write-Error ("Secrets ausentes neste Worker: " + ($faltando -join ', ') + ". Rode antes: npx wrangler secret put <NOME> --name app-verificacao-carteiras-atlas")
       exit 1
     }
     npx wrangler deploy

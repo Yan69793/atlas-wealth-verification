@@ -45,6 +45,15 @@ run_worker_first = true
 # qualquer caminho servido devolva o index em vez de 404.
 not_found_handling = "single-page-application"
 
+# D1 dedicado ao cadastro proprio do demo (nome, email, senha). Banco NOVO,
+# criado em 2026-09-01, proprio do demo. Nao tocar no verificacao-db (dono
+# incerto, documentado no ESTADO). database_id e por CONTA: se o caminho da
+# conta nova for retomado, criar banco la e trocar o id.
+[[d1_databases]]
+binding = "DB"
+database_name = "atlas-demo-cadastros"
+database_id = "0b4036d8-fc44-4ad5-802b-3545c500b3e0"
+
 # Endereco do demo. Zona neutra de proposito: multi-assets.com nao carrega o
 # nome da consultoria, o que acompanha a decisao de marca neutra do produto.
 #
