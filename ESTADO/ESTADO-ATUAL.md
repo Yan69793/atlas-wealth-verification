@@ -13,12 +13,17 @@ aqui, trate este arquivo como suspeito e rode o refresh do fim da página.
 O portão agora tem três etapas, não duas. `npm test` roda as três em sequência.
 
 ```
-787/787 checks OK — todos os checks passaram
-ℹ tests 47    ℹ suites 9    ℹ pass 47    ℹ fail 0   ℹ skipped 0
+803/803 checks OK — todos os checks passaram
+ℹ tests 63    ℹ suites 12   ℹ pass 63    ℹ fail 0   ℹ skipped 0
 ℹ tests 292   ℹ suites 76   ℹ pass 292   ℹ fail 0   ℹ skipped 0
 ```
 
-Medido em 2026-09-01, no fechamento da tela de acesso com fundo (ver a seção dela abaixo).
+Medido em 2026-09-01, no fechamento do painel do dono (ver a seção dele abaixo). Os 16 checks
+e os 16 testes acrescidos desde a tela de acesso são do perímetro do painel e da natureza dos
+contadores, sendo seis deles só para travar que a tabela de eventos não ganhe coluna que ligue
+evento a pessoa.
+
+Antes era 787/787 e 47 testes, no fechamento da tela de acesso com fundo.
 
 A etapa do meio é nova, `node --test` sobre `tests/politica-binarios.test.mjs` e
 `tests/social-preview.test.mjs`. Ela existe porque `tests/validate.js` é CommonJS e não
@@ -416,6 +421,76 @@ só o status não pegaria nada, o defeito ERA 200. Provado em 2026-09-01 removen
 que é a demonstração de por que ele sozinho não serve.
 
 **Segundo domínio ficou de fora, por decisão do dono.** Ver a seção seguinte.
+
+## Painel do dono e funil agregado (2026-09-01), publicado
+
+Commit `b7e574f`, Version ID `788e76a0-414f-4c13-91bd-d607b6e93e09`. Migration
+`0002_eventos.sql` aplicada no D1 remoto antes do deploy, tabela e índice conferidos.
+Secret `ADMIN_SENHA` definido pelo dono na conta.
+
+Smoke de produção 13/13. O contador foi conferido gravando de verdade no banco de produção,
+2 `tela` e 1 `login_erro/credenciais`, batendo exatamente com o tráfego que o próprio smoke
+gerou e sem nenhuma coluna de pessoa preenchida.
+
+**Por que Fase 0 e não o painel de comportamento que foi pedido.** O dono pediu engajamento,
+métricas e o caminho que o prospect percorre. O demo tinha 2 cadastros na hora do pedido, um
+deles a conta de teste. Painel de comportamento para 2 pessoas mede a ponta errada: o que
+falta saber não é o que o prospect faz lá dentro, é quanta gente chega. O rastro página a
+página ficou para quando houver volume, porque exige script no cliente, abrir a CSP do app e
+amarrar comportamento a pessoa identificada, que é tratamento de dado comportamental sob LGPD.
+Decisão do dono depois de ver o número.
+
+**A tabela `eventos` é contador, não log.** Sem coluna de pessoa, email, IP, user agent ou
+sessão. Guarda "no dia X o evento Y aconteceu N vezes". É essa ausência que a mantém fora de
+tratamento de dado pessoal, e o portão trava seis checks justamente nela: quem acrescentar uma
+coluna que ligue evento a pessoa muda a natureza jurídica da tabela, não só o schema.
+
+**Métrica que não existe não vira zero.** "Começou a preencher" não é observável no servidor,
+porque quem abre a tela e desiste antes de enviar não gera requisição. O painel diz isso na
+própria página em vez de mostrar um número que seria lido errado.
+
+**Contador fora do caminho da resposta.** O `fetch` passou a receber `ctx` e o incremento roda
+em `ctx.waitUntil`. Sem isso, gravar no D1 desfaria o desenho stateless do gate e comeria dos
+10 ms de CPU do plano free que o PBKDF2 já usa 7. Conta só documento, nunca asset: com
+`run_worker_first` todo arquivo passa pelo Worker, e contar asset daria uma visita por imagem.
+Há teste para exatamente isso.
+
+**Perímetro do painel, escolha do dono.** Recomendei Cloudflare Access, que é o que já protege
+a instância. O dono preferiu secret próprio. Segue com o endurecimento possível dentro da
+escolha: `ADMIN_SENHA` separado do `DEMO_SENHA`, string de contexto HMAC própria, cookie com
+`Path=/admin`, `SameSite=Strict` e 12h contra os 30 dias do demo, comparação em tempo
+constante e atraso na senha errada. O modo de falhar dessa escolha é sessão de um lado valendo
+do outro, e é o que o teste de cookie cruzado cobre nas duas direções.
+
+**Incidente de credencial, 2026-09-01.** O valor do `ADMIN_SENHA` foi colado em texto puro no
+chat da sessão logo depois de ser definido. Segredo em conversa fica gravado no log da sessão
+em disco e possivelmente na memória do workspace, então foi tratado como comprometido na hora.
+O dono rotacionou o secret no mesmo dia e o deploy só saiu depois disso. O valor exposto não
+chegou a valer em produção com o painel no ar.
+
+Mesma classe do INC-2026-08-20 (segredo em linha de comando) por outro caminho, e a terceira
+exposição de credencial registrada aqui depois da chave Cloudflare de agosto. O padrão que se
+repete não é descuido de comando, é segredo trafegando por canal que guarda histórico. O
+`wrangler secret put` lê de stdin justamente para não passar por lugar nenhum que registre, e
+colar o valor no chat desfaz essa proteção inteira.
+
+**Antes de publicar** é obrigatório definir o secret na conta, senão o `deploy-cf.ps1` recusa:
+
+```
+npx wrangler secret put ADMIN_SENHA --name app-verificacao-carteiras-atlas
+```
+
+E aplicar a migration no D1 remoto:
+
+```
+npx wrangler d1 execute atlas-demo-cadastros --remote --file=migrations/0002_eventos.sql
+```
+
+**Texto de LGPD da tela de acesso reescrito** no mesmo trabalho, a pedido do dono. Saiu o
+"avisar o dono do novo cadastro" com ponto e vírgula e parêntese, entrou finalidade,
+não compartilhamento e direito de exclusão em registro institucional.
+
+Portão depois de tudo: 803/803 checks, 63/63 testes de comportamento, 292/292 do audit-engine.
 
 ## Por que a landing não vale para `atlas.szuchmacher.com.br`
 
