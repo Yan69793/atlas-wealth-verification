@@ -2,7 +2,9 @@
 
 **Versão:** 0.1 · **Ambiente:** Protótipo / Demo  
 **Repositório:** https://github.com/Yan69793/atlas-wealth-verification  
-**Acesso:** local, via `npm run serve` (http://localhost:7821). Nao ha deploy publico.
+**Acesso:** instância com dado real em https://atlas.szuchmacher.com.br (atrás do
+Cloudflare Access); demo sintético em https://atlas-wealth-63u.pages.dev; local via
+`npm run serve` (http://localhost:7821).
 
 ---
 
@@ -57,7 +59,12 @@ npm run serve
 
 ### Acesso
 
-- **URL:** `http://localhost:7821`
+- **Instância (dado real):** `https://atlas.szuchmacher.com.br` — Worker
+  `atlas-instancia` atrás do Cloudflare Access, que valida o JWT antes de servir
+  overlay ou `/api/data/YYYY-MM`.
+- **Demo (dado sintético):** `https://atlas-wealth-63u.pages.dev` — sem perímetro,
+  publicado por `scripts/deploy-cf.ps1`.
+- **Local:** `http://localhost:7821` via `npm run serve`.
 - O app nao pede senha: autenticacao e responsabilidade do perimetro do deploy.
 
 > Os dados exibidos são completamente sintéticos. Nenhuma informação real é carregada ou transmitida.
@@ -126,7 +133,9 @@ Localiza todas as carteiras com exposição a um ativo ou classe específica. Ú
 
 ### Importação de Extratos
 
-Módulo planejado para ingestão de extratos em PDF, Excel, CSV e Markdown. **Ainda não implementado** — a especificação está definida; é a próxima etapa de desenvolvimento.
+Ingestão de extratos pela tela `#/importar`. **CSV** e **XLSX** são estáveis (template em `docs/templates/atlas_template.csv`); **PDF** está em beta/experimental, restrito aos books no layout "Relatório Mensal". Markdown não é suportado.
+
+Os dados importados substituem o conjunto demo em todas as telas e vivem somente em memória do navegador — atualizar a página recarrega o demo. Nada é persistido nem enviado a serviço externo: a extração de PDF roda local, via pdf.js.
 
 ### Cadastro & Compliance
 
@@ -212,7 +221,7 @@ A perda estimada é calculada pela exposição de cada carteira às classes afet
 | Dados sintéticos | Todos os dados exibidos foram gerados algoritmicamente para fins de demonstração. Não representam carteiras reais. |
 | App sem autenticacao propria | Por desenho. Servir com dado real exige perimetro na frente (Cloudflare Access). |
 | Sem backend ou persistência | O sistema é 100% estático. Alterações não são salvas. |
-| Importação não implementada | O parser de PDF/Excel/CSV/Markdown está especificado mas aguarda desenvolvimento. |
+| Importação de PDF em beta | CSV e XLSX são estáveis. O parser de PDF cobre só o layout "Relatório Mensal" e é experimental. Markdown não é suportado. |
 | Sem controle de permissões | Todos os usuários têm acesso total no protótipo. |
 
 > **Não usar em ambiente produtivo sem backend, autenticação real e política de dados formal (LGPD).**
