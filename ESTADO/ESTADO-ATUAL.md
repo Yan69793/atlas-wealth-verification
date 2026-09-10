@@ -2206,3 +2206,14 @@ e é o que impede a próxima pessoa de repetir.
   vínculos e auditoria sintéticos foram removidos depois, com consulta agregada retornando zero
   resíduos. **Pendente somente a inspeção visual renderizada no navegador**, indisponível nesta
   sessão, embora o documento autenticado tenha respondido para os três papéis.
+- **2026-09-10, fechamento do RBAC — inspeção visual em Chromium real e cleanup do D1.** A
+  inspeção visual que faltava foi executada no Chromium real contra o demo publicado, com contas
+  sintéticas controladas (prefixo `rbac-`, domínio `@example.test`). CLIENTE_UI=PASS (aterrissa em
+  `#/cliente`, "Minha carteira", sem citar código alheio), GERENTE_UI=PASS (só as carteiras
+  atribuídas no DOM), DONO_UI=PASS (organização inteira) e CROSS_ORG_UI=PASS (pedido cruzado
+  devolve o mesmo 403). CONSOLE=PASS (zero erro) e NETWORK=PASS (zero HTTP inesperado). Evidência
+  visual em `tmp-rbac-ui-output/` (client.png, manager.png, owner.png, owner-all.png), mantida no
+  disco e fora do git. O cleanup do D1 remoto `atlas-demo-cadastros` apagou todas as entidades
+  sintéticas do teste (usuários, cadastros, organizações, atribuições, vínculos e auditoria) em
+  ordem FK segura, e a validação por SELECT confirmou zero resíduos. CLEANUP=PASS,
+  RESIDUOS=ZERO, PENDENCIAS=ZERO, RBAC=FECHADO.
