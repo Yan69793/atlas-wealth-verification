@@ -1,187 +1,219 @@
-# CLAUDE.md — ATLAS (hardened 2026-07-25, atualizado 2026-08-19)
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+# ATLAS — guia do repositório
+
+Produto de conferência de carteira de investimento, vendido para escritório de gestão de
+patrimônio. Recebe o relatório mensal do custodiante, compara com o mês anterior, aplica sete
+regras e diz se a carteira pode ir para o cliente ou se tem número sem explicação. O
+posicionamento é "não mostre o patrimônio, prove o número", todo achado carrega a conta que o
+gerou.
 
 ## Estado do projeto: comece por `ESTADO/`
 
-Antes de qualquer trabalho, leia `ESTADO/LEIA-PRIMEIRO.md`. A pasta `ESTADO/` na
-raiz é a fonte única do estado do projeto, feita para orientar quem chega sem
-contexto:
+Antes de qualquer trabalho, leia `ESTADO/LEIA-PRIMEIRO.md`. A pasta `ESTADO/` na raiz é a
+fonte única do estado, feita para orientar quem chega sem contexto.
 
 - `ESTADO/LEIA-PRIMEIRO.md` — orientação e as regras que quebram coisa
-- `ESTADO/ESTADO-ATUAL.md` — pendência, prioridade, decisão em aberto, número de
-  teste, o que é código morto. **Se este arquivo divergir do `CLAUDE.md`, ele ganha.**
-- `ESTADO/MAPA.md` — onde achar cada coisa, comandos, e a lista de documentação
+- `ESTADO/ESTADO-ATUAL.md` — pendência, prioridade, decisão em aberto, contagem de teste,
+  cadeia de gitlink, o que é código morto. **Se este arquivo divergir do `CLAUDE.md`, ele
+  ganha.**
+- `ESTADO/MAPA.md` — onde achar cada coisa, comandos, vocabulário, e a lista de documentação
   que já se provou desatualizada
 
-Regra: um assunto, um arquivo, zero cópia. Estado não é duplicado aqui, é
-apontado. Os hashes de gitlink citados abaixo são de 2026-08-15 e já derivaram,
-o valor corrente está em `ESTADO/ESTADO-ATUAL.md`.
-
-## Localização e repos aninhados
-
-O projeto vive em `E:\Diretorio\Claude\FREQUENTE\ATLAS` desde 2026-08-14
-(antes `OCASIONAL\ATLAS`). Não existe caminho absoluto no código: os
-launch.json usam `${workspaceFolder}` e os scripts Python derivam a raiz do
-próprio arquivo. Três repos git viajam juntos na pasta: o ATLAS
-(`Yan69793/atlas-wealth-verification`) → `verificacao-carteiras/` (gitlink em
-c0ad7b4) → `core/` (gitlink em d33ee42, branch `fix/paths-bom-pos-mudanca`).
-`core/` é outro checkout do mesmo repo do ATLAS, pinado no commit do corte
-Vite. Instância do cliente em `verificacao-carteiras/`, fora do git do produto.
+Regra da pasta: um assunto, um arquivo, zero cópia. Estado não se duplica aqui, se aponta.
+Este `CLAUDE.md` guarda o que é estável (identidade, contrato, comandos, regras de segurança).
+O que muda a cada sessão vive no `ESTADO/`.
 
 ## Como responder neste projeto (regra fixa, 2026-08-08)
 
-Resposta curta e em português comum. O usuário é o dono do negócio, não o
-programador, e respostas longas cheias de termo técnico não são lidas até o fim.
-Pedido explícito dele, repetido duas vezes.
+Resposta curta e em português comum. O usuário é o dono do negócio, não o programador, e
+respostas longas cheias de termo técnico não são lidas até o fim. Pedido explícito dele,
+repetido duas vezes.
 
 - Aplicar a skill `humanizer` em toda resposta final.
-- Sem linguagem de programação no texto: nada de nome de arquivo, número de
-  linha, nome de função, comando, código de erro ou jargão de infraestrutura.
-  Dizer o efeito no negócio, não o mecanismo.
-- Resumir. Se não couber em poucos parágrafos, entregar a conclusão e oferecer o
-  detalhe, em vez de despejar tudo.
+- Sem linguagem de programação no texto. Nada de nome de arquivo, número de linha, nome de
+  função, comando, código de erro ou jargão de infraestrutura. Dizer o efeito no negócio, não
+  o mecanismo.
+- Resumir. Se não couber em poucos parágrafos, entregar a conclusão e oferecer o detalhe, em
+  vez de despejar tudo.
 - Conclusão primeiro. O que mudou, o que quebrou, o que falta decidir.
 - Tabela só quando compara coisas de verdade. Prosa é o padrão.
 
-Exceção: quando o usuário pedir o detalhe técnico, ou quando for um comando que
-ele precisa colar, aí vai literal e sem tradução. Comando, caminho e saída de
-teste nunca são alterados nem humanizados.
+Exceção: quando o usuário pedir o detalhe técnico, ou quando for um comando que ele precisa
+colar, aí vai literal e sem tradução. Comando, caminho e saída de teste nunca são alterados
+nem humanizados.
 
-## Segurança de dados (LGPD)
+## Comandos
 
-- Este repositório é o produto. Instância e dado de cliente ficam fora do git.
-- Nunca versionar: pastas de instância (`Verificação Mensal de Carteiras*`), PDFs, DOCX, XLSX, ZIPs com dados reais
-- `platform-data-real.js`, `platform-data-audit.js`, `platform-historico.js` são LGPD e estão no .gitignore
-- Nome de carteira, apelido, código real e caminho de pasta de cliente não entram em teste nem doc versionada
-- Se aparecerem em `git status`, investigar e corrigir o `.gitignore` antes de prosseguir
+```powershell
+npm install
+npm run dev              # Vite com HMR
+npm run build            # gera dist-app/ (obrigatório antes de publicar)
+npm run preview          # serve o build local
+npm test                 # portão completo, ver a seção Portão
+npm run lint             # só as travas estáticas (tests/validate.js)
+npm run seed:demo        # pipeline inteiro com dado sintético
+npm run pipeline         # pipeline do motor de auditoria
+npm run build-historico  # gera historico.json
+```
 
-## Inteligência competitiva (pasta `SyncIA/`)
+Rodar um teste isolado, camada estática e de comportamento:
 
-A pasta `SyncIA/` guarda o dossiê do concorrente SyncIA Desk
-(synciadesk.com.br, white-label para escritórios BTG): relatório OSINT e
-snapshots do site capturados em 2026-08-14. Não é parte do produto, não entra
-em build, teste nem deploy. Está fora do git até decisão explícita de commit.
-O material da SYNC TECNOLOGIA (syncai.com.br, site de consultoria) ficou
-arquivado em `SyncIA/SYNC-TECNOLOGIA/` e foi descartado como alvo pelo dono.
-O gap de features em comparação com o ATLAS está na memória do workspace.
+```powershell
+node tests/validate.js
+node --test tests/admin-perimetro.test.mjs
+```
 
-## Ordem de carregamento (build Vite)
+Camada do motor, TypeScript, precisa compilar antes de testar:
 
-O app é buildado com Vite: `npm run build` gera `dist-app/` a partir de
-`src/main.jsx`. A ordem de import em `src/main.jsx` É o contrato de
-inicialização: tokens → parsers → dados → utils → páginas → shell. Fora de
-ordem quebra em tela branca. `tests/validate.js` trava esse contrato.
+```powershell
+npm --prefix audit-engine test                          # tsc + suíte inteira
+npm --prefix audit-engine run build
+node --test --test-concurrency=1 audit-engine/dist/tests/<arquivo>.test.js
+```
 
-- Overlays de dado real (`platform-data-real.js`, `platform-data-audit.js`,
-  `platform-historico.js`, `platform-brand.js`, e os das fases de inteligência
-  `platform-oportunidades.js`, `platform-vencimentos.js`, `platform-caixa-parado.js`)
-  são scripts clássicos em runtime, NUNCA entram no bundle. O build os retira
-  do HTML. Quem reinjeta: em produção, o Worker da instância (no HTML que ele
-  serve, apontando para a rota autenticada do R2); localmente, o
-  `scripts/gen-index.mjs` da instância.
-- Desenvolvimento: `npm run dev` (Vite com HMR). Publicação do demo: primeiro
-  `npm run build`, depois `scripts/deploy-cf.ps1 -Target worker`.
-- `scripts/verify-build.mjs` e `scripts/build-deploy.mjs` recusam publicação
-  se `dist-app/` contiver overlay, binário ou marca de build dev.
+Publicação do demo, sempre nesta ordem, porque o script recusa bundle velho mas não builda
+sozinho:
 
-## Autenticação
+```powershell
+npm run build
+scripts/deploy-cf.ps1 -Target worker
+```
 
-- App não autentica no cliente. Perímetro é Cloudflare Access + Worker validando JWT.
-- Senha fixa `atlas2026` foi removida. `tests/validate.js` falha se ela voltar.
-- Não reintroduzir gate no cliente.
+Antes de qualquer push, limpar o token de ambiente que sombreia o keyring do `gh`:
 
-## Encoding
+```powershell
+$env:GH_TOKEN=$null; $env:GITHUB_TOKEN=$null
+```
 
-- UTF-8 sem BOM. Verificar ausência de mojibake após reescrita.
+## Arquitetura
 
-## Portão de verificação
+### Três repositórios que viajam juntos
 
-Antes de declarar qualquer tarefa concluída, execute:
+O projeto vive em `E:\Diretorio\Claude\FREQUENTE\ATLAS`. Dentro dele há três repos git ligados
+por gitlink, sem `.gitmodules`: o produto (raiz), a instância do cliente em
+`verificacao-carteiras/` e um checkout pinado de `core/`. Instância e dado de cliente ficam
+sempre fora do git do produto.
+
+`git submodule status` não funciona aqui, porque são gitlink sem entrada em `.gitmodules`. Para
+ler o ponteiro use `git ls-tree HEAD <caminho>`. A cadeia corrente está em `ESTADO/ESTADO-ATUAL.md`,
+não aqui, os hashes derivam.
+
+### O build e o contrato de carga
+
+SPA React com rotas em hash, buildada com Vite para `dist-app/`. `src/main.jsx` é o ponto de
+entrada e a ordem de import dele é o contrato de inicialização:
+
+```
+tokens → parsers → dados → utils → shell
+```
+
+Fora de ordem o app abre em tela branca, porque as páginas leem `window.*` no topo do módulo.
+As páginas **não estão mais** nessa lista. Desde 2026-08-30 cada `platform-*.jsx` é baixado sob
+demanda por rota, via `PAGE_LOADERS` em `platform-app.jsx`, com prefetch em hover e foco de
+teclado. `tests/validate.js` trava as duas coisas, a ordem dos módulos estáticos por literal e
+a entrada das 21 páginas em `PAGE_LOADERS` apontando para arquivo que existe.
+
+Namespaces de runtime: `AtlasData`, `AtlasParsers`, `AtlasUtils`, `AtlasIcons`, `AtlasCharts`,
+`AtlasUI`, `AtlasContexts`, `AtlasPages`, `AtlasTokens`, `HISTORICO_DATA`.
+
+### Overlays de dado real
+
+Overlay é script clássico de runtime, nunca entra no bundle. O Vite retira as tags deles no
+build (senão quebra, os arquivos não existem no repo do produto). Quem reinjeta: em produção o
+Worker da instância, no HTML servido apontando para a rota autenticada do R2. Localmente, o
+`scripts/gen-index.mjs` da instância. Os `platform-*-demo.js` são o fallback sintético usado
+quando o overlay real não carregou, e vários deles são gerados pelo motor, não editados à mão.
+
+`scripts/verify-build.mjs` e `scripts/build-deploy.mjs` recusam publicar se `dist-app/` contiver
+overlay, binário ou marca de build de desenvolvimento. A política de binários publicáveis mora
+em `scripts/politica-binarios.mjs`, fonte única.
+
+### Motor de auditoria, `audit-engine/`
+
+TypeScript, compila para `dist/`, é onde vivem as regras, os parsers de Excel e PDF, o
+snapshot diário, a fila de oportunidades e a camada de inteligência (`src/intel/`). Os limiares
+ficam centralizados e versionados em `src/snapshot/thresholds.ts`, nunca decididos na tela.
+
+`audit-engine/src/server.ts` e as pastas `auth/`, `middleware/`, `scheduler/` são **código
+morto**, nunca rodaram uma vez. Compilam e por isso parecem prontos. Antes de reusar qualquer
+coisa dali, leia a seção do backend em `ESTADO/ESTADO-ATUAL.md`.
+
+### Worker do demo, `demo-worker/`
+
+Worker da Cloudflare que serve `demo.multi-assets.com`. Roda antes dos assets
+(`run_worker_first`), faz gate de cadastro próprio sobre D1 (tabela `cadastros`, senha em
+PBKDF2, sessão por cookie HMAC), tem painel do dono e dispara aviso por email via Resend. O
+demo não tem dado real, só dado sintético. O produto real não autentica no cliente, o perímetro
+dele é Cloudflare Access.
+
+### Testes
+
+`tests/validate.js` é a camada estática, CommonJS, e é o contrato do repositório: ordem de
+import, entradas de página, `.gitignore`, ausência de senha fixa, proibição de rede em páginas,
+formato da tabela de eventos do demo. `tests/*.test.mjs` são os testes de comportamento, onde a
+regra precisa ser importada e exercitada em vez de conferida por casamento de texto. A suíte do
+motor roda à parte.
+
+Lição registrada e que se repete neste projeto: teste verde não prova comportamento, nem número
+certo. A suíte antiga validava existência de arquivo e casamento de string.
+
+## Regras que quebram coisa de verdade
+
+### Dado de cliente nunca entra no git do produto
+
+Este repositório é o produto. Dado real vive na instância, em `verificacao-carteiras/`, fora do
+git do produto. Nunca versionar pastas de instância (`Verificação Mensal de Carteiras*`,
+`Verificação de carteiras/`), nem PDF, DOCX, XLSX, ZIP com dado real.
+
+Overlays LGPD negados no `.gitignore`: `platform-data-real.js`, `platform-data-audit.js`,
+`platform-historico.js`, `platform-brand.js`, e as versões sem sufixo de radar, crédito,
+oportunidades, vencimentos, caixa parado, receita drop e cadastro. Os `-demo` são o fallback
+sintético e esses são versionados.
+
+Nome de carteira, apelido, código real e caminho de pasta de cliente não entram em teste, doc
+versionada, mensagem de commit nem config. Se algo suspeito aparecer em `git status`, pare e
+conserte o `.gitignore` antes de seguir. O `.gitignore` aqui é deny-by-default e já engoliu
+arquivo necessário duas vezes, sempre confira `git status` antes de commitar.
+
+### Nada é declarado pronto sem o portão
+
 ```
 npm test
 ```
-Cole a saída real na resposta. Se falhar ou não puder executar, diga explicitamente. Nunca declare "funcionando" sem a saída colada.
 
-## Pendências abertas
+Cole a saída real na resposta. Se falhar ou não puder rodar, diga isso explicitamente. Proibido
+escrever "funcionando" sem saída colada. A contagem de referência está em
+`ESTADO/ESTADO-ATUAL.md`, e ela muda, não confie em número de memória.
 
-Nenhuma registrada aqui. Pendências e decisões em aberto do projeto vivem em
-`ESTADO/ESTADO-ATUAL.md` (fonte única de estado, precedência declarada acima).
+### Teste e doc não substituem abrir o código
 
-### Resolvidas em 2026-08-14
+A documentação de produto deste projeto atrasa em relação ao código. Quando a pergunta for "o
+que falta" ou "isso já existe", abra o código. A lista de rot confirmado está em `ESTADO/MAPA.md`.
 
-- **Publicar no GitHub**: repo privado `Yan69793/atlas-wealth-verification` criado;
-  branch `feat/vite-migration` publicada até 217d1c4 (hash local = remoto, conferido
-  em 2026-08-14). Cuidado operacional: a variável `GH_TOKEN` do ambiente sombreia o
-  token do keyring do `gh`. Antes de qualquer push, rodar
-  `$env:GH_TOKEN=$null; $env:GITHUB_TOKEN=$null`.
+### Não reintroduzir senha no cliente
 
-- **pdfplumber ausente**: instalada via pip no interpretador padrão. Era o que fazia
-  a parity PDF vs Excel falhar; com ela, as suítes de parity rodam com dado real.
-- **Corte da instância para o build Vite**: submodule no commit fecbe17, gen-index e
-  build-worker-assets consumindo core/dist-app, CSP do worker no contrato novo,
-  injeção de overlays no HTML servido + no-cache. Validado no fluxo diário do dono.
+A senha fixa que existia no navegador foi removida porque sinalizava proteção sem proteger.
+`tests/validate.js` falha se ela voltar. O app não autentica ninguém, por desenho. O perímetro é
+do deploy, Cloudflare Access na frente, com o Worker validando o JWT por conta própria antes de
+responder com dado.
 
-- **Primeira fonte real (dono)**: substituída pelo arquivo modelo da convenção B3
-  (autorizado pelo dono em 2026-08-14). Entregues o adaptador de arquivo posicional
-  estilo B3 e o mapa de classes da instância; a estreia do acompanhamento diário foi
-  provada com a série sintética de 5 dias (eventos idênticos aos desenhados). O
-  primeiro arquivo real do custodiante entra como dado de instância normal.
+### Encoding
 
-- **Thresholds do snapshot (dono)**: confirmados e calibrados pelo dono em 2026-08-14,
-  tudo percentual (posição nova/encerrada 3% do PL, liquidez parada 10% do PL com
-  mínimo de 7 dias, janela de 90 dias; os demais limiares seguem a calibração do
-  diff). Fase 4 aprovada e publicada no demo com esses valores.
+UTF-8 sem BOM, sempre. Verificar ausência de mojibake depois de reescrever arquivo.
 
-### Resolvidas em 2026-08-15
+## Antes de finalizar uma mudança
 
-- **Publicação pendente + cadeia de gitlinks**: autorizado pelo dono. Os 2 commits
-  locais foram publicados na `feat/vite-migration` e a cadeia dos 3 repos foi
-  fechada: as mesmas 5 correções de caminho/BOM foram commitadas no `core/` na
-  branch `fix/paths-bom-pos-mudanca` (d33ee42), o gitlink do
-  `verificacao-carteiras/` avançou para c0ad7b4 e o do ATLAS para 810f0d9. Não
-  mergear a branch do core na `feat/vite-migration`: os mesmos ajustes já vivem lá
-  como 466cb7a. Suíte após tudo: 352/352 checks + 101/101 testes.
-- **Credencial do git para GitHub**: `gh auth setup-git` configurado; o git passa a
-  usar o keyring do `gh` (conta Yan69793) como credencial no github.com. Antes valia
-  só para o repo do ATLAS, agora vale para os três.
-- **Chave Cloudflare exposta revogada**: o dono revogou no painel em
-  2026-08-15. Registro preservado: id `6a8d3ce39ed73eb9d71088e35b1a9187`,
-  final `c17`, exposta em 2026-08-10, revogada em 2026-08-15. Cópias textuais
-  do valor sanitizadas e verificadas: zero ocorrências restantes no workspace
-  e nas memórias operacionais (claude-mem e logs).
-- **Perímetro da instância fechado**: `workers_dev = false` deployado em
-  2026-08-15 (versão 4f0caf1f). A URL técnica
-  `atlas-instancia.prospects-intel.workers.dev` saiu do ar (404) e
-  `atlas.szuchmacher.com.br` segue servido pelo Access (302 sem JWT). O
-  teste do diretor passa a ser pelo domínio próprio com Access.
+1. `git status` conferido, working tree limpo exceto pelas mudanças intencionais
+2. `npm test` rodado com a saída colada
+3. Mudança não trivial revisada pelo subagente `code-reviewer`, sem substituir por releitura
+   própria
+4. Se mexeu no sistema, atualizar `ESTADO/ESTADO-ATUAL.md` no mesmo trabalho, não depois
 
-### Resolvidas em 2026-08-19
+## Inteligência competitiva, pasta `SyncIA/`
 
-- **Separação de conta Cloudflare**: suspensa pelo dono em 2026-08-15. A conta
-  nova chegou a ser criada e recebeu o demo, que foi removido em seguida; o demo
-  segue publicado só na conta antiga (`demo.multi-assets.com`). Plano, inventário
-  canônico e checklist de 11 passos seguem em `docs/separacao-cloudflare.md`, e o
-  item fica fora da fila em `ESTADO/ESTADO-ATUAL.md`, pronto para reabrir se a
-  decisão mudar. As branches `feat/separacao-cloudflare` e `fix/workers-dev-off`
-  ficam no GitHub como histórico do plano.
-- **CDN do demo**: risco de página em branco morto com o build Vite, CSP do demo
-  não referencia unpkg/jsdelivr. A dependência pontual de CDN que resta (sheetjs
-  na importação de planilha, analytics) é de produto, não pendência.
-
-### Resolvidas em 2026-08-21
-
-- **Servidor morto, decidido não rodar nem remover**: marcado como protótipo não
-  funcional com banner no topo de `audit-engine/src/server.ts`, listando os sete
-  buracos e apontando para `ESTADO/ESTADO-ATUAL.md`. Detalhe no ESTADO.
-- **Segunda cópia de dado real (LGPD)**: movida de `.archive\Verificacao-carteiras-legacy\`
-  para `verificacao-carteiras\.archive\Verificacao-carteiras-legacy\`. Os quatro arquivos
-  de dado (`data.js`, `data.json`, `historico.js`, `historico.json`) saíram do repo do
-  produto; a casca de código ficou no lugar. `.gitignore` deny-by-default da instância já
-  cobria os nomes, nada de dado entrou no git.
-- **Push dos três repos**: autorizado pelo dono, executado em 2026-08-21 (produto,
-  instância e core).
-- **Caminho multi-cliente (decisão 2026-08-21)**: pesquisa de tendências 2025-2026 +
-  análise do sistema aprovada pelo dono. Instância por cliente segue para o cliente
-  atual e o próximo, rung 2 da escada Cloudflare (um Worker, D1 ou Durable Object por
-  cliente) quando o 2º cliente assinar, instância física vira tier premium de venda.
-  Executado no motor: `tenantId` no modelo de dados, validação pós-normalização, fila
-  de exceção e reconciliação na ingestão. Detalhe no `ESTADO/ESTADO-ATUAL.md`.
+Guarda o dossiê do concorrente SyncIA Desk (synciadesk.com.br, white-label para escritórios
+BTG). Não é parte do produto, não entra em build, teste nem deploy, e está fora do git até
+decisão explícita de commit.

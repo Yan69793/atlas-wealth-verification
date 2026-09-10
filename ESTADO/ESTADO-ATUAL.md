@@ -1,6 +1,87 @@
 # ESTADO ATUAL do ATLAS
 
-**Data-base: 2026-09-01.** Colhido rodando os comandos, não de memória.
+**Data-base: 2026-09-10.** Colhido rodando os comandos, não de memória.
+
+## 2026-09-10 — RBAC por papel no demo (owner / manager / client)
+
+O demo deixou de ter um único nível de acesso. Agora existem três papéis, e quem decide o que
+cada um enxerga é o Worker, não o navegador.
+
+**O bloqueio que parava esta rodada era duplo.** O primeiro era externo e não tinha nada a ver
+com código: as sessões anteriores morriam com `API Error: 402 Insufficient Balance` no meio da
+implementação. O segundo era técnico e está em `skill-observations/log.md`: a migration do pool
+sintético usava `UNION ALL` com 40 termos e estourava o SQLite local do Wrangler. Trocada por
+uma CTE `VALUES`, a migration roda no runtime local e a validação viva passou a ser possível.
+
+### O que entrou
+
+- `demo-worker/src/authz.js` é política pura, sem I/O, e é onde mora a decisão. `escopoDe`
+  devolve o conjunto de carteiras que o papel alcança (owner a organização inteira, manager a
+  interseção entre as atribuições dele e as carteiras da organização, client só a própria) e
+  `projetarCarteira` / `projetarCatalogo` / `projetarComposicao` cortam a resposta por lista
+  branca antes de ela sair.
+- `demo-worker/src/api.js` é o único ponto de entrada de `/api/*`. Resolve a sessão antes de
+  qualquer outra coisa, e sem identidade válida nada passa, inclusive caminho desconhecido, que
+  devolve 403 em JSON e nunca o HTML do app.
+- `demo-worker/migrations/0003_rbac.sql` é aditiva. `cadastros` continua existindo, ganhou
+  `organizacao_id` e `usuario_id`, e cada linha virou uma organização própria com um owner. As
+  tabelas novas são `organizacoes`, `usuarios`, `organizacoes_carteiras`, `atribuicoes` e
+  `auditoria`.
+- Sessão v2, com contexto `atlas-demo-sessao-v2` e cookie `<usuario_id>:<hmac>`. A v1, que era
+  baseada em e-mail, é recusada de propósito.
+- Tela própria do cliente (`platform-cliente.jsx`), separada do painel institucional. Menus e
+  rotas passaram a depender do papel, e a tela de Usuários virou administração de verdade.
+
+### Decisões que parecem detalhe e não são
+
+- **Conjunto sintético idêntico para toda organização.** No demo, as 40 carteiras são as mesmas
+  para todo mundo. O isolamento que os testes provam é a recusa de linha fora da organização,
+  não a unicidade do código. Na instância isso muda, porque a carteira vem do dado real de cada
+  organização.
+- **Projeção por lista branca, não só filtro de linha.** O cliente recebe `plArr`, `nnmArr`,
+  `retArr` e os campos de catálogo `code`, `name`, `risk` e `inception`. Receita, taxa de
+  gestão, performance, corretagem, custódia, taxa de fundo, spread e imposto nem chegam ao
+  payload. Esconder na tela não seria suficiente e por isso não foi o caminho.
+- **Resposta uniforme.** Recurso que não existe e recurso sem permissão devolvem exatamente o
+  mesmo 403. Sem isso, a diferença vira oráculo de enumeração.
+- **Auditoria é dado pessoal.** A tabela liga ação a pessoa, então tem finalidade declarada,
+  correlação por `usuario_id` e retenção de 12 meses. Nunca recebe senha, hash, token, cookie
+  nem e-mail em texto claro. A tabela `eventos`, que é contador anônimo, continua intacta.
+- **O conjunto saiu do bundle.** Ele agora é gerado em `demo-worker/src/dataset.js` por
+  `scripts/gerar-dataset-demo.mjs` (2.848.903 bytes, 713.026 comprimido) e vive só no Worker.
+
+### Armadilha registrada
+
+`scripts/gerar-dataset-demo.mjs` **não está ligado a nenhum script do npm**. O arquivo é gerado
+por invocação manual e o resultado está versionado. Quem mexer no dado sintético precisa rodar
+o gerador na mão e commitar o resultado, senão o Worker publicado continua com o conjunto
+velho, sem erro nenhum aparecer.
+
+### Migração do D1 remoto, e a credencial que não serve
+
+A migration foi aplicada no `atlas-demo-cadastros` remoto em 2026-09-10 pelo MCP do Cloudflare,
+não pelo wrangler. **O CLI está bloqueado nesta máquina para D1**: tanto com
+`CLOUDFLARE_API_TOKEN` no ambiente quanto com ele limpo, `npx wrangler d1 execute --remote`
+responde `The given account is not valid or is not authorized to access this service [code:
+7403]`, enquanto `npx wrangler whoami` mostra a conta correta
+(`7ac79fb1030e4e81115ef33c21a9b070`). O MCP lê e escreve no mesmo banco normalmente, o que
+aponta para o token do CLI sem escopo de D1. Consequência prática: `wrangler d1 execute` e
+`wrangler d1 migrations apply` não servem para operar este banco aqui, e a alternativa
+funcional é o MCP. Deploy de Worker segue pelo script do projeto, que não passa por D1.
+
+Estado depois do backfill, medido no banco remoto: 5 organizações, 5 usuários (todos owner e
+ativos), 200 vínculos organização/carteira, 0 cadastro sem vínculo, e o vínculo por e-mail
+conferindo nos 5.
+
+### Bloqueadores da fase da instância
+
+- **`DIRECTOR_KEY` não foi tocada nesta rodada**, por decisão explícita do dono. Ela continua
+  sendo caminho de bypass, e o RBAC da instância não pode ser considerado seguro enquanto ela
+  não for removida ou convertida em mecanismo break-glass fortemente restrito.
+- **O modelo de papéis da instância ainda não existe.** Lá o owner precisa vir de grupo
+  explícito do Cloudflare Access, o manager de identidade explícita mais atribuição de carteira,
+  e o cliente só de mapeamento explícito identidade/cliente. Papel nunca pode ser inferido por
+  domínio ou por parâmetro enviado pelo cliente.
 
 ## 2026-09-01 — demo estendido a Ago/26 + botões de navegação/saída
 
@@ -44,12 +125,18 @@ aqui, trate este arquivo como suspeito e rode o refresh do fim da página.
 O portão agora tem três etapas, não duas. `npm test` roda as três em sequência.
 
 ```
-812/812 checks OK — todos os checks passaram
-ℹ tests 63    ℹ suites 12   ℹ pass 63    ℹ fail 0   ℹ skipped 0
+824/824 checks OK — todos os checks passaram
+ℹ tests 110   ℹ suites 21   ℹ pass 110   ℹ fail 0   ℹ skipped 0
 ℹ tests 292   ℹ suites 76   ℹ pass 292   ℹ fail 0   ℹ skipped 0
 ```
 
-Os 9 checks a mais (803 → 812) são da camada de movimento decorativo sobre a arte de fundo,
+Os 110 testes do app são 63 de comportamento mais 47 de isolamento de papel, acrescidos em
+2026-09-10 junto do RBAC. Os 12 checks a mais (812 → 824) são os do contrato de sessão por
+`usuario_id`, da projeção por lista branca e da ausência do conjunto no bundle. Ver a seção do
+RBAC, acima.
+
+Antes era `812/812` com 63 testes, medido em 2026-09-01, no fechamento do painel do dono. Os 9
+checks a mais de então (803 → 812) são da camada de movimento decorativo sobre a arte de fundo,
 ver a seção dela abaixo.
 
 Medido em 2026-09-01, no fechamento do painel do dono (ver a seção dele abaixo). Os 16 checks

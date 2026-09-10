@@ -61,6 +61,26 @@ function stripOverlays(html) {
 export default defineConfig(({ command }) => ({
   base: './',
   esbuild: { jsx: 'automatic' },
+  /* O gerador sintético do demo NÃO entra no bundle de produção. Ver a seção 0
+     de platform-data.js: com o dado dentro do pacote, qualquer um lê as 40
+     carteiras pelo console sem passar por autorização, e nenhum escopo no
+     Worker restringe nada. Quem gera é o build (scripts/gerar-dataset-demo.mjs,
+     que roda o mesmo arquivo com a flag em true) e quem serve é a API. Com
+     false, o ramo inteiro vira código morto e sai na minificação.
+
+     Em desenvolvimento a flag fica LIGADA, e isso não abre exceção nenhuma: o
+     `serve` do Vite nunca é publicado, e sem ela o `npm run dev` abriria uma
+     tela vazia, porque o servidor de desenvolvimento não tem o Worker nem a API
+     que fornecem o conjunto. Quem manda é o `command`, não o `mode`, então
+     `vite build --mode development` continua saindo sem dado.
+
+     Consequência aceita: `npm run preview` serve o build (sem dado, sem API) e
+     mostra a tela de falha de carga. Para ver o app montado localmente, o
+     caminho é o Worker (`wrangler dev` em demo-worker/), que é como o demo roda
+     de verdade. */
+  define: {
+    __ATLAS_GERAR_DEMO__: command === 'serve' ? 'true' : 'false',
+  },
   build: {
     outDir: 'dist-app',
     target: 'es2018',

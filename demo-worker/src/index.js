@@ -13,17 +13,28 @@
 // Desde 2026-09-01 o acesso e por conta propria (nome, email, senha), no
 // lugar da senha unica compartilhada. Senha nunca em claro: hash
 // PBKDF2-SHA256 com salt por usuario, formato versionavel
-// (pbkdf2$<salt hex>$<iter>$<hash hex>). O cookie de sessao carrega o email
-// assinado por HMAC (stateless: o gate nao le o D1 por request, cada asset
-// serve rapido). Trade-off deliberado: sem revogacao individual de sessao;
-// exclusao de cadastro a pedido (LGPD) deixa a sessao residual ativa ate o
-// Max-Age de 30 dias. O demo so contem dado sintetico, e trocar o secret
-// DEMO_SENHA invalida todas as sessoes abertas.
+// (pbkdf2$<salt hex>$<iter>$<hash hex>).
+//
+// Desde 2026-09-10 o portao deixou de ser so de ENTRADA e passou a ser tambem
+// de ESCOPO. Quem entra nao ve o demo inteiro: ve o que o papel dele alcanca.
+// O cookie assinado carrega apenas `usuario_id`, e papel, `ativo`, `cliente_id`
+// e atribuicoes sao lidos do D1 a cada requisicao que pode devolver dado.
+// Duas consequencias deliberadas: desativar um usuario vale na requisicao
+// seguinte, e o dado de carteira saiu do bundle (ver demo-worker/src/dataset.js
+// e a secao 0 de platform-data.js), porque enquanto ele morava la nenhuma
+// checagem daqui restringia coisa alguma.
+//
+// O token mudou de v1 (email) para v2 (usuario_id) e isso invalida toda sessao
+// aberta antes da troca. E proposital: um cookie v1 nao tem como virar v2, e
+// aceitar os dois formatos seria manter viva a unica forma de sessao que nao
+// passou por checagem de escopo.
 //
 // Cadastro, login e a lista de quem entrou vivem no D1 atlas-demo-cadastros
-// (binding DB). Nome e email sao dado pessoal LGPD: nunca logar, nunca
-// colocar em commit, nunca refletir em pagina. O caminho de exclusao a pedido
-// do cadastrado e um DELETE documentado no ESTADO/ESTADO-ATUAL.md, rodado via
+// (binding DB), nas tabelas `cadastros` (historico e painel do dono) e
+// `usuarios` (identidade e autorizacao, migration 0003). Nome e email sao dado
+// pessoal LGPD: nunca logar, nunca colocar em commit, nunca refletir em pagina.
+// O caminho de exclusao a pedido do cadastrado e um DELETE documentado no
+// ESTADO/ESTADO-ATUAL.md, rodado via
 // `npx wrangler d1 execute atlas-demo-cadastros --remote --command "DELETE
 // FROM cadastros WHERE email = '<email>'"`.
 //
@@ -35,9 +46,11 @@
 
 import { paginaLogin } from './landing.js';
 import { paginaAdminPorta, paginaAdminPainel } from './admin.js';
+import { auditar, rotaApi, sessaoDe } from './api.js';
+import { POOL_DEMO } from './dataset.js';
 
 const COOKIE_NAME = 'atlas_demo_sessao';
-const TOKEN_INFO = 'atlas-demo-sessao-v1';
+const TOKEN_INFO = 'atlas-demo-sessao-v2';
 const LOGIN_PATH = '/entrar';
 const CADASTRAR_PATH = '/cadastrar';
 const SAIR_PATH = '/sair';
@@ -122,14 +135,49 @@ export default {
       return env.ASSETS.fetch(request);
     }
 
-    if (await estaAutenticado(request, env)) {
-      if (ehDocumento(url.pathname)) contar(env, ctx, 'app_aberto');
-      return env.ASSETS.fetch(request);
+    // API de dado, ANTES do portao de assets. Ela resolve a propria sessao e
+    // responde 403 uniforme quando nao ha identidade valida, inclusive para
+    // caminho inexistente sob /api/. Deixar isso cair no portao devolveria a
+    // tela de acesso com status 200 para um fetch de dado, que e o modo mais
+    // confuso de falhar: o front acharia que recebeu JSON.
+    const respostaApi = await rotaApi(request, env, ctx, url, depsSessao);
+    if (respostaApi) return respostaApi;
+
+    // Documento carrega a identidade INTEIRA, lida do D1 nesta requisicao.
+    // E aqui que "usuario desativado perde acesso na requisicao seguinte"
+    // acontece: o cookie continua assinado, e mesmo assim a porta fecha.
+    if (ehDocumento(url.pathname)) {
+      const usuario = await sessaoDe(request, env, depsSessao);
+      if (usuario && usuario.ativo) {
+        contar(env, ctx, 'app_aberto');
+        return env.ASSETS.fetch(request);
+      }
+      contar(env, ctx, 'tela');
+      return paginaResposta(url.searchParams.get('erro'));
     }
 
-    if (ehDocumento(url.pathname)) contar(env, ctx, 'tela');
+    // Asset estatico (bundle, chunk de pagina, folha de estilo). Confere so a
+    // assinatura do cookie, sem ler o D1, pelo mesmo motivo de sempre: sao
+    // dezenas de requisicoes por carregamento, e o PBKDF2 ja gasta quase todo o
+    // CPU do plano free. Isto NAO afrouxa nada, porque desde esta rodada o
+    // bundle nao contem uma linha de carteira: quem estiver com um cookie
+    // assinado e valido baixa codigo, e o dado so sai pelo /api/dados, que le
+    // o banco.
+    if (await assinaturaValida(request, env)) return env.ASSETS.fetch(request);
+
     return paginaResposta(url.searchParams.get('erro'));
   },
+};
+
+// Dependencias de sessao passadas ao modulo de API. Existem para que a
+// assinatura do cookie e o nome do cookie fiquem definidos em UM lugar, o
+// arquivo que os cria e os consome.
+const depsSessao = {
+  hmacHex,
+  compararSeguro,
+  hashSenha,
+  tokenInfo: TOKEN_INFO,
+  cookieName: COOKIE_NAME,
 };
 
 /* Documento, nao asset.
@@ -169,14 +217,95 @@ async function handleCadastrar(request, env, url, ctx) {
     return redirectComErro(url, 'email-existe');
   }
 
+  // Cada cadastro publico vira OWNER de uma organizacao NOVA. Nunca entra numa
+  // organizacao existente: nao ha caminho no formulario para nomear
+  // organizacao, e o id sai do proprio INSERT, nao do corpo do pedido. Anexar
+  // um cadastro a organizacao alheia seria dar a estranho o acesso ao conjunto
+  // de outra pessoa, que e a regra que este trabalho existe para garantir.
+  const nova = await criarOrganizacaoPropria(env, {
+    cadastroId: r.meta && r.meta.last_row_id,
+    nome,
+    email,
+    hash,
+  });
+
+  // Se a criacao da identidade falhar, o cadastro tambem falha. Seguir daqui
+  // gravaria uma linha em `cadastros` sem usuario correspondente, e o login
+  // recusaria uma pessoa que acabou de se cadastrar.
+  if (!nova) {
+    contar(env, ctx, 'cadastro_erro', 'erro-interno');
+    return redirectComErro(url, 'erro-interno');
+  }
+
   contar(env, ctx, 'cadastro_ok');
+  auditar(env, ctx, {
+    usuario: { id: nova.usuarioId, role: 'owner', organizacaoId: nova.organizacaoId },
+    recurso: CADASTRAR_PATH,
+    acao: 'organizacao.criar',
+    resultado: 'ok',
+  });
 
   // Aviso ao dono, nao bloqueia o cadastro: falha sozinha em dev ou ausencia.
   notificarCadastro(env, { nome, email }).catch((e) => {
     console.error('notificarCadastro falhou (nao bloqueia cadastro):', e);
   });
 
-  return respostaComCookie(url, await assinarCookie(email, env.DEMO_SENHA));
+  return respostaComCookie(url, await assinarCookie(nova.usuarioId, env.DEMO_SENHA));
+}
+
+/* Organizacao, identidade e conjunto inicial de um cadastro novo.
+ *
+ * O id da organizacao e o MESMO do cadastro, escrito explicitamente, igual ao
+ * backfill da migration 0003. Nao e economia de coluna: e para que a
+ * convencao valha igual para quem existia antes da migration e para quem se
+ * cadastra depois, e para que conferir o vinculo depois seja uma consulta
+ * direta em vez de uma deducao.
+ *
+ * Devolve o id do usuario, ou null. Uma organizacao sem usuario ativo e uma
+ * organizacao que ninguem administra, e por isso a segunda insercao falhando
+ * derruba a primeira em vez de deixar lixo.
+ */
+async function criarOrganizacaoPropria(env, { cadastroId, nome, email, hash }) {
+  try {
+    const id = Number(cadastroId);
+    if (!Number.isInteger(id) || id <= 0) return null;
+
+    await env.DB.prepare('INSERT OR IGNORE INTO organizacoes (id, nome) VALUES (?, ?)')
+      .bind(id, 'Organização ' + id).run();
+
+    const u = await env.DB.prepare(
+      'INSERT OR IGNORE INTO usuarios (organizacao_id, nome, email, senha_hash, role, ativo, cliente_id) '
+      + 'VALUES (?, ?, ?, ?, ?, 1, NULL)'
+    ).bind(id, nome, email, hash, 'owner').run();
+
+    // Email ja existente em `usuarios` sem existir em `cadastros` nao deveria
+    // acontecer. Se acontecer, o cadastro nao ganhou identidade e quem se
+    // cadastrou nao conseguiria entrar, entao o certo e falhar alto.
+    if (!u.meta || u.meta.changes === 0) return null;
+
+    const usuario = await env.DB.prepare('SELECT id FROM usuarios WHERE email = ?')
+      .bind(email).first();
+    if (!usuario || !usuario.id) return null;
+
+    // O conjunto sintetico do demo, igual para toda organizacao nova. Mesma
+    // decisao registrada na migration 0003: o dado e sintetico e identico para
+    // todos, entao entregar o pool inteiro nao expoe dado de ninguem, e o
+    // isolamento que os testes provam e a recusa de linhas fora da
+    // organizacao. Na instancia a atribuicao e 1:1 com o dado real.
+    await atribuirPoolDemo(env, id);
+
+    return { usuarioId: usuario.id, organizacaoId: id };
+  } catch (e) {
+    console.error('criarOrganizacaoPropria falhou:', e);
+    return null;
+  }
+}
+
+async function atribuirPoolDemo(env, organizacaoId) {
+  const sql = 'INSERT OR IGNORE INTO organizacoes_carteiras (organizacao_id, carteira_code) VALUES (?, ?)';
+  for (const code of POOL_DEMO) {
+    await env.DB.prepare(sql).bind(organizacaoId, code).run();
+  }
 }
 
 async function handleEntrar(request, env, url, ctx) {
@@ -187,8 +316,13 @@ async function handleEntrar(request, env, url, ctx) {
   const email = String(form.get('email') || '').trim().toLowerCase();
   const senha = String(form.get('senha') || '');
 
-  const linha = await env.DB.prepare('SELECT senha_hash FROM cadastros WHERE email = ?')
-    .bind(email).first();
+  // A identidade da autorizacao e `usuarios`, nao `cadastros`. `cadastros`
+  // continua sendo gravada e continua sendo o que o painel do dono le, mas
+  // quem decide papel e escopo e a tabela nova. Ler senha_hash de duas tabelas
+  // seria manter dois caminhos de entrada, e um deles nao teria organizacao.
+  const linha = await env.DB.prepare(
+    'SELECT id, senha_hash, ativo FROM usuarios WHERE email = ?'
+  ).bind(email).first();
 
   if (!linha || !(await verificarSenha(senha, linha.senha_hash))) {
     // Email inexistente e senha errada caem na mesma resposta, para nao
@@ -201,8 +335,17 @@ async function handleEntrar(request, env, url, ctx) {
     return redirectComErro(url, 'credenciais');
   }
 
+  // Usuario desativado nao entra, e a recusa e a mesma de credencial errada.
+  // Dizer "sua conta esta desativada" confirmaria a existencia do cadastro
+  // para quem so chutou o email.
+  if (Number(linha.ativo) !== 1) {
+    contar(env, ctx, 'login_erro', 'credenciais');
+    await sleep(400);
+    return redirectComErro(url, 'credenciais');
+  }
+
   contar(env, ctx, 'login_ok');
-  return respostaComCookie(url, await assinarCookie(email, env.DEMO_SENHA));
+  return respostaComCookie(url, await assinarCookie(linha.id, env.DEMO_SENHA));
 }
 
 function validarCadastro(nome, email, senha) {
@@ -218,7 +361,7 @@ function bodyGrande(request) {
   return len > 16384;
 }
 
-// ----- Sessao (cookie assinado por HMAC, stateless) -----
+// ----- Sessao (cookie assinado por HMAC) -----
 
 async function hmacHex(segredo, mensagem) {
   const chave = await crypto.subtle.importKey(
@@ -232,29 +375,45 @@ async function hmacHex(segredo, mensagem) {
   return [...new Uint8Array(assinatura)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-// Cookie = <email>:<hex64 do HMAC de email + '\n' + TOKEN_INFO>. Email nao
-// contem ':', entao lastIndexOf separa sem ambiguidade.
-async function assinarCookie(email, segredo) {
-  return `${email}:${await hmacHex(segredo, email + '\n' + TOKEN_INFO)}`;
+/* Cookie = <usuario_id>:<hex64 do HMAC de usuario_id + '\n' + TOKEN_INFO>.
+ *
+ * O que ele afirma e apenas isto: "esta sessao pertence a linha usuario_id, e
+ * quem a escreveu conhece DEMO_SENHA". Nao afirma papel, nem organizacao, nem
+ * cliente. E o motivo de ser assim: se o papel viesse assinado no cookie,
+ * assinatura valida passaria a ser o mesmo que permissao valida, e cada
+ * mudanca de atribuicao so valeria no proximo login. Do jeito que esta, papel
+ * e lido do banco a cada requisicao e desativar alguem vale imediatamente.
+ */
+async function assinarCookie(usuarioId, segredo) {
+  const id = String(usuarioId);
+  return `${id}:${await hmacHex(segredo, id + '\n' + TOKEN_INFO)}`;
+}
+
+/* So confere a assinatura, sem tocar no banco. Nao devolve identidade, e por
+ * isso o unico uso dela e liberar asset estatico, que desde esta rodada nao
+ * carrega dado nenhum. Qualquer coisa que possa devolver carteira passa por
+ * `sessaoDe`, que le o D1. */
+async function assinaturaValida(request, env) {
+  const usuarioId = await validarCookie(lerCookieDemo(request), env.DEMO_SENHA);
+  return usuarioId !== null;
 }
 
 async function validarCookie(valor, segredo) {
   if (!valor) return null;
   const i = valor.lastIndexOf(':');
   if (i <= 0) return null;
-  const email = valor.slice(0, i);
+  const id = valor.slice(0, i);
   const assinatura = valor.slice(i + 1);
+  if (!/^\d{1,12}$/.test(id)) return null;
   if (assinatura.length !== 64) return null; // hex de HMAC-SHA256, tamanho fixo
-  const esperado = await hmacHex(segredo, email + '\n' + TOKEN_INFO);
-  return (await compararSeguro(assinatura, esperado)) ? email : null;
+  const esperado = await hmacHex(segredo, id + '\n' + TOKEN_INFO);
+  return (await compararSeguro(assinatura, esperado)) ? id : null;
 }
 
-async function estaAutenticado(request, env) {
+function lerCookieDemo(request) {
   const cabecalho = request.headers.get('Cookie') || '';
   const par = cabecalho.split(';').map((p) => p.trim()).find((p) => p.startsWith(`${COOKIE_NAME}=`));
-  if (!par) return false;
-  const valor = par.slice(COOKIE_NAME.length + 1);
-  return (await validarCookie(valor, env.DEMO_SENHA)) !== null;
+  return par ? par.slice(COOKIE_NAME.length + 1) : null;
 }
 
 function cookieHeader(token, url) {

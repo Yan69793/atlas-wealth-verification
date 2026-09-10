@@ -6,6 +6,33 @@
   'use strict';
 
   /* =============================================================
+     0. DE ONDE VEM O DADO
+  ============================================================= */
+
+  /* O gerador sintético do demo NÃO roda no navegador. Esta flag existe para
+     o mesmo arquivo servir a três consumidores com necessidades opostas:
+
+       - o script de build (scripts/gerar-dataset-demo.mjs), que precisa do
+         conjunto inteiro para gerar o dataset que o Worker serve;
+       - tests/validate.js, que precisa do conjunto inteiro para conferir as
+         invariantes do gerador;
+       - o BUNDLE publicado, que NÃO pode conter o conjunto.
+
+     O motivo é o pedido de controle de acesso. Enquanto o gerador morasse no
+     bundle, qualquer um leria as 40 carteiras pelo console sem passar por
+     autorização nenhuma, e nenhuma checagem no Worker restringiria coisa
+     alguma. O dado precisa faltar no bundle para o escopo significar algo.
+
+     Vite substitui o literal por false no build (`define` em vite.config.mjs),
+     e o ramo morto sai na minificação. Sem o define, o `typeof` devolve
+     'undefined' e o valor é false: falha fechada, nunca gera por acidente.
+
+     Com false, o navegador fica com `_portfolioData` VAZIO e a matemática
+     intacta. Quem preenche é `hidratarDoServidor()`, a partir de
+     GET /api/dados, já escopado e projetado pelo papel de quem pediu. */
+  var __GERAR_DEMO__ = (typeof __ATLAS_GERAR_DEMO__ !== 'undefined') ? !!__ATLAS_GERAR_DEMO__ : false;
+
+  /* =============================================================
      1. PRNG E UTILITÁRIOS MATEMÁTICOS
   ============================================================= */
 
@@ -278,6 +305,16 @@
    * A mistura é a da pitch: maioria limpa, um punhado para olhar, dois que não
    * saem antes de alguém resolver.
    */
+  var RECIDIVA_CODES = ['HELIOS_01','JOIA_FAM','NOVA_CAP','KAPPA_PV'];
+  var RECIDIVA_MONTHS = ['2025-11','2025-12','2026-01','2026-02','2026-03','2026-04','2026-05','2026-06'];
+
+  /* O roteiro inteiro é gerador do demo, então vive dentro do guard. A função
+     existe em vez de um `if` gigante para que nada precise ser reindentado, e
+     o `return` de guarda é a primeira linha: solto no bundle, ele não escreve
+     nada em STATUS_SCRIPT, e o dataset que vale é o que a API mandou. */
+  var _roteiroDeStatusDemo = function () {
+  if (!__GERAR_DEMO__) return;
+
   setS('DUNAS_CAP',   '2026-06', 'CORRIGIR');
   setS('ORION_02',    '2026-06', 'CORRIGIR');
   setS('CEDRO_HLD',   '2026-06', 'COM ALERTA');
@@ -305,8 +342,6 @@
      A janela ia até Mar/2026 e a página de recorrência abria vazia, porque o
      demo abre em Jun/2026. Recidiva que não alcança o mês visível não é
      recidiva para quem está olhando. */
-  var RECIDIVA_CODES = ['HELIOS_01','JOIA_FAM','NOVA_CAP','KAPPA_PV'];
-  var RECIDIVA_MONTHS = ['2025-11','2025-12','2026-01','2026-02','2026-03','2026-04','2026-05','2026-06'];
   RECIDIVA_CODES.forEach(function(c) {
     RECIDIVA_MONTHS.forEach(function(m) {
       if (!STATUS_SCRIPT[c + '|' + m]) setS(c, m, 'COM ALERTA');
@@ -374,6 +409,9 @@
   setS('UMBRA_02',    '2026-07', 'LIBERAR');
   setS('COMETA_FAM',  '2026-07', 'LIBERAR');
 
+  };
+  _roteiroDeStatusDemo();
+
   function getStatus(code, month) {
     var key = code + '|' + month;
     if (STATUS_SCRIPT[key]) return STATUS_SCRIPT[key];
@@ -381,7 +419,14 @@
     // So aplica depois da materializacao completa — durante a geracao, plArr ainda
     // esta sendo preenchido (length < MONTHS.length), entao nao interfere na demo.
     var _pd = _portfolioData[code];
-    if (_pd && _pd.plArr.length === MONTHS.length) {
+    /* Carteira que não está no conjunto autorizado não tem status calculável.
+       Sem esta linha, o fallback pseudoaleatório abaixo devolveria o status de
+       QUALQUER código pelo simples hash de `code|month`, e um CLIENT poderia
+       deduzir o semáforo das carteiras que a API não lhe mandou. Status de
+       carteira ausente não é "LIBERAR", é "não sei", e a tela já sabe mostrar
+       ausência de dado. */
+    if (!_pd) return 'LIBERAR';
+    if (_pd.plArr.length === MONTHS.length) {
       var _mi = MONTHS.indexOf(month);
       if (_mi < 0 || !(_pd.plArr[_mi] > 0)) return 'LIBERAR';
     }
@@ -417,7 +462,8 @@
 
   CATALOG.forEach(function(p) { _codeMap[p.code] = p; });
 
-  (function materialize() {
+  var _materializarDemo = function () {
+    if (!__GERAR_DEMO__) return;
     var rng0 = mulberry32(20260411);
 
     // 1. gerar PL inicial log-uniforme e fee para cada carteira
@@ -550,7 +596,8 @@
         pd.otherArr[mi]           = (pd.otherArr[mi] || 0) * scale;
       }
     });
-  })();
+  };
+  _materializarDemo();
 
   /* =============================================================
      4b. SNAPSHOT DEMO + ESTADO DE IMPORTAÇÃO
@@ -558,7 +605,14 @@
      Usado por restoreDemo() para recompor tudo in-place.
   ============================================================= */
 
-  var _demoSnapshot = (function () {
+  var _demoSnapshot = null;
+
+  /* Congela o conjunto corrente para o botão "voltar ao demo" da importação.
+     Chamado duas vezes na vida do módulo, e as duas importam: depois de gerar
+     (quando gera) e depois de hidratar da API. É essa segunda que faz o botão
+     voltar ao conjunto AUTORIZADO da sessão, e não a um conjunto local que o
+     bundle não tem mais. */
+  function capturarSnapshot() {
     var snap = { catalog: [], portfolioData: {}, managers: [], statusScript: {} };
     CATALOG.forEach(function (p) {
       snap.catalog.push({ code: p.code, name: p.name, risk: p.risk, inception: p.inception });
@@ -585,8 +639,10 @@
       snap.managers.push({ id: m.id, name: m.name, codes: m.codes.slice(), roaTarget: m.roaTarget });
     });
     Object.keys(STATUS_SCRIPT).forEach(function (k) { snap.statusScript[k] = STATUS_SCRIPT[k]; });
+    _demoSnapshot = snap;
     return snap;
-  })();
+  }
+  capturarSnapshot();
 
   var _importCompositions = {};   // chave "code|month" -> array de linhas de composição
   var _dataMode = 'demo';
@@ -1836,6 +1892,10 @@
   }
 
   function restoreDemo() {
+    // No bundle publicado o conjunto não é local, é o que a API autorizou. Sem
+    // uma hidratação anterior não existe "demo" para onde voltar, e devolver
+    // tela vazia fingindo sucesso seria pior que dizer que não dá.
+    if (!_demoSnapshot) return { ok: false, reason: 'Sem conjunto autorizado para restaurar.' };
     CATALOG.length = 0;
     _demoSnapshot.catalog.forEach(function (e) {
       CATALOG.push({ code: e.code, name: e.name, risk: e.risk, inception: e.inception });
@@ -1883,6 +1943,149 @@
   }
 
   function getDataMode() { return _dataMode; }
+
+  /* =============================================================
+     8d. HIDRATAÇÃO A PARTIR DA API
+
+     É o ÚNICO caminho pelo qual o demo recebe carteira. O bundle sai sem
+     `_portfolioData` (ver __GERAR_DEMO__ na seção 0), e o que preenche aqui
+     já passou por autorização no Worker: só as carteiras que o papel do
+     usuário alcança, e só os campos que a projeção dele permite.
+
+     A aplicação é IN-PLACE, no mesmo contrato de importPortfolioData: as
+     `var` CATALOG, MANAGERS, _portfolioData, STATUS_SCRIPT, _codeMap nunca
+     são reatribuídas, só esvaziadas e repreenchidas. Reatribuir quebraria
+     todo módulo que já guardou a referência.
+
+     Duas defesas que não são decoração:
+       - o catálogo e o `_portfolioData` são CRUZADOS. Carteira que vier no
+         segundo sem estar no primeiro é descartada. Uma resposta que tente
+         esconder uma carteira só do catálogo não cria uma carteira fantasma.
+       - arrays de mês ausentes viram ZERO, nunca `undefined`. Todo o resto
+         do app lê `pd.plArr[mi]` direto, e um `undefined` vazando por ali
+         não vira tela vazia, vira NaN na conta que o produto mostra.
+  ============================================================= */
+
+  var CAMPOS_ARRAY_PD = [
+    'plArr', 'nnmArr', 'retArr', 'feeArr', 'reportedPlPrevArr', 'perfFeeArr',
+    'brokerageArr', 'custodyArr', 'fundFeeArr', 'fxSpreadArr', 'taxArr', 'otherArr'
+  ];
+
+  function arraysZerados() {
+    var a = new Array(MONTHS.length);
+    for (var i = 0; i < a.length; i++) a[i] = 0;
+    return a;
+  }
+
+  function normalizarPd(bruto) {
+    var pd = {
+      fee: (bruto && typeof bruto.fee === 'number' && isFinite(bruto.fee)) ? bruto.fee : 0,
+      plArr: arraysZerados(), nnmArr: arraysZerados(), retArr: arraysZerados(),
+      feeArr: arraysZerados(), reportedPlPrevArr: arraysZerados(),
+      perfFeeArr: arraysZerados(), brokerageArr: arraysZerados(),
+      custodyArr: arraysZerados(), fundFeeArr: arraysZerados(),
+      fxSpreadArr: arraysZerados(), taxArr: arraysZerados(), otherArr: arraysZerados()
+    };
+    if (!bruto || typeof bruto !== 'object') return pd;
+    CAMPOS_ARRAY_PD.forEach(function (k) {
+      var src = bruto[k];
+      if (!Array.isArray(src)) return;
+      var dst = pd[k];
+      for (var i = 0; i < dst.length; i++) {
+        var v = src[i];
+        dst[i] = (typeof v === 'number' && isFinite(v)) ? v : 0;
+      }
+    });
+    return pd;
+  }
+
+  function hidratarDoServidor(payload) {
+    if (!payload || typeof payload !== 'object') {
+      return { ok: false, reason: 'Resposta sem corpo.' };
+    }
+    if (!Array.isArray(payload.catalogo) || !payload.portfolioData || typeof payload.portfolioData !== 'object') {
+      return { ok: false, reason: 'Resposta sem catálogo ou sem carteiras.' };
+    }
+    // A janela de meses é contrato: os arrays chegam alinhados por índice com
+    // MONTHS. Se o servidor mandar outra janela, os índices passariam a
+    // apontar para meses errados e a tela mostraria número certo no mês
+    // errado, que é o pior modo de falha possível neste produto.
+    if (Array.isArray(payload.meses) && payload.meses.join('|') !== MONTHS.join('|')) {
+      return { ok: false, reason: 'Janela de meses da resposta não bate com a do app.' };
+    }
+
+    var novoCatalogo = [];
+    var novaMapa = {};
+    payload.catalogo.forEach(function (e) {
+      if (!e || typeof e.code !== 'string' || !e.code) return;
+      var entrada = { code: e.code, name: e.name, risk: e.risk, inception: e.inception };
+      if (typeof e.mgr === 'string' && e.mgr) entrada.mgr = e.mgr;
+      novoCatalogo.push(entrada);
+      novaMapa[e.code] = entrada;
+    });
+
+    var novoPd = {};
+    Object.keys(payload.portfolioData).forEach(function (code) {
+      if (!novaMapa[code]) return;
+      novoPd[code] = normalizarPd(payload.portfolioData[code]);
+    });
+
+    var novoStatus = {};
+    var ss = payload.statusScript && typeof payload.statusScript === 'object' ? payload.statusScript : {};
+    Object.keys(ss).forEach(function (k) {
+      if (novaMapa[k.split('|')[0]]) novoStatus[k] = ss[k];
+    });
+
+    var novaComposicao = {};
+    var comps = payload.compositions && typeof payload.compositions === 'object' ? payload.compositions : {};
+    Object.keys(comps).forEach(function (k) {
+      if (novaMapa[k.split('|')[0]]) novaComposicao[k] = comps[k];
+    });
+
+    /* ---- aplicação IN-PLACE ---- */
+    CATALOG.length = 0;
+    novoCatalogo.forEach(function (e) { CATALOG.push(e); });
+
+    Object.keys(_codeMap).forEach(function (k) { delete _codeMap[k]; });
+    novoCatalogo.forEach(function (e) { _codeMap[e.code] = e; });
+
+    Object.keys(STATUS_SCRIPT).forEach(function (k) { delete STATUS_SCRIPT[k]; });
+    Object.keys(novoStatus).forEach(function (k) { STATUS_SCRIPT[k] = novoStatus[k]; });
+
+    Object.keys(_portfolioData).forEach(function (k) { delete _portfolioData[k]; });
+    Object.keys(novoPd).forEach(function (k) { _portfolioData[k] = novoPd[k]; });
+
+    Object.keys(_importCompositions).forEach(function (k) { delete _importCompositions[k]; });
+    Object.keys(novaComposicao).forEach(function (k) { _importCompositions[k] = novaComposicao[k]; });
+
+    Object.keys(_compCache).forEach(function (k) { delete _compCache[k]; });
+
+    MANAGERS.length = 0;
+    var gestores = Array.isArray(payload.gestores) ? payload.gestores : [];
+    gestores.forEach(function (m) {
+      if (!m || !m.id) return;
+      var codes = (m.codes || []).filter(function (c) { return !!novaMapa[c]; });
+      if (!codes.length) return;
+      MANAGERS.push({ id: m.id, name: m.name, codes: codes, roaTarget: m.roaTarget || 0 });
+    });
+    /* getManagerForCode() devolve MANAGERS[0] quando não acha, então lista
+       vazia vira `undefined` em row.manager e qualquer tela que leia
+       row.manager.name quebra. O cliente não recebe o eixo de gestor (é
+       institucional), então ele ganha um gestor neutro com a própria
+       carteira, que mantém a forma sem revelar nada. */
+    if (!MANAGERS.length && novoCatalogo.length) {
+      MANAGERS.push({
+        id: '__autorizadas__',
+        name: 'Carteiras',
+        codes: novoCatalogo.map(function (p) { return p.code; }),
+        roaTarget: 0
+      });
+    }
+
+    _dataMode = payload.modo === 'real' ? 'real' : 'demo';
+    capturarSnapshot();
+    return { ok: true, nCarteiras: novoCatalogo.length, modo: _dataMode };
+  }
 
   // Selo do mes (N0.4): le exclusivamente de window._AtlasSelos, overlay LGPD
   // populado pela instancia do cliente (script selar-mes). Sem overlay, retorna
@@ -2305,8 +2508,13 @@
       _portfolioData: _portfolioData,
       RECIDIVA_CODES: RECIDIVA_CODES,
       getManagerForCode: getManagerForCode,
+      // O roteiro de status só existe quando o gerador roda (seção 0). O
+      // bundle publicado lê o dele da API, em STATUS_SCRIPT, já escopado.
+      STATUS_SCRIPT: STATUS_SCRIPT,
+      gerouDemo: __GERAR_DEMO__,
     },
     importPortfolioData: importPortfolioData,
+    hidratarDoServidor: hidratarDoServidor,
     restoreDemo: restoreDemo,
     getDataMode: getDataMode,
     getSeloInfo: getSeloInfo,

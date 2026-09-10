@@ -257,7 +257,9 @@ import React from 'react';
   }
 
   function parseHash() {
-    const hash = window.location.hash.replace(/^#/, '') || '/dashboard';
+    // A raiz fica explícita para App decidir a entrada pelo papel. Fixar
+    // dashboard aqui fazia cliente autenticado começar numa área proibida.
+    const hash = window.location.hash.replace(/^#/, '') || '/';
     const [pathPart, searchPart] = hash.split('?');
     const segments = pathPart.split('/').filter(Boolean);
     const params = {};

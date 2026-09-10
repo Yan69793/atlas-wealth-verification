@@ -5,13 +5,24 @@
    So roda se o overlay real ainda nao populou window.HISTORICO_DATA, e reusa
    window.AtlasData.getRow() para ficar coerente com Dashboard/Achados/Radar
    (mesmo status, mesmo PL, mesma carteira).
+
+   PUBLICA PREGUICOSAMENTE, e isso nao e estilo. Este arquivo e importado no
+   bundle antes de o app hidratar AtlasData da API, e o conjunto de carteiras
+   que existe nesse instante e vazio por desenho (o dado nao mora mais no
+   bundle, ver a secao 0 de platform-data.js). Se ele montasse a serie agora,
+   gravaria uma aba Tendencia VAZIA e permanente. O getter adia a conta para a
+   primeira leitura, que acontece quando a pagina ja tem o conjunto autorizado.
 */
 (function () {
   'use strict';
   if (window.HISTORICO_DATA) return;
 
+  var _cache = null;
+
+  function construir() {
   var D = window.AtlasData;
-  if (!D || !D.MONTHS || !D.CATALOG || !D.getRow) return;
+  if (!D || !D.MONTHS || !D.CATALOG || !D.getRow) return null;
+  if (!D.CATALOG.length) return null;
 
   // Categoria sintetica por status: aproxima a taxonomia do audit-engine
   // (pl-conciliacao, cotas-sem-operacao, ...) sem fingir precisao que a demo
@@ -85,7 +96,7 @@
   });
   recorrentes.sort(function (a, b) { return b.mesesConsecutivos - a.mesesConsecutivos; });
 
-  window.HISTORICO_DATA = {
+  return {
     meses: MESES,
     mesesLabel: LABELS,
     agregados: agregados,
@@ -93,4 +104,20 @@
     recorrentes: recorrentes,
     geradoEm: null, // sintetico: sem timestamp de processamento real
   };
+  }
+
+  Object.defineProperty(window, 'HISTORICO_DATA', {
+    configurable: true,
+    enumerable: true,
+    // Sem dado ainda, devolve undefined em vez de gravar um resultado vazio:
+    // quem pergunta antes da hidratacao recebe "nao sei", nao "nao tem".
+    get: function () {
+      if (_cache === null) _cache = construir();
+      return _cache === undefined ? undefined : _cache;
+    },
+    // Um overlay tardio ainda pode sobrescrever, e a leitura seguinte ja ve o
+    // valor dele. Sem isso, defineProperty sem setter quebraria a atribuicao
+    // em silencio, que e o pior modo de falha para um overlay.
+    set: function (v) { _cache = v; }
+  });
 })();

@@ -118,13 +118,14 @@ describe('painel: porta fechada', () => {
 
 describe('painel: os dois perímetros não se misturam', () => {
   test('cookie de sessão do DEMO não abre o painel', async () => {
-    // Sessão de visitante legítima do demo, assinada com DEMO_SENHA.
+    // Sessão de visitante legítima do demo, assinada com DEMO_SENHA, no formato
+    // corrente: <usuario_id>:<hmac de usuario_id + '\n' + contexto>.
     const chave = await crypto.subtle.importKey(
       'raw', new TextEncoder().encode(DEMO_SENHA), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
     );
-    const sig = await crypto.subtle.sign('HMAC', chave, new TextEncoder().encode('a@b.com\natlas-demo-sessao-v1'));
+    const sig = await crypto.subtle.sign('HMAC', chave, new TextEncoder().encode('1\natlas-demo-sessao-v2'));
     const hex = [...new Uint8Array(sig)].map((b) => b.toString(16).padStart(2, '0')).join('');
-    const { r } = await pegar('/admin', { headers: { Cookie: `atlas_demo_sessao=a@b.com:${hex}` } });
+    const { r } = await pegar('/admin', { headers: { Cookie: `atlas_demo_sessao=1:${hex}` } });
     const corpo = await r.text();
     assert.match(corpo, /Senha do painel/, 'sessão do demo virou sessão de admin');
   });

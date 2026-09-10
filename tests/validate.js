@@ -246,7 +246,7 @@ const PAGINAS_NAVEGAVEIS = [
   'dashboard', 'ranking', 'carteira', 'achados', 'oportunidades', 'vencimentos',
   'caixa-parado', 'valor-assessor', 'visita', 'comparativo', 'receitas', 'cadastro',
   'busca', 'risco', 'radar', 'eventos', 'importar', 'usuarios', 'tendencia',
-  'dev-relatorio', 'custos',
+  'dev-relatorio', 'custos', 'cliente',
 ];
 
 for (const chave of PAGINAS_NAVEGAVEIS) {
@@ -907,12 +907,20 @@ ok('nota INFO do mês estável não alega realocação que não houve',
     /allM\.indexOf\(D\.CURRENT_MONTH\)/.test(dashMes));
 
   // Comportamento, não texto: carrega o módulo e mede.
+  //
+  // O quarto parâmetro liga o gerador sintético. O bundle publicado recebe
+  // `false` (vite.config.mjs) e sai SEM o conjunto: esse é o ponto do controle
+  // de acesso. A suíte recebe `true` de propósito, porque é ela que confere as
+  // invariantes do gerador — a mesma fonte que scripts/gerar-dataset-demo.mjs
+  // usa para produzir o que o Worker serve. Um número diferente entre os dois
+  // seria a falha mais silenciosa possível: teste verde sobre um conjunto que
+  // não é o que está no ar.
   let Dd = null, erroData = null;
   try {
     const w = { addEventListener() {}, removeEventListener() {}, dispatchEvent() {},
       localStorage: { getItem: () => null, setItem() {}, removeItem() {} }, console };
-    new Function('window', 'document', 'localStorage', dataContent)(
-      w, { addEventListener() {} }, w.localStorage);
+    new Function('window', 'document', 'localStorage', '__ATLAS_GERAR_DEMO__', dataContent)(
+      w, { addEventListener() {} }, w.localStorage, true);
     Dd = w.AtlasData;
   } catch (e) { erroData = e.message; }
 
@@ -1045,8 +1053,10 @@ const buildDeploy = fs.readFileSync(path.join(ROOT, 'scripts/build-deploy.mjs'),
 
 const landingPath = path.join(ROOT, 'demo-worker/src/landing.js');
 const gatePath = path.join(ROOT, 'demo-worker/src/index.js');
+const apiPath = path.join(ROOT, 'demo-worker/src/api.js');
 const landingJs = fs.readFileSync(landingPath, 'utf8');
 const gateJs = fs.readFileSync(gatePath, 'utf8');
+const apiJs = fs.readFileSync(apiPath, 'utf8');
 
 // Perímetro: lista pública por igualdade exata, nunca por prefixo.
 const blocoPublicos = (gateJs.match(/const PUBLICOS = new Set\(\[([\s\S]*?)\]\)/) || [])[1] || '';
@@ -1069,8 +1079,25 @@ ok('liberação pública vale só para GET',
 // A liberação pública tem de vir ANTES da checagem de sessão, senão o robô do
 // WhatsApp continua recebendo HTML no lugar da imagem — o defeito que ela veio
 // consertar.
-ok('liberação pública roda antes da checagem de sessão',
-  gateJs.indexOf('PUBLICOS.has(') < gateJs.indexOf('await estaAutenticado('));
+//
+// Desde o controle de acesso são DUAS checagens, e não uma: a do documento, que
+// lê o banco inteiro, e a do asset, que só confere a assinatura. A liberação
+// pública tem de preceder as duas, então o check cobra as duas — antes ele
+// cobrava uma só, e teria passado se a nova tivesse ficado antes da antiga.
+const iLiberacao = gateJs.indexOf('PUBLICOS.has(');
+const iGateDocumento = gateJs.indexOf('await sessaoDe(');
+const iGateAsset = gateJs.indexOf('await assinaturaValida(');
+ok('liberação pública roda antes das duas checagens de sessão',
+  iGateDocumento > 0 && iGateAsset > 0 && iLiberacao < iGateDocumento && iLiberacao < iGateAsset,
+  `libera=${iLiberacao} documento=${iGateDocumento} asset=${iGateAsset}`);
+
+// E o inverso: o documento e o dado passam pela checagem que lê o banco. Se
+// alguém trocar a chamada por um atalho que só confere assinatura, desativar
+// um usuário deixaria de valer na requisição seguinte em silêncio.
+ok('o documento e a API passam por checagem que lê o banco, não por atalho',
+  /await sessaoDe\(request, env, depsSessao\)/.test(gateJs)
+  && /rotaApi\(request, env, ctx, url, depsSessao\)/.test(gateJs)
+  && /sessaoDe\(request, env, deps\)/.test(apiJs));
 
 // CSP da tela de acesso.
 // Recorta a partir de paginaResposta: desde que o painel entrou, existem duas
@@ -1197,7 +1224,61 @@ ok('painel usa secret próprio, nunca o do demo',
   /env\.ADMIN_SENHA/.test(gateJs) && !/assinarAdmin\(env\.DEMO_SENHA\)/.test(gateJs));
 ok('painel usa string de contexto HMAC própria',
   /TOKEN_ADMIN_INFO = 'atlas-demo-admin-v1'/.test(gateJs)
-  && /TOKEN_INFO = 'atlas-demo-sessao-v1'/.test(gateJs));
+  && /TOKEN_INFO = 'atlas-demo-sessao-v2'/.test(gateJs));
+
+// O cookie de sessão do demo carrega o ID do usuário, não o papel nem a
+// organização. Se alguém acrescentar papel ao que é assinado, papel passaria a
+// valer por assinatura, e mudar atribuição só valeria no próximo login — que é
+// exatamente o que este desenho existe para evitar. O check trava o formato.
+ok('cookie de sessão carrega só o id, nunca papel nem organização',
+  /return `\$\{id\}:\$\{await hmacHex\(segredo, id \+ '\\n' \+ TOKEN_INFO\)\}`/.test(gateJs)
+  && !/assinarCookie\([^)]*role/.test(gateJs)
+  && !/assinarCookie\([^)]*organizacao/.test(gateJs));
+
+// A autoridade sobre papel é o banco, sempre. Nenhuma decisão de acesso pode
+// ser tomada com o que veio do cookie antes da leitura do D1.
+ok('a identidade é resolvida no banco a cada requisição',
+  /FROM usuarios WHERE id = \?/.test(apiJs)
+  && /FROM organizacoes_carteiras WHERE organizacao_id = \?/.test(apiJs)
+  && /FROM atribuicoes WHERE usuario_id = \?/.test(apiJs));
+
+// Recusa uniforme: recurso que não existe e recurso sem autorização devolvem o
+// mesmo corpo, senão o endpoint vira oráculo de "este código existe".
+ok('a recusa é uniforme e não distingue inexistente de não autorizado',
+  /export function respostaNegada\(\)/.test(apiJs)
+  && (apiJs.match(/respostaNegada\(\)/g) || []).length >= 6
+  && !/404/.test(apiJs));
+
+// Nenhum dado de carteira dentro do bundle do app.
+const viteJs = fs.readFileSync(path.join(ROOT, 'vite.config.mjs'), 'utf8');
+ok('o gerador do conjunto do demo está desligado no build de produção',
+  /__ATLAS_GERAR_DEMO__:\s*command === 'serve' \? 'true' : 'false'/.test(viteJs),
+  'o `define` deixou de amarrar a flag ao comando, e o dado pode voltar ao pacote');
+
+ok('o conjunto do demo vive no Worker e declara o filtro antes de sair',
+  /export const DATASET =/.test(fs.readFileSync(apiPath.replace('api.js', 'dataset.js'), 'utf8'))
+  && /O Worker filtra e projeta antes de responder/.test(fs.readFileSync(apiPath.replace('api.js', 'dataset.js'), 'utf8')));
+
+/* Prova de verdade de que o gerador saiu do pacote: se `dist-app/` existir,
+   varre o JavaScript dele atrás da semente do PRNG. A semente (20260411) só
+   existe no ramo que o `define` desliga, então achá-la publicada significa que
+   o ramo sobreviveu e as 40 carteiras estão no bundle de novo. Checar a flag na
+   configuração prova a intenção; checar o artefato prova o efeito. */
+const dirDist = path.join(ROOT, 'dist-app');
+if (fs.existsSync(dirDist)) {
+  const achados = [];
+  const varrer = (dir) => {
+    for (const entrada of fs.readdirSync(dir, { withFileTypes: true })) {
+      const p = path.join(dir, entrada.name);
+      if (entrada.isDirectory()) { varrer(p); continue; }
+      if (!/\.(js|mjs|html)$/i.test(entrada.name)) continue;
+      if (fs.readFileSync(p, 'utf8').includes('20260411')) achados.push(path.relative(ROOT, p));
+    }
+  };
+  varrer(dirDist);
+  ok('o bundle publicado não contém o gerador do conjunto sintético',
+    achados.length === 0, achados.join(', '));
+}
 ok('cookie do painel é preso a /admin, Strict e curto',
   /Path=\$\{ADMIN_PATH\}/.test(gateJs) && /SameSite=Strict/.test(gateJs) && /Max-Age=43200/.test(gateJs));
 
@@ -1609,8 +1690,14 @@ ok('faseDisponivel consulta o modo de dados',
   /function faseDisponivel[\s\S]{0,600}getDataMode/.test(appContent));
 ok('faseDisponivel recusa payload sintético fora do modo demo',
   /function faseDisponivel[\s\S]{0,600}mode === 'demo'[\s\S]{0,120}sintetico/.test(appContent));
+/* O menu passou a ser recortado por papel antes de ser filtrado por fase. O
+   que precisa continuar verdadeiro é (a) o item que chega à tela passa por
+   faseDisponivel, e (b) o recorte de papel sai de NAV_PAINEL em vez de ser uma
+   segunda lista escrita à mão, que mentiria no dia em que um item mudasse. */
 ok('menu do painel filtra por faseDisponivel',
-  /NAV_PAINEL\s*\.?\s*[\s\S]{0,80}filter\([\s\S]{0,60}faseDisponivel/.test(appContent));
+  /itens\.filter\(item => faseDisponivel\(item\.id\)\)/.test(appContent));
+ok('o recorte de papel sai do NAV_PAINEL, não de uma lista paralela',
+  /const itens = NAV_PAINEL\.filter\(/.test(appContent));
 for (const rota of ['oportunidades', 'vencimentos', 'caixa-parado']) {
   ok(`rota ${rota} não pode ser alcançada por link direto sem dado confiável`,
     new RegExp(`faseDisponivel\\('${rota}'\\)`).test(appContent));

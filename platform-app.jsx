@@ -139,6 +139,32 @@ import ReactDOM from 'react-dom/client';
    * usuário via.
    */
 
+  const DEMO_BANNER_TEXT = {
+    demo: 'Dados de carteiras, gestores, valores e resultados são sintéticos.',
+    imported: 'Exibindo o arquivo que você importou, processado no seu próprio navegador.',
+  };
+
+  function DemoBanner() {
+    const D = window.AtlasData;
+    const mode = (D && D.getDataMode && D.getDataMode()) || 'demo';
+    const texto = DEMO_BANNER_TEXT[mode];
+
+    useEffect(() => {
+      const root = document.documentElement;
+      root.classList.toggle('atlas-demo', Boolean(texto));
+      return () => root.classList.remove('atlas-demo');
+    }, [texto]);
+
+    if (!texto) return null;
+
+    return (
+      <div className="demo-banner" role="status">
+        <strong>Ambiente de demonstração</strong>
+        <span className="demo-banner-text">{texto}</span>
+      </div>
+    );
+  }
+
   /* ============================================================
      MONOGRAMA / LOGO
   ============================================================ */
@@ -188,6 +214,72 @@ import ReactDOM from 'react-dom/client';
     { id:'usuarios',    label:'Usuários',              icon:'users',     path:'#/usuarios'  },
   ];
 
+  /* Tela própria do cliente. Uma só, e não a institucional com menu cortado:
+     o cliente não quer o painel do escritório sem algumas abas, quer o extrato
+     dele. Substitui as 16 telas por uma. */
+  const NAV_CLIENTE = [
+    { id:'cliente', label:'Minha carteira', icon:'portfolios', path:'#/cliente' },
+  ];
+
+  /* ------------------------------------------------------------
+     MENU E ROTA POR PAPEL
+
+     Isto é conveniência de interface, e o comentário existe para ninguém
+     confundir isso com segurança. Quem isola é a API: o Worker filtra por
+     organização e por atribuição antes de responder, então apagar este mapa
+     inteiro não mostra uma linha a mais de dado alheio. O que ele faz é não
+     oferecer porta que não abre, e a guarda de rota abaixo existe para link
+     antigo ou favorito não cair no dashboard em silêncio, o que faria a pessoa
+     achar que o produto está vazio em vez de entender que a área não é dela.
+
+     Gestor não recebe `receitas` nem `custos`: são as duas telas que somam a
+     casa inteira, e é a leitura de "receita e custo institucionais" fora do
+     alcance dele. O custo e a receita DAS CARTEIRAS DELE continuam nas telas de
+     carteira, porque é para isso que ele existe. Cliente não recebe nenhuma
+     tela institucional.
+  ------------------------------------------------------------ */
+  const ROTAS_DETALHE = ['carteira', 'visita', 'dev-relatorio'];
+  const ROTULO_PAPEL = { owner: 'Titular', manager: 'Assessor', client: 'Cliente' };
+
+  const ROTAS_POR_PAPEL = {
+    owner: {
+      painel: NAV_PAINEL.map(i => i.id),
+      gestao: NAV_GESTAO.map(i => i.id),
+      detalhe: ROTAS_DETALHE,
+      inicial: 'dashboard',
+    },
+    manager: {
+      painel: NAV_PAINEL.filter(i => i.id !== 'receitas' && i.id !== 'custos').map(i => i.id),
+      gestao: [],
+      detalhe: ROTAS_DETALHE,
+      inicial: 'dashboard',
+    },
+    client: {
+      painel: NAV_CLIENTE.map(i => i.id),
+      gestao: [],
+      detalhe: [],
+      inicial: 'cliente',
+    },
+  };
+
+  function papelDaSessao() {
+    const s = window.__ATLAS_SESSAO__;
+    const r = s && s.role;
+    return ROTAS_POR_PAPEL[r] ? r : null;
+  }
+
+  function rotaPermitida(papel, page) {
+    const mapa = ROTAS_POR_PAPEL[papel];
+    if (!mapa) return false;
+    return mapa.painel.indexOf(page) >= 0
+      || mapa.gestao.indexOf(page) >= 0
+      || mapa.detalhe.indexOf(page) >= 0;
+  }
+
+  function rotaInicial(papel) {
+    return ROTAS_POR_PAPEL[papel] ? ROTAS_POR_PAPEL[papel].inicial : 'dashboard';
+  }
+
   /* ------------------------------------------------------------
      FASES 2 A 4: disponibilidade da tela depende da confianca no dado
 
@@ -221,6 +313,15 @@ import ReactDOM from 'react-dom/client';
 
   function Sidebar({ currentPage, onNavigate, open, onClose }) {
     const { Icon } = window.AtlasIcons;
+    const papel = papelDaSessao();
+    const rotas = ROTAS_POR_PAPEL[papel] || { painel: [], gestao: [] };
+    const nomeSessao = (window.__ATLAS_SESSAO__ && window.__ATLAS_SESSAO__.nome) || '';
+
+    // O menu do papel é recortado do menu cheio por id, e não escrito de novo.
+    // Escrito de novo ele mentiria no dia em que um item mudar de rótulo aqui
+    // e não ali. Ordem e ícone continuam vindo de NAV_PAINEL.
+    const itens = NAV_PAINEL.filter(i => rotas.painel.indexOf(i.id) >= 0);
+    const gestao = NAV_GESTAO.filter(i => rotas.gestao.indexOf(i.id) >= 0);
 
     function NavItem({ item }) {
       const active = currentPage === item.id;
@@ -251,21 +352,26 @@ import ReactDOM from 'react-dom/client';
 
           <div className="sidebar-section">
             <div className="sidebar-section-label">Painel</div>
-            {NAV_PAINEL.filter(item => faseDisponivel(item.id))
+            {itens.filter(item => faseDisponivel(item.id))
               .map(item => <NavItem key={item.id} item={item} />)}
           </div>
 
-          <div className="sidebar-section">
-            <div className="sidebar-section-label">Gestão</div>
-            {NAV_GESTAO.map(item => <NavItem key={item.id} item={item} />)}
-          </div>
+          {gestao.length > 0 && (
+            <div className="sidebar-section">
+              <div className="sidebar-section-label">Gestão</div>
+              {gestao.map(item => <NavItem key={item.id} item={item} />)}
+            </div>
+          )}
 
           {/* Sem botão de sair: não há sessão neste app para encerrar. Atrás de
               um perímetro (Cloudflare Access), quem encerra a sessão é o
               perímetro, em /cdn-cgi/access/logout, e não o app. */}
           <div className="sidebar-footer">
             <div className="sidebar-user">
-              <div className="sidebar-user-name">Administrador</div>
+              <div className="sidebar-user-name">{nomeSessao || 'Acesso autorizado'}</div>
+              {window.__ATLAS_SESSAO__ && window.__ATLAS_SESSAO__.role && (
+                <div>{ROTULO_PAPEL[papel]}</div>
+              )}
               {/* Sem fallback de nome de casa: instancia sem platform-brand.js
                   simplesmente nao assina o rodape. */}
               {window.AtlasBrand && window.AtlasBrand.tenant
@@ -435,8 +541,10 @@ import ReactDOM from 'react-dom/client';
   ============================================================ */
 
   function pageFromPath(path) {
-    // '/login' não é mais uma página. Cai no default junto com qualquer rota
-    // desconhecida; o redirect no AppRoot leva ao dashboard em seguida.
+    // A raiz é resolvida pelo papel depois da sessão carregar. Mantê-la como
+    // dashboard aqui faria cliente autenticado cair numa tela que ele não
+    // alcança antes de ser redirecionado.
+    if (path === '/cliente') return 'cliente';
     if (path === '/dashboard') return 'dashboard';
     if (path === '/ranking') return 'ranking';
     if (path.startsWith('/carteira/')) return 'carteira';
@@ -462,6 +570,7 @@ import ReactDOM from 'react-dom/client';
   }
 
   const PAGE_TITLES = {
+    cliente:    'Minha carteira',
     dashboard:  'Dashboard',
     ranking:    'Ranking de Criticidade',
     carteira:   'Carteira',
@@ -498,6 +607,7 @@ import ReactDOM from 'react-dom/client';
   ============================================================ */
 
   const PAGE_LOADERS = {
+    cliente:          () => import('./platform-cliente.jsx'),
     dashboard:        () => import('./platform-dashboard.jsx'),
     ranking:          () => import('./platform-ranking.jsx'),
     carteira:         () => import('./platform-carteira.jsx'),
@@ -522,6 +632,7 @@ import ReactDOM from 'react-dom/client';
   };
 
   const PAGE_COMPONENT_NAME = {
+    cliente: 'Cliente',
     dashboard: 'Dashboard', ranking: 'Ranking', carteira: 'Carteira', achados: 'Achados',
     oportunidades: 'Oportunidades', vencimentos: 'Vencimentos', 'caixa-parado': 'CaixaParado',
     'valor-assessor': 'ValorAssessor', visita: 'Visita', comparativo: 'Comparativo',
@@ -623,48 +734,6 @@ import ReactDOM from 'react-dom/client';
     );
   }
 
-  /* ============================================================
-     FAIXA DE DEMONSTRAÇÃO
-  ============================================================ */
-
-  /* Vive no shell, não nas páginas. Rota nova herda o aviso sem ninguém
-   * precisar lembrar de nada, que é o modo de falha de aviso posto página a
-   * página.
-   *
-   * Condicionada ao modo de dados por um motivo concreto: a LoginScreen antiga
-   * exibia "dados sintéticos" fixo e, numa instância com dado real de cliente,
-   * a frase era falsa. Ver o comentário em LOGIN, acima. Aqui, instância com
-   * dado real não mostra faixa nenhuma.
-   *
-   * A classe no <html> é o que dá altura à faixa via CSS. Sem ela o layout
-   * inteiro segue com --demo-banner-h em zero e nada se desloca.
-   */
-  const DEMO_BANNER_TEXT = {
-    demo: 'Dados de carteiras, gestores, valores e resultados são sintéticos.',
-    imported: 'Exibindo o arquivo que você importou, processado no seu próprio navegador.',
-  };
-
-  function DemoBanner() {
-    const D = window.AtlasData;
-    const mode = (D && D.getDataMode && D.getDataMode()) || 'demo';
-    const texto = DEMO_BANNER_TEXT[mode];
-
-    useEffect(() => {
-      const root = document.documentElement;
-      root.classList.toggle('atlas-demo', Boolean(texto));
-      return () => root.classList.remove('atlas-demo');
-    }, [texto]);
-
-    if (!texto) return null;
-
-    return (
-      <div className="demo-banner" role="status">
-        <strong>Ambiente de demonstração</strong>
-        <span className="demo-banner-text">{texto}</span>
-      </div>
-    );
-  }
-
   function AppShell({ children, page, onNavigate }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const title = PAGE_TITLES[page] || 'ATLAS';
@@ -715,10 +784,34 @@ import ReactDOM from 'react-dom/client';
      quando seus arquivos são carregados. Se não existir, usa placeholder.
   ============================================================ */
 
+  /* Rota que o papel não alcança, alcançada por link direto ou favorito.
+     Existe para não cair no dashboard em silêncio, o que faria a pessoa achar
+     que a área existe e está vazia. Não é a barreira: a API não responde dado
+     fora do escopo nem para quem chamar o endpoint na mão. */
+  function SemAcesso({ title }) {
+    return (
+      <div>
+        <div className="page-header">
+          <div className="page-eyebrow">Acesso não autorizado</div>
+          <h1 className="page-title">{title || 'Área restrita'}</h1>
+        </div>
+        <div className="page-placeholder">
+          Esta área não faz parte do seu acesso. Se você precisa dela, fale com
+          quem administra o seu acesso no escritório.
+        </div>
+      </div>
+    );
+  }
+
   function renderPage(page, location) {
     const pages = window.AtlasPages || {};
 
     switch (page) {
+      case 'cliente':
+        return pages.Cliente
+          ? React.createElement(pages.Cliente)
+          : <PlaceholderPage title="Minha carteira" etapa={8} />;
+
       case 'dashboard':
         return pages.Dashboard
           ? React.createElement(pages.Dashboard)
@@ -887,14 +980,22 @@ import ReactDOM from 'react-dom/client';
       storage.setSelectedMonth(m);
     }, []);
 
+    const papel = papelDaSessao();
+
     // /login era a rota do portão que este app não tem mais. Quem chegar nela
-    // por link antigo ou favorito vai para o dashboard.
+    // por link antigo ou favorito vai para a rota inicial do próprio papel, e
+    // não para o dashboard: para o cliente o dashboard não existe.
     useEffect(() => {
-      if (location.path === '/login') navigate('/dashboard');
-    }, [location.path]);
+      if (location.path === '/' || location.path === '/login') navigate('/' + rotaInicial(papel));
+    }, [location.path, papel]);
 
     const page = pageFromPath(location.path);
-    const { status: pageLoadStatus, retry: retryPageLoad } = usePageLoader(page);
+
+    // A guarda decide antes de baixar o chunk: pedir o módulo de uma tela que
+    // o papel não alcança já seria entregar o código dela. `null` faz o loader
+    // não achar nada e não buscar nada.
+    const permitida = rotaPermitida(papel, page);
+    const { status: pageLoadStatus, retry: retryPageLoad } = usePageLoader(permitida ? page : null);
 
     return (
       <AuthContext.Provider value={{ authed: true, logout: null }}>
@@ -902,17 +1003,162 @@ import ReactDOM from 'react-dom/client';
           <ToastContext.Provider value={{ toasts, addToast }}>
             <AppShell page={page} onNavigate={path => { window.location.href = path; }}>
               <ErrorBoundary key={page + ':' + dataVersion}>
-                {pageLoadStatus === 'loading'
-                  ? <PageLoading title={PAGE_TITLES[page]} />
-                  : (pageLoadStatus === 'error' || pageLoadStatus === 'error-retried')
-                    ? <PageLoadError retry={retryPageLoad} tentouDeNovo={pageLoadStatus === 'error-retried'} />
-                    : renderPage(page, location)}
+                {!permitida
+                  ? <SemAcesso title={PAGE_TITLES[page]} />
+                  : pageLoadStatus === 'loading'
+                    ? <PageLoading title={PAGE_TITLES[page]} />
+                    : (pageLoadStatus === 'error' || pageLoadStatus === 'error-retried')
+                      ? <PageLoadError retry={retryPageLoad} tentouDeNovo={pageLoadStatus === 'error-retried'} />
+                      : renderPage(page, location)}
               </ErrorBoundary>
             </AppShell>
           </ToastContext.Provider>
         </MonthContext.Provider>
       </AuthContext.Provider>
     );
+  }
+
+  /* ============================================================
+     BOOT: SESSÃO E CONJUNTO ANTES DA PRIMEIRA RENDERIZAÇÃO
+
+     A ordem aqui não é preferência de estilo. `App()` lê o conjunto na
+     inicialização do estado (o mês de aterrissagem e a faixa de meses saem de
+     `AtlasData`), então hidratar depois do primeiro render abriria o app num
+     vazio que ele não sabe recarregar sozinho. Por isso a hidratação acontece
+     ANTES do React montar o app, e o que monta primeiro é esta tela de boot.
+
+     O que o boot NUNCA faz é cair para um conjunto local para "não deixar a
+     tela vazia". No bundle publicado esse conjunto não existe, de propósito.
+     Se a API não responde, a tela diz que não respondeu. Tela vazia é o
+     resultado certo, dado a mais seria o errado.
+  ============================================================ */
+
+  var SITUACAO = {
+    CARREGANDO: 'carregando',
+    PRONTO: 'pronto',
+    SEM_SESSAO: 'sem-sessao',
+    FALHA: 'falha'
+  };
+
+  var ESTILO_BOOT = {
+    minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+    background: '#0A1928', color: '#E3DDD5', fontFamily: 'JetBrains Mono, monospace', padding: '24px'
+  };
+  var ESTILO_BOOT_CAIXA = { maxWidth: 480, textAlign: 'center' };
+
+  function pedirJson(url) {
+    return fetch(url, { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+      .catch(function () { return null; })
+      .then(function (r) {
+        // Rede fora ou servidor que não atende: não é API. Não é erro de
+        // sessão tampouco, e a diferença decide a tela que o usuário vê.
+        if (!r) return { api: false };
+        if (r.status === 401 || r.status === 403) return { api: true, negado: true };
+        if (!r.ok) return { api: true, erro: 'HTTP ' + r.status };
+        // JSON só se o servidor disser que é JSON. Sem esta checagem, o
+        // index.html de uma rota desconhecida (Vite em dev, SPA da instância)
+        // chegaria aqui como 200 e a gente trataria HTML como resposta de API.
+        var tipo = r.headers.get('content-type') || '';
+        if (tipo.indexOf('application/json') < 0) return { api: false };
+        return r.json().then(
+          function (corpo) { return { api: true, corpo: corpo }; },
+          function () { return { api: true, erro: 'Resposta ilegível.' }; }
+        );
+      });
+  }
+
+  function carregarDaApi() {
+    return pedirJson('/api/sessao').then(function (s) {
+      if (!s.api) return { situacao: SITUACAO.FALHA, detalhe: 'O servidor não respondeu.' };
+      if (s.negado) return { situacao: SITUACAO.SEM_SESSAO };
+      if (s.erro || !s.corpo || !['owner', 'manager', 'client'].includes(s.corpo.role)) {
+        return { situacao: SITUACAO.FALHA, detalhe: s.erro || 'Sessão sem papel definido.' };
+      }
+      return pedirJson('/api/dados').then(function (d) {
+        if (!d.api) return { situacao: SITUACAO.FALHA, detalhe: 'O conjunto não chegou.' };
+        if (d.negado) return { situacao: SITUACAO.SEM_SESSAO };
+        if (d.erro || !d.corpo) return { situacao: SITUACAO.FALHA, detalhe: d.erro || 'Conjunto vazio.' };
+        var D = window.AtlasData;
+        if (!D || typeof D.hidratarDoServidor !== 'function') {
+          return { situacao: SITUACAO.FALHA, detalhe: 'Este pacote não sabe aplicar o conjunto.' };
+        }
+        var r = D.hidratarDoServidor(d.corpo);
+        if (!r || !r.ok) return { situacao: SITUACAO.FALHA, detalhe: (r && r.reason) || 'Conjunto recusado.' };
+        // Só agora existe identidade para o front ler. Antes disso a sessão
+        // não é declarada a ninguém, e o menu não tem como se abrir errado.
+        window.__ATLAS_SESSAO__ = s.corpo;
+        return { situacao: SITUACAO.PRONTO };
+      });
+    });
+  }
+
+  function TelaBoot({ eyebrow, titulo, texto, acao, aoClicar }) {
+    return (
+      <div style={ESTILO_BOOT}>
+        <div style={ESTILO_BOOT_CAIXA}>
+          <div style={{ fontSize: '1.2rem', fontWeight: 500, marginBottom: 12, color: '#C4A228' }}>
+            {eyebrow}
+          </div>
+          <div style={{ fontSize: '0.929rem', marginBottom: 16 }}>{titulo}</div>
+          {texto && (
+            <div style={{ fontSize: '0.857rem', color: 'rgba(255,255,255,0.6)', marginBottom: 16 }}>
+              {texto}
+            </div>
+          )}
+          {acao && (
+            <button className="btn btn-primary" onClick={aoClicar}>{acao}</button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  function Boot() {
+    const [estado, setEstado] = useState({ situacao: SITUACAO.CARREGANDO });
+
+    useEffect(() => {
+      let vivo = true;
+      carregarDaApi().then(function (r) {
+        if (!vivo) return;
+        setEstado(r);
+      });
+      return function () { vivo = false; };
+    }, []);
+
+    // Aqui e não só no App: sem os namespaces o boot não consegue nem aplicar
+    // o conjunto, e a falha apareceria como "Carregando" eterno.
+    const faltando = checkDeps();
+    if (faltando.length > 0) return <ErrorScreen missing={faltando} />;
+
+    if (estado.situacao === SITUACAO.CARREGANDO) {
+      return <TelaBoot eyebrow="ATLAS" titulo="Carregando as suas carteiras…" />;
+    }
+
+    if (estado.situacao === SITUACAO.SEM_SESSAO) {
+      return (
+        <TelaBoot
+          eyebrow="Sessão encerrada"
+          titulo="O seu acesso não está mais ativo."
+          texto="Entre de novo para continuar. Se isso se repetir, fale com quem administra o seu acesso."
+          acao="Entrar de novo"
+          aoClicar={function () { window.location.reload(); }}
+        />
+      );
+    }
+
+    if (estado.situacao === SITUACAO.FALHA) {
+      return (
+        <TelaBoot
+          eyebrow="Conjunto indisponível"
+          titulo="Não foi possível carregar as suas carteiras."
+          texto={'O ATLAS não exibe carteira que não tenha vindo do servidor. ' + (estado.detalhe || '')}
+          acao="Tentar de novo"
+          aoClicar={function () { window.location.reload(); }}
+        />
+      );
+    }
+
+    return <App />;
   }
 
   /* ============================================================
@@ -926,7 +1172,7 @@ import ReactDOM from 'react-dom/client';
     // Loading estático removido
     rootEl.innerHTML = '';
     const root = ReactDOM.createRoot(rootEl);
-    root.render(React.createElement(App));
+    root.render(React.createElement(Boot));
   }
 
 })();
