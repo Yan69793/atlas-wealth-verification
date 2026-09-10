@@ -54,6 +54,17 @@ const TOKEN_INFO = 'atlas-demo-sessao-v2';
 const LOGIN_PATH = '/entrar';
 const CADASTRAR_PATH = '/cadastrar';
 const SAIR_PATH = '/sair';
+const DEMO_PATH = '/demo/entrar';
+
+// Contas de demonstração dos três papéis, criadas de propósito no D1 para
+// quem quiser conhecer o produto sem se cadastrar. O parâmetro `perfil` do
+// form só escolhe QUAL conta entrar; papel e escopo continuam vindo do banco,
+// como em qualquer outro login — trocar o perfil não amplia nada.
+const DEMO_EMAILS = Object.freeze({
+  escritorio: 'demo-escritorio@exemplo.com',
+  assessor: 'demo-assessor@exemplo.com',
+  cliente: 'demo-cliente@exemplo.com',
+});
 
 // Painel do dono. Secret, cookie e string de contexto do HMAC sao TODOS
 // separados dos do demo, de proposito: com o mesmo segredo ou a mesma string,
@@ -123,6 +134,7 @@ export default {
     if (request.method === 'POST') {
       if (url.pathname === CADASTRAR_PATH) return handleCadastrar(request, env, url, ctx);
       if (url.pathname === LOGIN_PATH) return handleEntrar(request, env, url, ctx);
+      if (url.pathname === DEMO_PATH) return handleDemoEntrar(request, env, url, ctx);
       if (url.pathname === SAIR_PATH) return handleSair(request, env, url);
     }
 
@@ -345,6 +357,32 @@ async function handleEntrar(request, env, url, ctx) {
   }
 
   contar(env, ctx, 'login_ok');
+  return respostaComCookie(url, await assinarCookie(linha.id, env.DEMO_SENHA));
+}
+
+/* Entrada de demonstração. Não pede senha: o perfil escolhido aponta para
+ * uma conta sintética fixa, e a sessão é assinada do mesmo jeito que um
+ * login normal. Não é desvio de segurança: quem clica em "Assessor" entra
+ * com o papel que aquela conta tem no banco, e nada além disso. */
+async function handleDemoEntrar(request, env, url, ctx) {
+  if (!env.DB) return redirectComErro(url, 'erro-interno');
+  if (bodyGrande(request)) return redirectComErro(url, 'payload-grande');
+
+  const form = await request.formData();
+  const perfil = String(form.get('perfil') || '');
+  const email = DEMO_EMAILS[perfil];
+  if (!email) return redirectComErro(url, 'erro-interno');
+
+  const linha = await env.DB.prepare(
+    'SELECT id, ativo FROM usuarios WHERE email = ?'
+  ).bind(email).first();
+
+  if (!linha || Number(linha.ativo) !== 1) {
+    contar(env, ctx, 'demo_erro', perfil || 'desconhecido');
+    return redirectComErro(url, 'erro-interno');
+  }
+
+  contar(env, ctx, 'demo_entrar', perfil);
   return respostaComCookie(url, await assinarCookie(linha.id, env.DEMO_SENHA));
 }
 
@@ -705,6 +743,7 @@ function paginaResposta(erro) {
     erro,
     cadastrarPath: CADASTRAR_PATH,
     loginPath: LOGIN_PATH,
+    demoPath: DEMO_PATH,
   });
 
   return new Response(html, {

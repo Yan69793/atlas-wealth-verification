@@ -427,6 +427,60 @@ input:focus-visible { outline: 2px solid var(--ouro-claro); outline-offset: 2px;
   color: var(--apagado);
 }
 
+/* ---------- Entradas de demonstração ----------
+   Atalho para os três papéis, sem cadastro. Botão de contorno (secundário),
+   não o dourado preenchido do submit principal. */
+.demo {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--linha);
+}
+
+.demo__titulo {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: var(--tracking);
+  text-transform: uppercase;
+  color: var(--apagado);
+  margin: 0 0 10px;
+}
+
+.demo__botoes {
+  display: grid;
+  gap: 8px;
+}
+
+.demo__botoes button[type="submit"] {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 46px;
+  margin-top: 0;
+  padding: 10px 14px;
+  background: transparent;
+  border: 1px solid var(--linha);
+  border-radius: 0;
+  color: var(--texto);
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: 400;
+  letter-spacing: normal;
+  text-transform: none;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.demo__botoes button[type="submit"]:hover {
+  border-color: var(--ouro);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.demo__rotulo { font-size: 13.5px; color: var(--texto); }
+.demo__desc { font-size: 11.5px; color: var(--apagado); text-align: right; }
+
 /* A partir do tablet o espaco volta a ser generoso. O bloco vive junto para
    nao ficar caçando override espalhado quando alguem for ajustar o ritmo. */
 @media (min-width: 768px) {
@@ -603,7 +657,7 @@ const overlayMobile = `<svg class="overlay overlay--mobile" width="941" height="
  * @param {string} opcoes.cadastrarPath      action do form de cadastro
  * @param {string} opcoes.loginPath          action do form de login
  */
-export function paginaLogin({ erro, cadastrarPath, loginPath }) {
+export function paginaLogin({ erro, cadastrarPath, loginPath, demoPath }) {
   const msgErro = ERROS[erro] || '';
 
   return `<!doctype html>
@@ -659,6 +713,33 @@ export function paginaLogin({ erro, cadastrarPath, loginPath }) {
             <label for="senha-entrar">Senha</label>
             <input type="password" id="senha-entrar" name="senha" autocomplete="current-password" required />
             <button type="submit">Entrar</button>
+          </form>
+        </div>
+      </div>
+
+      <div class="demo">
+        <p class="demo__titulo">Conheça sem criar conta</p>
+        <div class="demo__botoes">
+          <form method="POST" action="${demoPath}">
+            <input type="hidden" name="perfil" value="escritorio" />
+            <button type="submit">
+              <span class="demo__rotulo">Escritório</span>
+              <span class="demo__desc">Todas as carteiras</span>
+            </button>
+          </form>
+          <form method="POST" action="${demoPath}">
+            <input type="hidden" name="perfil" value="assessor" />
+            <button type="submit">
+              <span class="demo__rotulo">Assessor</span>
+              <span class="demo__desc">As carteiras que atende</span>
+            </button>
+          </form>
+          <form method="POST" action="${demoPath}">
+            <input type="hidden" name="perfil" value="cliente" />
+            <button type="submit">
+              <span class="demo__rotulo">Cliente</span>
+              <span class="demo__desc">Sua carteira</span>
+            </button>
           </form>
         </div>
       </div>
