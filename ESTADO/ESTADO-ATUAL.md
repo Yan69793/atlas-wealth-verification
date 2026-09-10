@@ -2214,6 +2214,8 @@ e é o que impede a próxima pessoa de repetir.
   devolve o mesmo 403). CONSOLE=PASS (zero erro) e NETWORK=PASS (zero HTTP inesperado). Evidência
   visual em `tmp-rbac-ui-output/` (client.png, manager.png, owner.png, owner-all.png), mantida no
   disco e fora do git. O cleanup do D1 remoto `atlas-demo-cadastros` apagou todas as entidades
-  sintéticas do teste (usuários, cadastros, organizações, atribuições, vínculos e auditoria) em
-  ordem FK segura, e a validação por SELECT confirmou zero resíduos. CLEANUP=PASS,
+  sintéticas do teste — prefixo `rbac-`, domínio `.invalid` e as contas demo de `@exemplo.com`
+  das rodadas de sigla/gerente — cobrindo usuários, cadastros, organizações, atribuições,
+  vínculos e auditoria, em ordem FK segura, e a validação por SELECT confirmou zero resíduos.
+  Ficaram só os 5 cadastros de linha de base e os cadastros reais que o demo segue recebendo. CLEANUP=PASS,
   RESIDUOS=ZERO, PENDENCIAS=ZERO, RBAC=FECHADO.
