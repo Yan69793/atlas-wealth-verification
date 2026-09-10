@@ -2089,14 +2089,19 @@
     payload.catalogo.forEach(function (e) {
       if (!e || typeof e.code !== 'string' || !e.code) return;
       // O servidor manda `sigla`, nunca o nome do cliente. `name` fica com o
-      // que veio em `sigla` porque é `name` que toda tela já lê. O fallback
-      // cobre payload antigo, e aí a sigla é derivada do nome que veio.
-      var entrada = comSigla({
+      // que veio em `sigla`, porque é `name` que toda tela já lê.
+      //
+      // Aqui NÃO se passa por `comSigla`, e isso é o ponto: aquele caminho
+      // guarda o nome por extenso em `nomeInterno` e deriva a sigla DELE, então
+      // receber "ABR" devolveria "A" e a tela mostraria a inicial no lugar da
+      // sigla. Payload antigo, sem `sigla`, cai no ramo de baixo e aí sim a
+      // sigla é derivada do nome que veio.
+      var entrada = {
         code: e.code,
-        name: e.sigla != null ? e.sigla : e.name,
+        name: e.sigla != null ? String(e.sigla) : siglaDoCliente(e.name, e.code),
         risk: e.risk,
         inception: e.inception,
-      });
+      };
       if (typeof e.mgr === 'string' && e.mgr) entrada.mgr = e.mgr;
       novoCatalogo.push(entrada);
       novaMapa[e.code] = entrada;
