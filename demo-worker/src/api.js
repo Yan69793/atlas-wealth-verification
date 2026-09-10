@@ -47,6 +47,25 @@ function respostaJson(dados, status = 200) {
   return new Response(JSON.stringify(dados), { status, headers: CABECALHOS_JSON });
 }
 
+/* Identificadores nunca são ignorados. Um consumidor pode chamar a carteira
+ * de `carteira`, `portfolio_id` ou `client_id`, mas todos chegam à mesma
+ * matriz. Dois nomes para o mesmo alvo são aceitos só se apontarem para o
+ * mesmo valor, pois ambiguidade em autorização é negação, não preferência. */
+function alvoDaUrl(url) {
+  const unico = (nomes) => {
+    const valores = nomes.flatMap((nome) => url.searchParams.getAll(nome))
+      .filter((valor) => valor !== '');
+    const distintos = [...new Set(valores)];
+    return distintos.length <= 1 ? distintos[0] : null;
+  };
+  const carteiraCode = unico(['carteira', 'carteira_code', 'portfolio_id', 'portfolioId']);
+  const clienteId = unico(['cliente', 'cliente_id', 'client_id', 'clientId']);
+  const organizacaoId = unico(['organizacao', 'organizacao_id', 'org', 'tenant_id', 'tenantId']);
+  if ([carteiraCode, clienteId, organizacaoId].includes(null)) return null;
+  if (carteiraCode !== undefined && clienteId !== undefined && carteiraCode !== clienteId) return null;
+  return { carteiraCode, clienteId, organizacaoId };
+}
+
 // ----- identidade -----
 
 /* Carrega do banco a identidade completa de um usuário. Três consultas:
@@ -346,10 +365,11 @@ export async function rotaApi(request, env, ctx, url, deps) {
     return respostaNegada();
   }
 
-  const alvo = {
-    carteiraCode: url.searchParams.get('carteira') || undefined,
-    clienteId: url.searchParams.get('cliente') || undefined,
-  };
+  const alvo = alvoDaUrl(url);
+  if (!alvo) {
+    auditar(env, ctx, { usuario, recurso: p, acao: metodo.toLowerCase(), resultado: 'alvo-ambiguo' });
+    return respostaNegada();
+  }
 
   if (p === '/api/sessao' && metodo === 'GET') {
     const d = autorizar(usuario, ACOES.SESSAO, alvo);
@@ -429,13 +449,13 @@ export async function rotaApi(request, env, ctx, url, deps) {
     return respostaJson({ eventos: r.results || [] });
   }
 
-  if (p === '/api/usuarios' && metodo === 'POST') return criarUsuario(request, env, ctx, url, usuario, deps);
+  if (p === '/api/usuarios' && metodo === 'POST') return criarUsuario(request, env, ctx, url, usuario, deps, alvo);
 
   const mStatus = p.match(/^\/api\/usuarios\/(\d+)\/status$/);
-  if (mStatus && metodo === 'POST') return statusUsuario(request, env, ctx, url, usuario, Number(mStatus[1]));
+  if (mStatus && metodo === 'POST') return statusUsuario(request, env, ctx, url, usuario, Number(mStatus[1]), alvo);
 
   const mAtr = p.match(/^\/api\/usuarios\/(\d+)\/atribuicoes$/);
-  if (mAtr && metodo === 'POST') return atribuirCarteiras(request, env, ctx, url, usuario, Number(mAtr[1]));
+  if (mAtr && metodo === 'POST') return atribuirCarteiras(request, env, ctx, url, usuario, Number(mAtr[1]), alvo);
 
   auditar(env, ctx, { usuario, recurso: p, acao: metodo.toLowerCase(), resultado: 'rota-desconhecida' });
   return respostaNegada();
@@ -451,8 +471,8 @@ async function lerJson(request) {
   }
 }
 
-async function criarUsuario(request, env, ctx, url, usuario, deps) {
-  const d = autorizar(usuario, ACOES.USUARIOS_CRIAR, {});
+async function criarUsuario(request, env, ctx, url, usuario, deps, alvo) {
+  const d = autorizar(usuario, ACOES.USUARIOS_CRIAR, alvo);
   if (!d.ok) {
     auditar(env, ctx, { usuario, recurso: '/api/usuarios', acao: 'usuarios-criar', resultado: d.motivo });
     return respostaNegada();
@@ -505,8 +525,8 @@ async function alvoNaOrganizacao(env, usuarioId, organizacaoId) {
   return !!linha;
 }
 
-async function statusUsuario(request, env, ctx, url, usuario, alvoId) {
-  const d = autorizar(usuario, ACOES.USUARIOS_STATUS, { usuarioId: alvoId });
+async function statusUsuario(request, env, ctx, url, usuario, alvoId, alvo) {
+  const d = autorizar(usuario, ACOES.USUARIOS_STATUS, { ...alvo, usuarioId: alvoId });
   if (!d.ok) {
     auditar(env, ctx, { usuario, recurso: '/api/usuarios/:id/status', acao: 'usuarios-status', resultado: d.motivo });
     return respostaNegada();
@@ -533,8 +553,8 @@ async function statusUsuario(request, env, ctx, url, usuario, alvoId) {
   return respostaJson({ ok: true, ativo: ativo === 1 });
 }
 
-async function atribuirCarteiras(request, env, ctx, url, usuario, alvoId) {
-  const d = autorizar(usuario, ACOES.USUARIOS_ATRIBUICOES, { usuarioId: alvoId });
+async function atribuirCarteiras(request, env, ctx, url, usuario, alvoId, alvo) {
+  const d = autorizar(usuario, ACOES.USUARIOS_ATRIBUICOES, { ...alvo, usuarioId: alvoId });
   if (!d.ok) {
     auditar(env, ctx, { usuario, recurso: '/api/usuarios/:id/atribuicoes', acao: 'usuarios-atribuicoes', resultado: d.motivo });
     return respostaNegada();

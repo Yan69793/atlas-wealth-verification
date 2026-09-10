@@ -257,6 +257,22 @@ function escopoAlcanca(escopo, usuario, carteiraCode) {
   return escopo.carteiras.includes(carteiraCode);
 }
 
+/* Todo identificador que a requisição nomeia reduz o escopo, nunca é
+ * ignorado. No demo, `cliente_id` coincide com o código da carteira própria,
+ * conforme a migration. Tratar os dois campos separadamente impede que um
+ * gestor mantenha acesso à própria carteira enquanto tenta atravessar outra
+ * pela chave alternativa. */
+function alvoNoEscopo(escopo, usuario, alvo) {
+  if (alvo.organizacaoId !== undefined && Number(alvo.organizacaoId) !== usuario.organizacaoId) return false;
+  if (!escopoAlcanca(escopo, usuario, alvo.carteiraCode)) return false;
+  if (alvo.clienteId && !escopoAlcanca(escopo, usuario, alvo.clienteId)) return false;
+  if (usuario.role === PAPEIS.CLIENT) {
+    if (!usuario.clienteId) return false;
+    if (alvo.clienteId && alvo.clienteId !== usuario.clienteId) return false;
+  }
+  return true;
+}
+
 /**
  * autorizar(usuario, acao, alvo) -> { ok: true, escopo, projecao } | { ok: false, motivo }
  *
@@ -279,16 +295,11 @@ export function autorizar(usuario, acao, alvo) {
 
   switch (acao) {
     case ACOES.SESSAO:
+      if (!alvoNoEscopo(escopo, usuario, a)) return recusar(NEGADO.FORA_DO_ESCOPO);
       return { ok: true, escopo, projecao: escopo.projecao };
 
     case ACOES.DADOS: {
-      if (!escopoAlcanca(escopo, usuario, a.carteiraCode)) return recusar(NEGADO.FORA_DO_ESCOPO);
-      if (usuario.role === PAPEIS.CLIENT) {
-        // O cliente só existe para si mesmo. Pedir outro cliente nega, mesmo
-        // que a carteira pedida esteja na atribuição dele.
-        if (a.clienteId && a.clienteId !== usuario.clienteId) return recusar(NEGADO.FORA_DO_ESCOPO);
-        if (!usuario.clienteId) return recusar(NEGADO.FORA_DO_ESCOPO);
-      }
+      if (!alvoNoEscopo(escopo, usuario, a)) return recusar(NEGADO.FORA_DO_ESCOPO);
       return { ok: true, escopo, projecao: escopo.projecao };
     }
 
@@ -298,11 +309,9 @@ export function autorizar(usuario, acao, alvo) {
     case ACOES.USUARIOS_ATRIBUICOES:
     case ACOES.AUDITORIA_LISTAR: {
       if (usuario.role !== PAPEIS.OWNER) return recusar(NEGADO.PAPEL_SEM_ACAO);
-      // Administração é sempre dentro da própria organização. O alvo, quando
-      // nomeia organização, tem que ser a mesma. Nunca amplia.
-      if (a.organizacaoId !== undefined && Number(a.organizacaoId) !== usuario.organizacaoId) {
-        return recusar(NEGADO.FORA_DO_ESCOPO);
-      }
+      // Administração não ignora alvo de carteira, cliente ou organização.
+      // Mesmo o titular só alcança o conjunto cadastrado da própria casa.
+      if (!alvoNoEscopo(escopo, usuario, a)) return recusar(NEGADO.FORA_DO_ESCOPO);
       if (acao === ACOES.USUARIOS_ATRIBUICOES && !a.usuarioId) return recusar(NEGADO.FORA_DO_ESCOPO);
       if (acao === ACOES.USUARIOS_STATUS && !a.usuarioId) return recusar(NEGADO.FORA_DO_ESCOPO);
       return { ok: true, escopo, projecao: escopo.projecao };

@@ -2195,3 +2195,10 @@ e é o que impede a próxima pessoa de repetir.
   porque os `platform-*-demo.js` viraram casca e continuaram sendo a entrada dele; regerar hoje
   apagaria o conteúdo em silêncio. Travado com guarda que aborta em lista vazia. 110 → 129 testes
   de app, 842 → 844 checks. Ver a seção "segunda leva" acima.
+- **2026-09-10, segregação de visibilidade no Worker do demo.** Os aliases de carteira,
+  cliente e organização passaram a ser alvos vinculantes em sessão, dados e administração.
+  Identificadores contraditórios, repetidos com valores diferentes ou fora do escopo recebem a
+  mesma recusa antes da resposta. A suíte isolada de RBAC passou de 51 para 54 testes, cobrindo
+  cliente, gestor e titular em acessos permitidos e tentativas de travessia. `npm test` passou,
+  com 292 testes do motor sem falha. A prova autenticada em produção continua dependente de três
+  contas de teste controladas, não criadas nesta rodada.

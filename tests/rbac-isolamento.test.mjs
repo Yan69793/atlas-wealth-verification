@@ -370,6 +370,31 @@ describe('RBAC: administração é do titular, na própria organização', () =>
     }
   });
 
+  test('titular recusa organização forjada em toda rota mutável', async () => {
+    const acoes = [
+      pedir('/api/usuarios?organizacao_id=2', 1, { metodo: 'POST', corpo: JSON.stringify({ nome: 'X', email: 'x@y.test', senha: '12345678', role: 'manager' }) }),
+      pedir('/api/usuarios/3/status?org=2', 1, { metodo: 'POST', corpo: JSON.stringify({ ativo: 0 }) }),
+      pedir('/api/usuarios/3/atribuicoes?tenant_id=2', 1, { metodo: 'POST', corpo: JSON.stringify({ carteiras: ['ALPHA_01'] }) }),
+    ];
+    for (const p of await Promise.all(acoes)) {
+      assert.equal(p.r.status, 403, 'rota mutável aceitou organização forjada');
+      assert.deepEqual(await jsonDe(p.r), { erro: 'sem-acesso' });
+    }
+  });
+
+  test('titular não ignora client_id ou portfolio_id fora do próprio conjunto', async () => {
+    const acoes = [
+      pedir('/api/usuarios?client_id=CEDRO_CAP', 1, { metodo: 'POST', corpo: JSON.stringify({ nome: 'X', email: 'x@y.test', senha: '12345678', role: 'manager' }) }),
+      pedir('/api/usuarios/3/status?portfolio_id=CEDRO_CAP', 1, { metodo: 'POST', corpo: JSON.stringify({ ativo: 0 }) }),
+      pedir('/api/usuarios/3/atribuicoes?cliente_id=CEDRO_CAP', 1, { metodo: 'POST', corpo: JSON.stringify({ carteiras: ['ALPHA_01'] }) }),
+      pedir('/api/auditoria?client_id=CEDRO_CAP', 1),
+    ];
+    for (const p of await Promise.all(acoes)) {
+      assert.equal(p.r.status, 403, 'rota administrativa ignorou alvo fora do conjunto');
+      assert.deepEqual(await jsonDe(p.r), { erro: 'sem-acesso' });
+    }
+  });
+
   test('titular não se desativa, para a organização não ficar sem quem a administre', async () => {
     const banco = bancoFalso();
     const { r } = await pedir('/api/usuarios/1/status', 1, {
@@ -470,6 +495,47 @@ describe('RBAC: organização é decidida no banco, nunca no que o cliente envia
 // ================================================= troca de carteira e cliente
 
 describe('RBAC: troca de carteira e de cliente devolve a mesma recusa', () => {
+  test('7a. aliases de identificador passam pela mesma autorização server-side', async () => {
+    const ataques = [
+      '/api/dados?portfolio_id=ALPHA_01',
+      '/api/dados?carteira_code=BRAVO_FAM',
+      '/api/dados?client_id=CEDRO_CAP',
+      '/api/dados?cliente_id=outro',
+      '/api/dados?organizacao_id=2',
+      '/api/dados?tenant_id=2',
+      '/api/dados?carteira=ALPHA_02&portfolio_id=CEDRO_CAP',
+      '/api/dados?cliente=ALPHA_02&client_id=outro',
+      '/api/dados?carteira=ALPHA_01&client_id=ALPHA_02',
+    ];
+    for (const caminho of ataques) {
+      const { r } = await pedir(caminho, 3);
+      assert.equal(r.status, 403, `cliente atravessou o escopo por ${caminho}`);
+      assert.deepEqual(await jsonDe(r), { erro: 'sem-acesso' });
+    }
+  });
+
+  test('7ab. aliases de cliente e organização também restringem gestor, titular e sessão', async () => {
+    const ataques = [
+      ['/api/dados?client_id=CEDRO_CAP', 2],
+      ['/api/dados?cliente_id=BRAVO_FAM', 2],
+      ['/api/dados?portfolio_id=CEDRO_CAP', 1],
+      ['/api/dados?organizacao_id=2', 1],
+      ['/api/sessao?client_id=CEDRO_CAP', 2],
+      ['/api/sessao?organizacao_id=2', 1],
+    ];
+    for (const [caminho, usuarioId] of ataques) {
+      const { r } = await pedir(caminho, usuarioId);
+      assert.equal(r.status, 403, `perfil ${usuarioId} atravessou o escopo por ${caminho}`);
+      assert.deepEqual(await jsonDe(r), { erro: 'sem-acesso' });
+    }
+  });
+
+  test('7aa. identificador próprio, repetido sem conflito, não amplia nem quebra', async () => {
+    const { r } = await pedir('/api/dados?carteira=ALPHA_02&portfolio_id=ALPHA_02&client_id=ALPHA_02', 3);
+    assert.equal(r.status, 200);
+    assert.deepEqual(codesDoPayload(await jsonDe(r)), ['ALPHA_02']);
+  });
+
   test('7. carteira de outra organização e carteira inexistente dão resposta idêntica', async () => {
     const alheia = await pedir('/api/dados?carteira=CEDRO_CAP', 1);
     const inexistente = await pedir('/api/dados?carteira=NAO_EXISTE_999', 1);
