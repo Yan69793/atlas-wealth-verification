@@ -2200,5 +2200,9 @@ e é o que impede a próxima pessoa de repetir.
   Identificadores contraditórios, repetidos com valores diferentes ou fora do escopo recebem a
   mesma recusa antes da resposta. A suíte isolada de RBAC passou de 51 para 54 testes, cobrindo
   cliente, gestor e titular em acessos permitidos e tentativas de travessia. `npm test` passou,
-  com 292 testes do motor sem falha. A prova autenticada em produção continua dependente de três
-  contas de teste controladas, não criadas nesta rodada.
+  com 292 testes do motor sem falha. Na validação autenticada do Worker oficial, contas sintéticas
+  inéditas confirmaram os três escopos e dez recusas uniformes, incluindo IDOR, aliases,
+  parâmetros duplicados, contraditórios e `org_id` forjado. As contas, atribuições, organizações,
+  vínculos e auditoria sintéticos foram removidos depois, com consulta agregada retornando zero
+  resíduos. **Pendente somente a inspeção visual renderizada no navegador**, indisponível nesta
+  sessão, embora o documento autenticado tenha respondido para os três papéis.
