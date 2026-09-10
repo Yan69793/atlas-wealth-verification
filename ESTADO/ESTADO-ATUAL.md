@@ -83,6 +83,43 @@ conferindo nos 5.
   e o cliente só de mapeamento explícito identidade/cliente. Papel nunca pode ser inferido por
   domínio ou por parâmetro enviado pelo cliente.
 
+### Fechamento da rodada, medido em 2026-09-10
+
+- **Revisão independente rodada em subagente isolado: nenhum achado P0/P1 material.** Cinco P2
+  levantados, um fechado no mesmo dia, quatro seguem abertos e não bloqueiam.
+- **O P2 fechado é o guard de entrada da API.** `rotaApi` exigia `startsWith('/api/')`, então
+  `/api` sem a barra final não entrava na API: caía no ramo de asset, que confere só a assinatura
+  do cookie, e devolvia o HTML do app. Medido em produção, `demo.multi-assets.com/api` respondia
+  `200 text/html`; depois da correção, `403 application/json`. O teste 7e já existia com essa
+  intenção e não pegava o defeito porque só varria caminho sob `/api/`; agora varre `/api` também.
+  Nenhum outro achado material existia.
+- **Os quatro P2 abertos, registrados sem correção:** `criarOrganizacaoPropria` insere
+  organização e usuário sem transação, então falha no meio deixa linha órfã; `atribuirCarteiras`
+  faz DELETE e depois INSERT em laço sem transação; `GET /api/usuarios` devolve e-mail em claro
+  para o titular da própria organização, o que parece intencional mas não foi decidido por
+  escrito; e a cobertura das cascas `platform-*-demo.js` passou de execução em sandbox para
+  leitura da fonte que serve a API, o que o projeto registra como a forma mais fraca de teste.
+  A rede de proteção contra carteira no navegador continua forte e independente disso.
+- **Portão depois da rodada:** 842/842 checks estáticos, 110/110 testes de app, 292/292 do motor,
+  zero falha, zero pulado.
+- **Publicado** em `demo.multi-assets.com`, Worker `app-verificacao-carteiras-atlas`, Version ID
+  `3ccd2188-ceb2-4208-9fcc-e84d80995eef`. Commits da rodada: `5e48298` (RBAC por papel),
+  `b7f69cf` (conjunto sintético sai do bundle), `e45d005` (guard de `/api`), todos empurrados
+  para `origin/feat/separacao-cloudflare` com o hash do remoto conferido igual ao local.
+- **Validação viva da API, 61 de 61:** os três papéis com escopo certo, recusa uniforme em
+  quinze ataques cruzados (carteira alheia, carteira inexistente, outro cliente, ação de titular
+  por gestor e por cliente, cookie com id trocado sem reassinar, cookie no formato v1 por e-mail,
+  rota desconhecida, método errado), desativação valendo na requisição seguinte, e o bundle
+  publicado sem nenhum dos 40 códigos do pool.
+- **Validação de navegador, Chromium sem interface:** o titular abre 18 itens de menu e vê
+  carteira da organização inteira; o gestor abre 13 itens, sem administração, e o DOM dele cita
+  só as duas carteiras atribuídas; o cliente abre zero item de menu, aterrissa em `#/cliente`
+  com o título "Minha carteira", não cita nenhum código de carteira no DOM, não vê termo
+  institucional e o pedido de carteira alheia feito de dentro do navegador devolve o mesmo 403.
+- **Efeito colateral aceito da validação:** ela cria conta de teste no banco do demo, sempre com
+  prefixo `rbac-` e domínio `@exemplo.com`, dado sintético. O caminho de exclusão é o mesmo já
+  documentado no topo do arquivo do Worker.
+
 ## 2026-09-01 — demo estendido a Ago/26 + botões de navegação/saída
 
 - `CURRENT_MONTH` avançou para `2026-08` (último mês fechado real); `OPENING_MONTH`
@@ -125,7 +162,7 @@ aqui, trate este arquivo como suspeito e rode o refresh do fim da página.
 O portão agora tem três etapas, não duas. `npm test` roda as três em sequência.
 
 ```
-824/824 checks OK — todos os checks passaram
+842/842 checks OK — todos os checks passaram
 ℹ tests 110   ℹ suites 21   ℹ pass 110   ℹ fail 0   ℹ skipped 0
 ℹ tests 292   ℹ suites 76   ℹ pass 292   ℹ fail 0   ℹ skipped 0
 ```
@@ -134,6 +171,11 @@ Os 110 testes do app são 63 de comportamento mais 47 de isolamento de papel, ac
 2026-09-10 junto do RBAC. Os 12 checks a mais (812 → 824) são os do contrato de sessão por
 `usuario_id`, da projeção por lista branca e da ausência do conjunto no bundle. Ver a seção do
 RBAC, acima.
+
+Medido no fechamento da rodada, 2026-09-10, com a correção do guard de `/api` já dentro: os 18
+checks a mais (824 → 842) são das travas que acompanharam a saída do conjunto do bundle — cada
+cascata `platform-*-demo.js` sem nenhum código do pool, o Worker guardando os seis conjuntos, a
+hidratação substituindo em vez de somar, e o gerador sintético fora do build publicado.
 
 Antes era `812/812` com 63 testes, medido em 2026-09-01, no fechamento do painel do dono. Os 9
 checks a mais de então (803 → 812) são da camada de movimento decorativo sobre a arte de fundo,
