@@ -17,6 +17,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
 
 const AQUI = path.dirname(fileURLToPath(import.meta.url));
@@ -28,6 +29,17 @@ const CODIGOS_TECNICOS = ['AXIOM_AM', 'BEACON_WM', 'CREST_FO', 'DELTA_PB'];
 const utils = ler('platform-utils.jsx');
 const data = ler('platform-data.js');
 const oportunidades = ler('platform-oportunidades.jsx');
+
+function nomesDeGerentesEmRuntime() {
+  const blocoMgr = data.split('MANAGERS = [\n')[1].split('\n  ];')[0];
+  const gestores = [...blocoMgr.matchAll(/id:'([^']+)',\s+name:'([^']+)'/g)]
+    .map(([, id, name]) => ({ id, name }));
+  const sandbox = { window: { AtlasData: { MANAGERS: gestores } }, React: {} };
+  const inicio = utils.indexOf('const GERENTE_LEGADO = {');
+  const fim = utils.indexOf('  /* ===========================================================\n     EXPORTS', inicio);
+  vm.runInNewContext(utils.slice(inicio, fim) + '\nwindow.nomeGerente = nomeGerente;', sandbox);
+  return sandbox.window.nomeGerente;
+}
 
 /** Remove comentário de linha e de bloco, para o teste olhar código vivo. */
 function semComentario(fonte) {
@@ -68,6 +80,16 @@ describe('gerente: de-para canônico', () => {
     const blocoMgr = data.split('MANAGERS = [\n')[1].split('\n  ];')[0];
     for (const codigo of CODIGOS_TECNICOS) {
       assert.ok(!blocoMgr.includes(`id:'${codigo}'`), `${codigo} voltou a ser identificador de gerente`);
+    }
+  });
+
+  test('cada código técnico resolve para um nome humano em runtime', () => {
+    const nomeGerente = nomesDeGerentesEmRuntime();
+    for (const codigo of CODIGOS_TECNICOS) {
+      const nome = nomeGerente(codigo);
+      assert.ok(nome, `${codigo} não resolveu para nome humano`);
+      assert.notEqual(nome, codigo, `${codigo} vazou como texto renderizável`);
+      assert.match(nome, /\s/, `${codigo} não resolveu para um nome humano completo`);
     }
   });
 });
