@@ -362,7 +362,7 @@ import React from 'react';
     function handleExportCSV() {
       var rows = comp.rows.map(function(r) {
         return {
-          Carteira: r.code, Nome: r.name, Gestor: r.manager,
+          Carteira: r.code, Nome: r.name, Gerente: r.manager,
           PL_Ref: r.plA, PL_Baseline: r.plB, Var_PL: r.delta,
           Var_Pct: r.deltaPct != null ? (r.deltaPct * 100).toFixed(2) : '',
           Rent_Ref: r.rentA != null ? (r.rentA * 100).toFixed(2) : '',
@@ -544,7 +544,7 @@ import React from 'react';
             <thead>
               <tr>
                 <th className="sticky-col" style={{ minWidth: 150 }}>Carteira</th>
-                <th>Gestor</th>
+                <th>Gerente</th>
                 <th className="num">PL {labelA}</th>
                 <th className="num">PL {labelB}</th>
                 <th className="num">Var. PL</th>

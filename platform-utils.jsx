@@ -816,6 +816,11 @@ import React from 'react';
     STORAGE_OPORTUNIDADES, oportunidadesBase, oportunidadesSalvas, salvarOportunidades,
     mesclarOportunidades, oportunidadesAtuais, statusOportunidade, especieDoVolume,
     criadaNaTela,
+    /* Sigla do cliente. A implementação é a de platform-sigla.js, a única do
+       produto; aqui só fica o atalho, para quem já lê AtlasUtils não precisar
+       saber que o arquivo existe. */
+    sigla: (typeof window !== 'undefined' && window.AtlasSigla) ? window.AtlasSigla.sigla : function () { return ''; },
+    siglaCliente: (typeof window !== 'undefined' && window.AtlasSigla) ? window.AtlasSigla.siglaCliente : function (n, f) { return String(f == null ? '' : f); },
   };
 
   window.AtlasIcons = { Icon };

@@ -44,6 +44,8 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
+import { sigla, siglaCliente } from '../platform-sigla.js';
+
 const AQUI = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(AQUI, '..');
 const FONTE = path.join(ROOT, 'platform-data.js');
@@ -58,6 +60,10 @@ const janela = {
   addEventListener() {}, removeEventListener() {}, dispatchEvent() {},
   localStorage: { getItem: () => null, setItem() {}, removeItem() {} },
   console,
+  // A MESMA função de sigla do navegador e do Worker. Sem isto, a camada de
+  // dados não teria como reduzir o nome do cliente à sigla e cairia no
+  // fallback do código, apagando os nomes do conjunto gerado.
+  AtlasSigla: { sigla, siglaCliente },
 };
 
 let D;
@@ -140,6 +146,15 @@ for (const a of AUXILIARES) {
     console.error('[dataset] ' + a.arquivo + ' não produziu ' + a.global + '.' + a.lista);
     process.exit(1);
   }
+  // Lista vazia não é caso normal, é sintoma: a fonte virou casca e o gerador
+  // estaria apagando o conjunto auxiliar do arquivo gerado, em silêncio. Foi
+  // exatamente o que aconteceu em 2026-09-10, quando os `platform-*-demo.js`
+  // foram reduzidos a casca e continuaram sendo a entrada deste gerador.
+  if (valor[a.lista].length === 0) {
+    console.error('[dataset] ' + a.arquivo + ' produziu ' + a.lista + ' VAZIO. Gerar agora apagaria '
+      + 'o conjunto auxiliar. Conserte a fonte antes de rodar de novo.');
+    process.exit(1);
+  }
   const orfaos = [];
   for (const linha of valor[a.lista]) {
     const code = linha && linha[a.campo];
@@ -165,7 +180,10 @@ const pacote = {
   ibov: D.IBOV,
   mesCorrente: D.CURRENT_MONTH,
   mesAbertura: D.OPENING_MONTH,
-  catalogo: D.CATALOG.map((p) => ({ code: p.code, name: p.name, risk: p.risk, inception: p.inception, mgr: p.mgr })),
+  // `nomeInterno` é o nome do cliente por extenso: fica SÓ no conjunto do
+  // Worker e nunca sai numa resposta. A interface recebe a sigla, calculada
+  // em authz.js com a mesma função de platform-sigla.js.
+  catalogo: D.CATALOG.map((p) => ({ code: p.code, name: p.nomeInterno || p.name, risk: p.risk, inception: p.inception, mgr: p.mgr })),
   gestores: D.MANAGERS.map((m) => ({ id: m.id, name: m.name, codes: m.codes.slice(), roaTarget: m.roaTarget })),
   ativos: D.ASSETS,
   statusScript,

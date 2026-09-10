@@ -723,7 +723,7 @@ import React from 'react';
           </div>
           <LineChart series={chartSeries} height={180} />
           <div style={{ fontSize: '0.714rem', color: 'var(--muted)', marginTop: 8, textAlign: 'right' }}>
-            Meta ROA: {fmtPct(roaTarget, 4)} a.a. · Gestor: {mgr ? mgr.name : '—'}
+            Meta ROA: {fmtPct(roaTarget, 4)} a.a. · Gerente: {mgr ? mgr.name : '—'}
           </div>
         </div>
 

@@ -80,7 +80,7 @@ import React from 'react';
               <th className="sticky-col" style={{ minWidth: 150 }}>Carteira</th>
               <th>Severidade</th>
               <th>Achado</th>
-              <th>Gestor</th>
+              <th>Gerente</th>
               <th>Ações</th>
             </tr>
           </thead>
@@ -274,7 +274,7 @@ import React from 'react';
           <thead>
             <tr>
               <th className="sticky-col" style={{ minWidth: 150 }}>Carteira</th>
-              <th>Gestor</th>
+              <th>Gerente</th>
               <th className="num">PL Atual</th>
               <th className="num">Rent.</th>
               <th className="num">vs CDI</th>

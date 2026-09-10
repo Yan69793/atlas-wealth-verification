@@ -187,7 +187,7 @@
     scores.filter(function(s){ return s.score >= FA.scoreMinimo; }).forEach(function(s) {
       var pares = [
         { ativo: s.components.operacional  >= FA.operacional,   peso: s.components.operacional  / RISK_CONFIG.max.operacional,   motivo:'Status CORRIGIR ativo',              rec:'Bloquear liberação até resolução dos achados' },
-        { ativo: s.components.mercado      >= FA.mercado,       peso: s.components.mercado      / RISK_CONFIG.max.mercado,       motivo:'Underperformance persistente vs CDI', rec:'Solicitar relatório de atribuição ao gestor' },
+        { ativo: s.components.mercado      >= FA.mercado,       peso: s.components.mercado      / RISK_CONFIG.max.mercado,       motivo:'Underperformance persistente vs CDI', rec:'Solicitar relatório de atribuição ao gerente' },
         { ativo: s.components.concentracao >= FA.concentracao,  peso: s.components.concentracao / RISK_CONFIG.max.concentracao,  motivo:'Concentração acima do limite',        rec:'Revisar política de diversificação' },
         { ativo: s.components.suitability  >= FA.suitability,   peso: s.components.suitability  / RISK_CONFIG.max.suitability,   motivo:'Exposição incompatível com perfil',   rec:'Análise de adequação (suitability)' },
         { ativo: s.components.liquidez     >= FA.liquidez,      peso: s.components.liquidez     / RISK_CONFIG.max.liquidez,      motivo:'Liquidez abaixo do mínimo',           rec:'Rever janela de resgate e buffer de caixa' },

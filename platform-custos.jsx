@@ -15,7 +15,7 @@ import React from 'react';
   ============================================================ */
 
   const TABS = [
-    { id: 'gestor',   label: 'Por Gestor'     },
+    { id: 'gestor',   label: 'Por Gerente'     },
     { id: 'carteira', label: 'Por Carteira'    },
     { id: 'classe',   label: 'Por Classe de Ativo' },
   ];
@@ -251,7 +251,7 @@ import React from 'react';
         <table>
           <thead>
             <tr>
-              <th className="sticky-col">Gestor</th>
+              <th className="sticky-col">Gerente</th>
               <th className="num">AUM</th>
               <th className="num">Custo Total</th>
               <th className="num">% do AUM</th>
@@ -292,7 +292,7 @@ import React from 'react';
           <thead>
             <tr>
               <th className="sticky-col">Carteira</th>
-              <th>Gestor</th>
+              <th>Gerente</th>
               <th className="num">AUM</th>
               <th className="num">Custo Total</th>
               <th className="num">% do AUM</th>

@@ -21,6 +21,10 @@ globalThis.React = React;
 globalThis.ReactDOM = ReactDOM;
 globalThis.Recharts = Recharts;
 
+/* 0. Sigla de cliente — primeiro de tudo, porque a camada de dados já usa
+   `window.AtlasSigla.sigla` para montar o catálogo que as telas leem. */
+import '../platform-sigla.js';
+
 /* 1. Design tokens — JS puro, primeiro */
 import '../platform-tokens.js';
 

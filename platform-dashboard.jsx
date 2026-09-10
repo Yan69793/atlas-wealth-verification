@@ -390,7 +390,7 @@ import React from 'react';
             PL_Atual: r.plCurr, Variacao_Pct: r.varPct != null ? (r.varPct * 100).toFixed(2) : '',
             Rentabilidade_Pct: r.rent != null ? (r.rent * 100).toFixed(2) : '',
             vs_CDI_Pct: r.vsCDI != null ? (r.vsCDI * 100).toFixed(2) : '',
-            Gestor: (r.manager && r.manager.name) || '',
+            Gerente: (r.manager && r.manager.name) || '',
             Achados: r.nAchados || 0, Receita: r.revenue || 0
           }));
           downloadCSV(csvRows, 'atlas_carteiras_' + month);
@@ -452,7 +452,7 @@ import React from 'react';
               <ThSort col="plPrev"  label="PL Anterior" className="num" />
               <ThSort col="rent"    label="Rent."      className="num" />
               <ThSort col="vsCDI"   label="vs CDI"     className="num" />
-              <th>Gestor</th>
+              <th>Gerente</th>
               <ThSort col="nAchados" label="Achados"   className="num" />
               <ThSort col="revenue"  label="Receita"   className="num" />
             </tr>

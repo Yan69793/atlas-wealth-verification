@@ -200,7 +200,7 @@ import React from 'react';
         Cliente: cliente.rotulo || cliente.id,
         Carteira: l.code,
         Nome: l.name,
-        Gestor: (l.manager && l.manager.name) || '',
+        Gerente: (l.manager && l.manager.name) || '',
         Status: l.status,
         PL: l.pl == null ? '' : l.pl,
         PL_Esperado: l.plEsperado == null ? '' : l.plEsperado,
@@ -339,7 +339,7 @@ import React from 'react';
                 <input
                   type="search"
                   className="search-input"
-                  placeholder="Buscar carteira ou gestor..."
+                  placeholder="Buscar carteira ou gerente..."
                   value={busca}
                   onChange={e => setBusca(e.target.value)}
                 />

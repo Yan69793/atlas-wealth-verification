@@ -211,7 +211,7 @@ import React from 'react';
       '<div class="rpt-demo">' +
         '<strong>Ambiente de demonstração</strong> · ' +
         (_mode === 'demo'
-          ? 'Dados de carteiras, gestores, valores e resultados são sintéticos. Este documento não é um relatório de carteira real.'
+          ? 'Dados de carteiras, gerentes, valores e resultados são sintéticos. Este documento não é um relatório de carteira real.'
           : 'Gerado a partir do arquivo importado pelo usuário nesta sessão, sem conferência do custodiante.') +
       '</div>';
     const _hasPrior = row.plPrevTrue > 0; // sem mes anterior no dataset: nao inventa PL anterior
@@ -445,7 +445,7 @@ ${_demoBannerHtml}
   <div>
     <div class="rpt-brand">${_brandPfx}${escH(BRAND.reportLabel)}</div>
     <div class="rpt-code">${escH(code)}</div>
-    <div class="rpt-sub">${escH(cat.name || '')}${managerName ? ' · Gestor: ' + escH(managerName) : ''}</div>
+    <div class="rpt-sub">${escH(cat.name || '')}${managerName ? ' · Gerente: ' + escH(managerName) : ''}</div>
     <div class="rpt-sub" style="margin-top:2px;">Referência: ${monthLabel} · Gerado em ${today}</div>
   </div>
   <div style="padding-top:4px;"><span class="badge badge--${statusSlug}">${escH(row.status)}</span></div>

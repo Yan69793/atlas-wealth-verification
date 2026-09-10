@@ -589,6 +589,30 @@ describe('RBAC: projeção por papel', () => {
     assert.ok(chaves.every((k) => k.startsWith('ALPHA_01|')), 'gestor recebeu composição fora da atribuição');
     assert.ok(Object.values(p.compositions).flat().some((row) => row.institution), 'gestor perdeu campo institucional autorizado');
   });
+
+  test('9g. nenhuma resposta carrega o nome do cliente por extenso', async () => {
+    // O nome do cliente vive só no conjunto interno do Worker. O que sai é a
+    // sigla. Este teste varre a resposta inteira de cada papel procurando o
+    // nome por extenso de TODOS os clientes do conjunto, não só dos que o
+    // papel alcança: se um deles escapar por qualquer campo, aparece aqui.
+    for (const id of [1, 2, 3, 4, 5, 6]) {
+      const { r } = await pedir('/api/dados', id);
+      const cru = JSON.stringify(await jsonDe(r));
+      const vazados = DATASET.catalogo.filter((p) => cru.includes(p.name)).map((p) => p.code);
+      assert.deepEqual(vazados, [], `usuário ${id} recebeu o nome por extenso de ${vazados.join(', ')}`);
+    }
+  });
+
+  test('9h. o catálogo chega como sigla, e o campo do nome não existe na resposta', async () => {
+    for (const id of [3, 1]) { // cliente e titular, o mesmo contrato de campo
+      const { r } = await pedir('/api/dados', id);
+      const p = await jsonDe(r);
+      for (const c of p.catalogo) {
+        assert.equal(Object.prototype.hasOwnProperty.call(c, 'name'), false, `catálogo de ${id} trouxe campo "name"`);
+        assert.ok(typeof c.sigla === 'string' && c.sigla.length >= 2, `catálogo de ${id} sem sigla em ${c.code}`);
+      }
+    }
+  });
 });
 
 // ==================================================== usuário desativado

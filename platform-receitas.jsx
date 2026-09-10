@@ -15,7 +15,7 @@ import React from 'react';
   ============================================================ */
   const TABS = [
     { id: 'serie',   label: 'Série Mensal' },
-    { id: 'gestor',  label: 'Por Gestor'   },
+    { id: 'gestor',  label: 'Por Gerente'   },
     { id: 'cliente', label: 'Por Cliente'  },
     { id: 'queda',   label: 'Queda de receita' },
   ];
@@ -232,7 +232,7 @@ import React from 'react';
           <table>
             <thead>
               <tr>
-                <th className="sticky-col" style={{ minWidth: 150 }}>Gestor</th>
+                <th className="sticky-col" style={{ minWidth: 150 }}>Gerente</th>
                 <th className="num">Carteiras</th>
                 <th className="num">AUM</th>
                 <th className="num">Receita</th>
@@ -276,7 +276,7 @@ import React from 'react';
         {chartData.length > 0 && (
           <div className="chart-wrap" style={{ marginTop: 24 }}>
             <div className="card-header">
-              <div className="card-title">ROA Realizado vs Meta — por Gestor</div>
+              <div className="card-title">ROA Realizado vs Meta — por Gerente</div>
             </div>
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={chartData} margin={{ top: 10, right: 16, left: 8, bottom: 0 }} barCategoryGap="30%">
@@ -354,7 +354,7 @@ import React from 'react';
         {/* Filtros */}
         <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <div>
-            <label style={{ fontSize: '0.714rem', color: 'var(--muted)', display: 'block', marginBottom: 3 }}>Gestor</label>
+            <label style={{ fontSize: '0.714rem', color: 'var(--muted)', display: 'block', marginBottom: 3 }}>Gerente</label>
             <select className="filter-select" value={managerId} onChange={e => setManagerId(e.target.value)}>
               <option value="">Todos</option>
               {D.MANAGERS.map(m => (
@@ -412,7 +412,7 @@ import React from 'react';
               <thead>
                 <tr>
                   <th className="sticky-col" style={{ minWidth: 150 }}>Carteira</th>
-                  <th>Gestor</th>
+                  <th>Gerente</th>
                   <th>Segmento</th>
                   <th className="num">AUM</th>
                   <th className="num">NNM YTD</th>

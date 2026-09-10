@@ -181,54 +181,83 @@
 
      Em build, `__GERAR_DEMO__` é `false` e o ramo inteiro sai na minificação,
      levando os literais. Em dev ele é `true` e o demo funciona como sempre. */
+  /* ── Sigla do cliente, o único caminho para o nome aparecer ──────────────
+     A interface nunca mostra o nome do cliente por extenso. Tela, CSV,
+     título de gráfico, tooltip e relatório leem `name`, então é `name` que
+     passa a carregar a sigla; o nome completo fica em `nomeInterno`, que
+     nenhuma tela lê. A conversão é a MESMA função do Worker e do gerador do
+     demo (`platform-sigla.js`), para o mesmo cliente não sair "CAP" numa
+     tela e "CA" na outra.
+
+     `hidratarDoServidor` NÃO passa por aqui de propósito: o servidor já manda
+     a sigla no lugar do nome, e sigla de sigla devolveria letra errada
+     ("ABR" viraria "A"). */
+  function siglaDoCliente(nome, fallback) {
+    var S = (typeof window !== 'undefined') ? window.AtlasSigla : null;
+    if (S && S.siglaCliente) return S.siglaCliente(nome, fallback);
+    return String(fallback == null ? nome : fallback);
+  }
+  function comSigla(entry) {
+    if (!entry || typeof entry !== 'object') return entry;
+    // Idempotente de propósito: passar duas vezes pelo mesmo objeto devolve o
+    // mesmo resultado. Sem isto, uma segunda passada pegaria "ABR" (já sigla)
+    // e derivaria "A", que é um cliente diferente.
+    if (entry.nomeInterno == null) entry.nomeInterno = entry.name;
+    entry.name = siglaDoCliente(entry.nomeInterno, entry.code);
+    return entry;
+  }
+
   var CATALOG = [];
   if (__GERAR_DEMO__) {
   CATALOG = [
-    // AXIOM_AM (14 carteiras)
-    { code:'ALPHA_01', name:'Alpha Gestão I',          risk:'conservador',         inception:'2022-01', mgr:'AXIOM_AM' },
-    { code:'ALPHA_02', name:'Alpha Gestão II',         risk:'moderado',            inception:'2022-03', mgr:'AXIOM_AM' },
-    { code:'ALPHA_03', name:'Alpha Gestão III',        risk:'agressivo',           inception:'2022-06', mgr:'AXIOM_AM' },
-    { code:'BRAVO_FAM', name:'Bravo Family Office',    risk:'moderado',            inception:'2021-07', mgr:'AXIOM_AM' },
-    { code:'BRAVO_PV',  name:'Bravo Patrimonial',      risk:'conservador',         inception:'2023-01', mgr:'AXIOM_AM' },
-    { code:'CEDRO_HLD', name:'Cedro Holding',          risk:'moderado-agressivo',  inception:'2020-04', mgr:'AXIOM_AM' },
-    { code:'CEDRO_CAP', name:'Cedro Capital',          risk:'moderado',            inception:'2021-11', mgr:'AXIOM_AM' },
-    { code:'DUNAS_CAP', name:'Dunas Capital',          risk:'moderado-agressivo',  inception:'2022-08', mgr:'AXIOM_AM' },
-    { code:'DUNAS_FAM', name:'Dunas Family',           risk:'conservador',         inception:'2023-03', mgr:'AXIOM_AM' },
-    { code:'ESTRELA_PV', name:'Estrela Patrimonial',   risk:'moderado',            inception:'2021-05', mgr:'AXIOM_AM' },
-    { code:'ESTRELA_HLD', name:'Estrela Holding',      risk:'agressivo',           inception:'2020-09', mgr:'AXIOM_AM' },
-    { code:'FAROL_INV', name:'Farol Investimentos',    risk:'moderado',            inception:'2023-06', mgr:'AXIOM_AM' },
-    { code:'FAROL_FAM', name:'Farol Family',           risk:'conservador',         inception:'2022-11', mgr:'AXIOM_AM' },
-    { code:'GAMMA_MID', name:'Gamma Mid-Cap',          risk:'moderado-agressivo',  inception:'2021-02', mgr:'AXIOM_AM' },
-    // BEACON_WM (12 carteiras)
-    { code:'GAMMA_LRG', name:'Gamma Large-Cap',        risk:'agressivo',           inception:'2020-11', mgr:'BEACON_WM' },
-    { code:'HELIOS_01', name:'Helios Patrimonial I',   risk:'moderado',            inception:'2022-04', mgr:'BEACON_WM' },
-    { code:'HELIOS_02', name:'Helios Patrimonial II',  risk:'moderado',            inception:'2022-04', mgr:'BEACON_WM' },
-    { code:'INDIGO_CAP', name:'Indigo Capital',        risk:'conservador',         inception:'2023-09', mgr:'BEACON_WM' },
-    { code:'JOIA_FAM',  name:'Joia Family Office',     risk:'moderado-agressivo',  inception:'2021-08', mgr:'BEACON_WM' },
-    { code:'JOIA_HLD',  name:'Joia Holding',           risk:'moderado',            inception:'2022-02', mgr:'BEACON_WM' },
-    { code:'KAPPA_PV',  name:'Kappa Patrimonial',      risk:'moderado',            inception:'2022-07', mgr:'BEACON_WM' },
-    { code:'KAPPA_INV', name:'Kappa Investimentos',    risk:'conservador',         inception:'2023-04', mgr:'BEACON_WM' },
-    { code:'LUMIA_01',  name:'Lumia Gestão I',         risk:'agressivo',           inception:'2021-10', mgr:'BEACON_WM' },
-    { code:'LUMIA_02',  name:'Lumia Gestão II',        risk:'moderado',            inception:'2022-09', mgr:'BEACON_WM' },
-    { code:'MARTE_FAM', name:'Marte Family',           risk:'conservador',         inception:'2023-07', mgr:'BEACON_WM' },
-    { code:'NOVA_CAP',  name:'Nova Capital',           risk:'moderado-agressivo',  inception:'2021-06', mgr:'BEACON_WM' },
-    // CREST_FO (9 carteiras)
-    { code:'NOVA_PV',   name:'Nova Patrimonial',       risk:'moderado',            inception:'2023-02', mgr:'CREST_FO' },
-    { code:'ORION_01',  name:'Orion Gestão I',         risk:'conservador',         inception:'2022-01', mgr:'CREST_FO' },
-    { code:'ORION_02',  name:'Orion Gestão II',        risk:'moderado-agressivo',  inception:'2022-05', mgr:'CREST_FO' },
-    { code:'PRADO_HLD', name:'Prado Holding',          risk:'moderado',            inception:'2020-12', mgr:'CREST_FO' },
-    { code:'PRADO_FAM', name:'Prado Family',           risk:'conservador',         inception:'2023-05', mgr:'CREST_FO' },
-    { code:'QUASAR_CAP', name:'Quasar Capital',        risk:'agressivo',           inception:'2021-03', mgr:'CREST_FO' },
-    { code:'RIO_01',    name:'Rio Patrimonial I',      risk:'moderado',            inception:'2022-10', mgr:'CREST_FO' },
-    { code:'RIO_02',    name:'Rio Patrimonial II',     risk:'moderado',            inception:'2023-08', mgr:'CREST_FO' },
-    { code:'SOLAR_PV',  name:'Solar Patrimonial',      risk:'conservador',         inception:'2021-12', mgr:'CREST_FO' },
-    // DELTA_PB (5 carteiras)
-    { code:'SOLAR_INV', name:'Solar Investimentos',    risk:'moderado',            inception:'2022-06', mgr:'DELTA_PB' },
-    { code:'TIGRE_FAM', name:'Tigre Family Office',    risk:'moderado-agressivo',  inception:'2021-04', mgr:'DELTA_PB' },
-    { code:'UMBRA_01',  name:'Umbra Gestão I',         risk:'moderado',            inception:'2026-03', mgr:'DELTA_PB' },
-    { code:'UMBRA_02',  name:'Umbra Gestão II',        risk:'conservador',         inception:'2026-03', mgr:'DELTA_PB' },
-    { code:'COMETA_FAM', name:'Cometa Family',         risk:'moderado',            inception:'2026-02', mgr:'DELTA_PB' },
+    // Gerente: Renata Albuquerque Freitas (14 carteiras)
+    { code:'ALPHA_01', name:'Ana Beatriz Ribeiro',        risk:'conservador',         inception:'2022-01', mgr:'renata-freitas' },
+    { code:'ALPHA_02', name:'Bruno Almeida Souza',        risk:'moderado',            inception:'2022-03', mgr:'renata-freitas' },
+    { code:'ALPHA_03', name:'Carla Menezes Tavares',      risk:'agressivo',           inception:'2022-06', mgr:'renata-freitas' },
+    { code:'BRAVO_FAM', name:'Daniel Oliveira Prado',     risk:'moderado',            inception:'2021-07', mgr:'renata-freitas' },
+    { code:'BRAVO_PV',  name:'Eduardo Ramos Farias',      risk:'conservador',         inception:'2023-01', mgr:'renata-freitas' },
+    { code:'CEDRO_HLD', name:'Fernanda Lima Cardoso',     risk:'moderado-agressivo',  inception:'2020-04', mgr:'renata-freitas' },
+    { code:'CEDRO_CAP', name:'Gustavo Nogueira Coelho',   risk:'moderado',            inception:'2021-11', mgr:'renata-freitas' },
+    { code:'DUNAS_CAP', name:'Helena Prado Barros',       risk:'moderado-agressivo',  inception:'2022-08', mgr:'renata-freitas' },
+    { code:'DUNAS_FAM', name:'Igor Sampaio Dias',         risk:'conservador',         inception:'2023-03', mgr:'renata-freitas' },
+    { code:'ESTRELA_PV', name:'Juliana Torres Esteves',   risk:'moderado',            inception:'2021-05', mgr:'renata-freitas' },
+    { code:'ESTRELA_HLD', name:'Kleber Viana Gomes',      risk:'agressivo',           inception:'2020-09', mgr:'renata-freitas' },
+    { code:'FAROL_INV', name:'Lucas Wagner Henriques',    risk:'moderado',            inception:'2023-06', mgr:'renata-freitas' },
+    { code:'FAROL_FAM', name:'Marcos Xavier Junqueira',   risk:'conservador',         inception:'2022-11', mgr:'renata-freitas' },
+    { code:'GAMMA_MID', name:'Natália Zambelli Klein',    risk:'moderado-agressivo',  inception:'2021-02', mgr:'renata-freitas' },
+    // Gerente: Eduardo Mendonça Pires (12 carteiras)
+    { code:'GAMMA_LRG', name:'Otávio Braga Maia',         risk:'agressivo',           inception:'2020-11', mgr:'eduardo-pires' },
+    { code:'HELIOS_01', name:'Paulo Cesar Andrade',       risk:'moderado',            inception:'2022-04', mgr:'eduardo-pires' },
+    { code:'HELIOS_02', name:'Rafael Duarte Neves',       risk:'moderado',            inception:'2022-04', mgr:'eduardo-pires' },
+    { code:'INDIGO_CAP', name:'Sandra Elias Fonseca',     risk:'conservador',         inception:'2023-09', mgr:'eduardo-pires' },
+    { code:'JOIA_FAM',  name:'Thiago Freitas Aguiar',     risk:'moderado-agressivo',  inception:'2021-08', mgr:'eduardo-pires' },
+    { code:'JOIA_HLD',  name:'Vera Guimarães Holanda',    risk:'moderado',            inception:'2022-02', mgr:'eduardo-pires' },
+    { code:'KAPPA_PV',  name:'Wagner Isaías Lopes',       risk:'moderado',            inception:'2022-07', mgr:'eduardo-pires' },
+    { code:'KAPPA_INV', name:'Yara Junqueira Mota',       risk:'conservador',         inception:'2023-04', mgr:'eduardo-pires' },
+    { code:'LUMIA_01',  name:'Zélia Kruger Nunes',        risk:'agressivo',           inception:'2021-10', mgr:'eduardo-pires' },
+    { code:'LUMIA_02',  name:'Beatriz Andrade Pinto',     risk:'moderado',            inception:'2022-09', mgr:'eduardo-pires' },
+    { code:'MARTE_FAM', name:'Caio Bastos Queiroz',       risk:'conservador',         inception:'2023-07', mgr:'eduardo-pires' },
+    { code:'NOVA_CAP',  name:'Débora Camargo Salles',     risk:'moderado-agressivo',  inception:'2021-06', mgr:'eduardo-pires' },
+    // Gerente: Patrícia Lacerda Antunes (9 carteiras)
+    { code:'NOVA_PV',   name:'Elisa Domingues Rangel',    risk:'moderado',            inception:'2023-02', mgr:'patricia-antunes' },
+    { code:'ORION_01',  name:'Felipe Esteves Silveira',   risk:'conservador',         inception:'2022-01', mgr:'patricia-antunes' },
+    { code:'ORION_02',  name:'Gabriela Furtado Vilaça',   risk:'moderado-agressivo',  inception:'2022-05', mgr:'patricia-antunes' },
+    { code:'PRADO_HLD', name:'Henrique Godoy Werneck',    risk:'moderado',            inception:'2020-12', mgr:'patricia-antunes' },
+    { code:'PRADO_FAM', name:'Isabel Horta Ximenes',      risk:'conservador',         inception:'2023-05', mgr:'patricia-antunes' },
+    { code:'QUASAR_CAP', name:'Jonas Inácio Zaghi',       risk:'agressivo',           inception:'2021-03', mgr:'patricia-antunes' },
+    { code:'RIO_01',    name:'Karina Lemos Brandão',      risk:'moderado',            inception:'2022-10', mgr:'patricia-antunes' },
+    { code:'RIO_02',    name:'Leandro Machado Peixoto',   risk:'moderado',            inception:'2023-08', mgr:'patricia-antunes' },
+    { code:'SOLAR_PV',  name:'Marina Nunes Rezende',      risk:'conservador',         inception:'2021-12', mgr:'patricia-antunes' },
+    // Gerente: Marcelo Tavares Bittencourt (5 carteiras)
+    { code:'SOLAR_INV', name:'Nicolas Pires Salgado',     risk:'moderado',            inception:'2022-06', mgr:'marcelo-bittencourt' },
+    { code:'TIGRE_FAM', name:'Olívia Queiroz Teixeira',   risk:'moderado-agressivo',  inception:'2021-04', mgr:'marcelo-bittencourt' },
+    { code:'UMBRA_01',  name:'Patrícia Rocha Villela',    risk:'moderado',            inception:'2026-03', mgr:'marcelo-bittencourt' },
+    { code:'UMBRA_02',  name:'Renata Siqueira Amorim',    risk:'conservador',         inception:'2026-03', mgr:'marcelo-bittencourt' },
+    { code:'COMETA_FAM', name:'Sérgio Teixeira Baptista', risk:'moderado',            inception:'2026-02', mgr:'marcelo-bittencourt' },
   ];
+  // O catálogo do demo entra na interface já como sigla, igual ao que o
+  // servidor manda no modo publicado.
+  CATALOG.forEach(comSigla);
   }
 
   /* Mesmo tratamento do catálogo: o eixo de gestor é do demo. Em produção ele
@@ -237,10 +266,10 @@
   var MANAGERS = [];
   if (__GERAR_DEMO__) {
   MANAGERS = [
-    { id:'AXIOM_AM',  name:'Axiom Asset Management',  codes:CATALOG.filter(function(p){return p.mgr==='AXIOM_AM';}).map(function(p){return p.code;}), roaTarget:0.00052 * 12 },
-    { id:'BEACON_WM', name:'Beacon Wealth Management', codes:CATALOG.filter(function(p){return p.mgr==='BEACON_WM';}).map(function(p){return p.code;}), roaTarget:0.00048 * 12 },
-    { id:'CREST_FO',  name:'Crest Family Office',     codes:CATALOG.filter(function(p){return p.mgr==='CREST_FO';}).map(function(p){return p.code;}), roaTarget:0.00055 * 12 },
-    { id:'DELTA_PB',  name:'Delta Private Banking',   codes:CATALOG.filter(function(p){return p.mgr==='DELTA_PB';}).map(function(p){return p.code;}), roaTarget:0.00043 * 12 },
+    { id:'renata-freitas',      name:'Renata Albuquerque Freitas',   codes:CATALOG.filter(function(p){return p.mgr==='renata-freitas';}).map(function(p){return p.code;}), roaTarget:0.00052 * 12 },
+    { id:'eduardo-pires',       name:'Eduardo Mendonça Pires',       codes:CATALOG.filter(function(p){return p.mgr==='eduardo-pires';}).map(function(p){return p.code;}), roaTarget:0.00048 * 12 },
+    { id:'patricia-antunes',    name:'Patrícia Lacerda Antunes',     codes:CATALOG.filter(function(p){return p.mgr==='patricia-antunes';}).map(function(p){return p.code;}), roaTarget:0.00055 * 12 },
+    { id:'marcelo-bittencourt', name:'Marcelo Tavares Bittencourt',  codes:CATALOG.filter(function(p){return p.mgr==='marcelo-bittencourt';}).map(function(p){return p.code;}), roaTarget:0.00043 * 12 },
   ];
   }
 
@@ -487,7 +516,7 @@
   // camada de custo que o cliente paga, com fonte de dados e default de exibicao.
   // A arquitetura de arrays espelha feeArr: um valor por mes, mesmo indice.
   var COST_COMPONENTS = [
-    { id: 'taxa_adm',    label: 'Taxa de Administracao',   array: 'feeArr',       pctDefault: 0.0004, desc: 'Taxa de administracao cobrada pelo gestor/consultor' },
+    { id: 'taxa_adm',    label: 'Taxa de Administracao',   array: 'feeArr',       pctDefault: 0.0004, desc: 'Taxa de administracao cobrada pelo gerente/consultor' },
     { id: 'taxa_perf',   label: 'Taxa de Performance',     array: 'perfFeeArr',   pctDefault: 0,      desc: '20% do retorno acima do benchmark (CDI), quando positivo' },
     { id: 'corretagem',  label: 'Corretagem',              array: 'brokerageArr', pctDefault: 0.0005, desc: 'Custos de corretagem e emolumentos B3' },
     { id: 'custodia',    label: 'Custodia',                array: 'custodyArr',   pctDefault: 0.0002, desc: 'Taxa de custodia do agente de custodia' },
@@ -719,7 +748,7 @@
 
     // CATALOG + _codeMap
     D.portfolios.forEach(function(p) {
-      var entry = { code:p.code, name:p.name, risk:p.risk, inception:p.inception };
+      var entry = comSigla({ code:p.code, name:p.name, risk:p.risk, inception:p.inception });
       CATALOG.push(entry); _codeMap[p.code] = entry;
     });
 
@@ -897,7 +926,7 @@
            é verdadeiro, só a causa é outra. */
         var causa = ctx.estavel
           ? 'Composição inalterada no período: a variação vem da marcação a mercado.'
-          : 'Confirmado pelo gestor como realocação tática.';
+          : 'Confirmado pelo gerente como realocação tática.';
         return { severity:'INFO', text:'Variação de ' + ctx.varPct + '% no mês — acima da faixa histórica da carteira. ' + causa };
       }
     ]
@@ -1907,7 +1936,7 @@
 
     // --- Aplicação IN-PLACE ---
     CATALOG.length = 0;
-    newCatalog.forEach(function (e) { CATALOG.push(e); });
+    newCatalog.forEach(function (e) { CATALOG.push(comSigla(e)); });
 
     Object.keys(_codeMap).forEach(function (k) { delete _codeMap[k]; });
     CATALOG.forEach(function (p) { _codeMap[p.code] = p; });
@@ -2059,7 +2088,15 @@
     var novaMapa = {};
     payload.catalogo.forEach(function (e) {
       if (!e || typeof e.code !== 'string' || !e.code) return;
-      var entrada = { code: e.code, name: e.name, risk: e.risk, inception: e.inception };
+      // O servidor manda `sigla`, nunca o nome do cliente. `name` fica com o
+      // que veio em `sigla` porque é `name` que toda tela já lê. O fallback
+      // cobre payload antigo, e aí a sigla é derivada do nome que veio.
+      var entrada = comSigla({
+        code: e.code,
+        name: e.sigla != null ? e.sigla : e.name,
+        risk: e.risk,
+        inception: e.inception,
+      });
       if (typeof e.mgr === 'string' && e.mgr) entrada.mgr = e.mgr;
       novoCatalogo.push(entrada);
       novaMapa[e.code] = entrada;
@@ -2247,7 +2284,7 @@
       totalCost += cost;
       totalAUM += pl;
 
-      var mgr = getManagerForCode(p.code) || { id: 'sem_gestor', name: 'Sem Gestor' };
+      var mgr = getManagerForCode(p.code) || { id: 'sem_gestor', name: 'Sem Gerente' };
       if (!byManager[mgr.id]) byManager[mgr.id] = { id: mgr.id, name: mgr.name, totalCost: 0, aum: 0, portfolios: [] };
       byManager[mgr.id].totalCost += cost;
       byManager[mgr.id].aum += pl;

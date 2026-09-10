@@ -140,7 +140,7 @@ import ReactDOM from 'react-dom/client';
    */
 
   const DEMO_BANNER_TEXT = {
-    demo: 'Dados de carteiras, gestores, valores e resultados são sintéticos.',
+    demo: 'Dados de carteiras, gerentes, valores e resultados são sintéticos.',
     imported: 'Exibindo o arquivo que você importou, processado no seu próprio navegador.',
   };
 

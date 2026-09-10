@@ -23,6 +23,12 @@
  * deixa passar".
  */
 
+/* A sigla do cliente é a MESMA função que o navegador e o gerador do demo
+ * usam (`platform-sigla.js`), importada como módulo, não copiada. Duas
+ * implementações divergiriam no dia em que alguém mexesse numa delas, e a
+ * divergência apareceria como o mesmo cliente com duas siglas. */
+import { siglaCliente } from '../../platform-sigla.js';
+
 export const PAPEIS = Object.freeze({
   OWNER: 'owner',
   MANAGER: 'manager',
@@ -102,10 +108,17 @@ export const CAMPOS_POR_PROJECAO = Object.freeze({
   ]),
 });
 
-/** Campos do catálogo que sobrevivem para cada projeção. */
+/**
+ * Campos do catálogo que sobrevivem para cada projeção.
+ *
+ * `sigla` no lugar de `name`, e não é cosmético: o nome do cliente por
+ * extenso existe só no conjunto interno do Worker. O que sai daqui é a
+ * sigla, que é o que a interface pode mostrar. `name` não está na lista, e
+ * por isso não há como ele escapar por descuido de quem acrescentar campo.
+ */
 export const CAMPOS_CATALOGO = Object.freeze({
-  [PROJECOES.INSTITUCIONAL]: Object.freeze(['code', 'name', 'risk', 'inception', 'mgr']),
-  [PROJECOES.CLIENTE]: Object.freeze(['code', 'name', 'risk', 'inception']),
+  [PROJECOES.INSTITUCIONAL]: Object.freeze(['code', 'sigla', 'risk', 'inception', 'mgr']),
+  [PROJECOES.CLIENTE]: Object.freeze(['code', 'sigla', 'risk', 'inception']),
 });
 
 export const CAMPOS_COMPOSICAO = Object.freeze({
@@ -316,12 +329,16 @@ export function projetarCarteira(projecao, pd) {
   return saida;
 }
 
-/** Idem, para a entrada de CATALOG. */
+/** Idem, para a entrada de CATALOG. O nome sai como sigla, nunca por extenso. */
 export function projetarCatalogo(projecao, entrada) {
   const campos = CAMPOS_CATALOGO[projecao];
   if (!campos || !entrada) return null;
   const saida = {};
   campos.forEach((k) => {
+    if (k === 'sigla') {
+      saida.sigla = siglaCliente(entrada.name, entrada.code);
+      return;
+    }
     if (Object.prototype.hasOwnProperty.call(entrada, k)) saida[k] = entrada[k];
   });
   return saida;
