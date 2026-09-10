@@ -120,6 +120,54 @@ conferindo nos 5.
   prefixo `rbac-` e domínio `@exemplo.com`, dado sintético. O caminho de exclusão é o mesmo já
   documentado no topo do arquivo do Worker.
 
+## 2026-09-10 (segunda leva) — cliente por sigla e gerente com nome de pessoa
+
+**Cliente nunca aparece por extenso.** Toda tela lê `name` do catálogo, então `name` passou a
+carregar a **sigla das iniciais** do nome completo ("Ana Beatriz Ribeiro" → `ABR`). O nome por
+extenso vive em `nomeInterno`, na camada de dados, e no conjunto interno do Worker. O Worker
+projeta `sigla` e **não envia `name` em nenhuma resposta, para nenhum papel** — o campo saiu da
+lista branca de `CAMPOS_CATALOGO`, então não volta por descuido.
+
+- **Função única de sigla:** `platform-sigla.js`, importada pelo navegador (primeiro import de
+  `src/main.jsx`, antes da camada de dados), pelo Worker (`demo-worker/src/authz.js`) e pelo
+  gerador do demo. Duas implementações divergiriam e o mesmo cliente sairia com duas siglas.
+  Ignora partículas (`de`, `da`, `dos`, `e`, `of`, `van`), aguenta espaço duplo, hífen, barra,
+  vírgula e número solto, e devolve vazio quando não sobra nada — quem chama decide o fallback.
+- **Os 40 nomes demonstrativos de carteira viraram nomes brasileiros comuns de pessoa**, com
+  sigla única conferida por teste. Sigla repetida faria dois clientes diferentes serem lidos
+  como um só, que é erro de identificação, não de estética.
+- **Os quatro gerentes deixaram de ser casa estrangeira com código técnico** (`AXIOM_AM`,
+  `BEACON_WM`, `CREST_FO`, `DELTA_PB`) e passaram a nome de pessoa (Renata Albuquerque Freitas,
+  Eduardo Mendonça Pires, Patrícia Lacerda Antunes, Marcelo Tavares Bittencourt). Motivo já
+  registrado na seção de 2026-08-26: pendurar receita e ROA inventados em nome de casa que
+  existe atribuiria desempenho falso a empresa real.
+- **A visão conceitual de gestor virou "Por Gerente"** na linguagem visível (abas, cabeçalhos de
+  tabela, título do gráfico de ROA, filtro, faixa de aviso, texto de achado). Fórmula, métrica,
+  filtro, chave de aba e ID não foram tocados.
+- **De-para canônico de gerente**, em `AtlasUtils`: `GERENTE_LEGADO` + `nomeGerente`. Existe
+  porque os conjuntos auxiliares do demo gravaram o gerente como código técnico e são gerados
+  uma vez só; sem ele, a coluna de gerente da tela de Oportunidades mostrava `AXIOM_AM` cru. A
+  função aceita id atual, código antigo ou nome, e **nunca devolve código técnico**.
+
+### Dois defeitos achados no caminho, um corrigido por medição
+
+1. **A sigla era reduzida duas vezes.** A hidratação do catálogo mandava a sigla que o servidor
+   entregou para dentro de `comSigla`, que deriva a sigla do nome. Recebendo "ABR" ele devolvia
+   "A" e a tela mostrava `ALPHA_01 | A` em vez de `ALPHA_01 | ABR`. Achado por medição no demo
+   publicado, corrigido em `9c9ce9c`, com o teste do contrato da função trancando o
+   comportamento.
+2. **O gerador do conjunto não consegue mais produzir os seis auxiliares.** Este é o achado
+   que importa para quem mexer no dado sintético: `scripts/gerar-dataset-demo.mjs` lê os
+   `platform-*-demo.js` como fonte, e aqueles arquivos viraram casca na rodada anterior. Rodar
+   o gerador hoje **gera os seis conjuntos vazios e apaga o conteúdo do arquivo publicado**, em
+   silêncio. Foi assim que esta rodada descobriu, ao regerar e ver o portão cair de 844 para
+   809. Contornado restaurando os auxiliares do commit anterior por mesclagem, e travado com
+   uma guarda nova no gerador: lista auxiliar vazia **aborta** em vez de sobrescrever. **A fonte
+   dos auxiliares precisa ser reconstruída antes da próxima geração.**
+
+Portão depois da segunda leva: **844/844 checks, 129/129 testes de app, 292/292 do motor**.
+Publicado no demo com a rodada e depois com a correção do gerente.
+
 ## 2026-09-01 — demo estendido a Ago/26 + botões de navegação/saída
 
 - `CURRENT_MONTH` avançou para `2026-08` (último mês fechado real); `OPENING_MONTH`
@@ -162,9 +210,9 @@ aqui, trate este arquivo como suspeito e rode o refresh do fim da página.
 O portão agora tem três etapas, não duas. `npm test` roda as três em sequência.
 
 ```
-842/842 checks OK — todos os checks passaram
-ℹ tests 110   ℹ suites 21   ℹ pass 110   ℹ fail 0   ℹ skipped 0
-ℹ tests 292   ℹ suites 76   ℹ pass 292   ℹ fail 0   ℹ skipped 0
+844/844 checks OK — todos os checks passaram
+ℹ tests 129   ℹ pass 129   ℹ fail 0   ℹ skipped 0
+ℹ tests 292   ℹ pass 292   ℹ fail 0   ℹ skipped 0
 ```
 
 Os 110 testes do app são 63 de comportamento mais 47 de isolamento de papel, acrescidos em
@@ -176,6 +224,13 @@ Medido no fechamento da rodada, 2026-09-10, com a correção do guard de `/api` 
 checks a mais (824 → 842) são das travas que acompanharam a saída do conjunto do bundle — cada
 cascata `platform-*-demo.js` sem nenhum código do pool, o Worker guardando os seis conjuntos, a
 hidratação substituindo em vez de somar, e o gerador sintético fora do build publicado.
+
+Depois da segunda leva, 2026-09-10: 110 → **129 testes de app**, com os 11 do contrato da sigla
+(entrada composta, partícula, espaço duplo, hífen, número solto, vazio, e a sigla única das 40
+carteiras) mais os 6 do rótulo de gerente (o de-para cobre os quatro códigos, cada destino
+existe de verdade em `MANAGERS`, nenhum gerente tem código técnico como id, e nenhuma tela
+imprime o campo cru). Os 2 checks a mais (842 → 844) são das travas que acompanharam a saída do
+conjunto do bundle. Ver a seção da segunda leva, acima.
 
 Antes era `812/812` com 63 testes, medido em 2026-09-01, no fechamento do painel do dono. Os 9
 checks a mais de então (803 → 812) são da camada de movimento decorativo sobre a arte de fundo,
@@ -2128,3 +2183,15 @@ e é o que impede a próxima pessoa de repetir.
   app" para "decisão de modelo de delegação no Access", sem dono de decisão ainda. Escopo só o
   produto, a instância do cliente tem a mesma maquete numa cópia própria, fica para outra
   passada. Ver a seção "Tela de Usuários" acima.
+- **2026-09-10, segunda leva.** Cliente passou a aparecer por sigla em toda a interface, com uma
+  função única (`platform-sigla.js`) compartilhada por navegador, Worker e gerador do demo; o
+  Worker deixou de enviar o nome do cliente em qualquer resposta; os 40 nomes demonstrativos de
+  carteira viraram nomes brasileiros de pessoa com sigla única; os quatro gerentes deixaram de
+  ser casa estrangeira com código técnico e a visão de gestor virou "Por Gerente" na linguagem
+  visível. Dois defeitos achados por medição no caminho, ambos corrigidos: a sigla era reduzida
+  duas vezes na hidratação (a tela mostrava "A" no lugar de "ABR") e a coluna de gerente de
+  Oportunidades mostrava o código técnico, agora resolvido por de-para canônico em `AtlasUtils`.
+  Achado que fica aberto e importa: **o gerador do conjunto perdeu a fonte dos seis auxiliares**,
+  porque os `platform-*-demo.js` viraram casca e continuaram sendo a entrada dele; regerar hoje
+  apagaria o conteúdo em silêncio. Travado com guarda que aborta em lista vazia. 110 → 129 testes
+  de app, 842 → 844 checks. Ver a seção "segunda leva" acima.
