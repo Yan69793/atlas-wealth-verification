@@ -2219,3 +2219,9 @@ e é o que impede a próxima pessoa de repetir.
   vínculos e auditoria, em ordem FK segura, e a validação por SELECT confirmou zero resíduos.
   Ficaram só os 5 cadastros de linha de base e os cadastros reais que o demo segue recebendo. CLEANUP=PASS,
   RESIDUOS=ZERO, PENDENCIAS=ZERO, RBAC=FECHADO.
+- **2026-09-10, entradas de demonstração dos três papéis.** A tela de acesso ganhou três atalhos
+  sem cadastro — "Escritório", "Assessor" e "Cliente" — cada um entrando numa conta sintética
+  fixa do papel correspondente (migration `0004_demo_contas.sql`, um único escritório, org 1001).
+  O papel continua vindo do banco, não do botão: `POST /demo/entrar` só escolhe qual conta entrar,
+  e a autorização segue a matriz RBAC de sempre. Nomes profissionais a pedido do dono (nada de
+  "Dono"). Publicado no demo, Version ID `6e171a36-3b30-4ec6-ba88-48e388ca81ac`.
