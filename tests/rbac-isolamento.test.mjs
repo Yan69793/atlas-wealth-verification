@@ -512,7 +512,7 @@ describe('RBAC: troca de carteira e de cliente devolve a mesma recusa', () => {
   });
 
   test('7e. rota sob /api/ que não existe dá 403, nunca HTML com status 200', async () => {
-    for (const caminho of ['/api/', '/api/algo', '/api/dados/extra', '/api/usuarios/abc/status']) {
+    for (const caminho of ['/api', '/api/', '/api/algo', '/api/dados/extra', '/api/usuarios/abc/status']) {
       const { r } = await pedir(caminho, 1);
       assert.equal(r.status, 403, `${caminho} não devolveu recusa uniforme`);
       const corpo = await r.text();

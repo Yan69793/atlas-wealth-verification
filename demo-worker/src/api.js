@@ -327,7 +327,13 @@ function montarPayload(escopo, permitidas) {
  * mais confuso de falhar.
  */
 export async function rotaApi(request, env, ctx, url, deps) {
-  if (!url.pathname.startsWith('/api/')) return null;
+  // `/api` sem a barra final entra junto, e não é preciosismo: fora daqui ele
+  // caía no ramo de asset, que confere só a assinatura do cookie e chama o
+  // ASSETS, então respondia 200 com o HTML do app. Era exatamente o modo de
+  // falhar que o comentário acima diz que não pode acontecer — quem faz
+  // `fetch('/api')` recebe 200 e quebra no `json()`. Medido em produção em
+  // 2026-09-10, e o teste 7e não pegava porque só varria caminho sob /api/.
+  if (url.pathname !== '/api' && !url.pathname.startsWith('/api/')) return null;
 
   const metodo = request.method;
   const p = url.pathname;
