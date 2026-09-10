@@ -441,7 +441,7 @@ describe('RBAC: administração é do titular, na própria organização', () =>
 
 describe('RBAC: organização é decidida no banco, nunca no que o cliente envia', () => {
   test('6. organização forjada na query não amplia nada', async () => {
-    for (const q of ['?organizacao=2', '?organizacao_id=2', '?org=2', '?organizacao=2&carteira=CEDRO_CAP']) {
+    for (const q of ['?organizacao=2', '?organizacao_id=2', '?org=2', '?org_id=2', '?organizacao=2&carteira=CEDRO_CAP']) {
       const { r } = await pedir('/api/dados' + q, 1);
       if (r.status === 403) continue; // recusar também é resposta correta
       const p = await jsonDe(r);
@@ -520,8 +520,12 @@ describe('RBAC: troca de carteira e de cliente devolve a mesma recusa', () => {
       ['/api/dados?cliente_id=BRAVO_FAM', 2],
       ['/api/dados?portfolio_id=CEDRO_CAP', 1],
       ['/api/dados?organizacao_id=2', 1],
+      ['/api/dados?org_id=2', 1],
+      ['/api/dados?org_id=2', 3],
+      ['/api/dados?org_id=1&org_id=2', 3],
       ['/api/sessao?client_id=CEDRO_CAP', 2],
       ['/api/sessao?organizacao_id=2', 1],
+      ['/api/sessao?org_id=2', 2],
     ];
     for (const [caminho, usuarioId] of ataques) {
       const { r } = await pedir(caminho, usuarioId);

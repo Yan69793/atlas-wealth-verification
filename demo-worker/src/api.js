@@ -60,7 +60,7 @@ function alvoDaUrl(url) {
   };
   const carteiraCode = unico(['carteira', 'carteira_code', 'portfolio_id', 'portfolioId']);
   const clienteId = unico(['cliente', 'cliente_id', 'client_id', 'clientId']);
-  const organizacaoId = unico(['organizacao', 'organizacao_id', 'org', 'tenant_id', 'tenantId']);
+  const organizacaoId = unico(['organizacao', 'organizacao_id', 'org', 'org_id', 'tenant_id', 'tenantId']);
   if ([carteiraCode, clienteId, organizacaoId].includes(null)) return null;
   if (carteiraCode !== undefined && clienteId !== undefined && carteiraCode !== clienteId) return null;
   return { carteiraCode, clienteId, organizacaoId };
