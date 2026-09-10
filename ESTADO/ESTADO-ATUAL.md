@@ -2225,3 +2225,10 @@ e é o que impede a próxima pessoa de repetir.
   O papel continua vindo do banco, não do botão: `POST /demo/entrar` só escolhe qual conta entrar,
   e a autorização segue a matriz RBAC de sempre. Nomes profissionais a pedido do dono (nada de
   "Dono"). Publicado no demo, Version ID `6e171a36-3b30-4ec6-ba88-48e388ca81ac`.
+- **2026-09-10, gráficos do cliente e "Assessor" vira "Gerente".** A tela "Minha carteira" ganhou os
+  gráficos que faltavam: evolução do patrimônio (área, em BRL), rentabilidade acumulada contra o
+  CDI (linha) e a alocação por classe em rosca. Tudo sai do que o cliente já recebe — nenhum campo
+  institucional entrou na projeção. Na mesma passada, "Assessor" virou "Gerente" na interface
+  visível (botão da tela de acesso, rótulo de papel, colunas e CSV de Radar, Oportunidades,
+  Receitas, Vencimentos, Caixa parado e Eventos, e "Valor do gerente"), com os checks de
+  `tests/validate.js` atualizados. Publicado no demo, Version ID `c03cc0d6-6efb-4fb7-a298-bd5e23f9b72b`.

@@ -22,7 +22,7 @@ import React from 'react';
   const { Icon } = window.AtlasIcons;
   const { useToast } = window.AtlasUI;
 
-  const ROTULO_PAPEL = { owner: 'Titular', manager: 'Assessor', client: 'Cliente' };
+  const ROTULO_PAPEL = { owner: 'Titular', manager: 'Gerente', client: 'Cliente' };
 
   async function chamar(url, opcoes) {
     const cfg = Object.assign({ credentials: 'same-origin' }, opcoes || {});
@@ -209,7 +209,7 @@ import React from 'react';
                   value={novo.role}
                   onChange={e => setNovo(Object.assign({}, novo, { role: e.target.value, cliente_id: '' }))}
                 >
-                  <option value="manager">Assessor, vê as carteiras atribuídas a ele</option>
+                  <option value="manager">Gerente, vê as carteiras atribuídas a ele</option>
                   <option value="client">Cliente, vê só a própria carteira</option>
                 </select>
               </label>

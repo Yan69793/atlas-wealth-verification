@@ -23,6 +23,7 @@ import React from 'react';
   const { fmt, fmtBRL, fmtCompactBRL, fmtPct, fmtMonthLabel, signClass, downloadCSV } = window.AtlasUtils;
   const { Icon } = window.AtlasIcons;
   const { KPITile, EmptyState } = window.AtlasUI;
+  const { LineChart } = window.AtlasCharts;
   const D = window.AtlasData;
 
   // Nome da conferência do mês, na linguagem de quem recebe o extrato. O
@@ -33,6 +34,62 @@ import React from 'react';
     'COM ALERTA': 'Conferida com ressalva',
     'CORRIGIR': 'Em verificação',
   };
+
+  /* Paleta única da alocação, a mesma do painel institucional para o mesmo
+     conceito (classe de ativo) não mudar de cor entre as duas telas. */
+  const ALLOC_COLORS = ['#05305F','#C4A228','#2B6CB0','#276749','#9A9188','#553C9A','#C05621','#D97706'];
+
+  /* Evolução do patrimônio em BRL. O LineChart de AtlasCharts formata tudo em
+     porcentagem (é gráfico de retorno), então aqui o eixo é Recharts puro com
+     formatação de moeda. Degrada em silêncio se a biblioteca não carregou. */
+  function EvolucaoPatrimonio({ dados }) {
+    const R = window.Recharts;
+    if (!R || !dados || dados.length < 2) return null;
+    const { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } = R;
+    const chartData = dados.map((d) => ({ label: fmtMonthLabel(d.month), pl: d.value }));
+    return (
+      <ResponsiveContainer width="100%" height={220} debounce={50}>
+        <AreaChart data={chartData} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
+          <defs>
+            <linearGradient id="cliPlGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#05305F" stopOpacity={0.18} />
+              <stop offset="95%" stopColor="#05305F" stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" stroke="#E3DDD5" vertical={false} />
+          <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#9A9188' }} />
+          <YAxis tickFormatter={(v) => fmtCompactBRL(v)} tick={{ fontSize: 10, fill: '#9A9188' }} width={66} />
+          <Tooltip
+            formatter={(v) => [fmtBRL(v), 'Patrimônio']}
+            contentStyle={{ fontSize: 12, borderRadius: 4, border: '1px solid #E3DDD5', background: '#F9F7F4' }}
+          />
+          <Area type="monotone" dataKey="pl" stroke="#05305F" strokeWidth={2} fill="url(#cliPlGrad)" dot={false} connectNulls />
+        </AreaChart>
+      </ResponsiveContainer>
+    );
+  }
+
+  /* Alocação por classe em rosca, espelho do que o painel institucional mostra
+     na aba Composição. Sem campo institucional: usa só classe e saldo. */
+  function AlocacaoPie({ dados, total }) {
+    const R = window.Recharts;
+    if (!R || !dados || !dados.length) return null;
+    const { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } = R;
+    const pieData = dados.map((c) => ({ name: c.cls, value: +(((total > 0 ? c.saldo / total : 0) * 100).toFixed(2)) }));
+    return (
+      <ResponsiveContainer width="100%" height={200}>
+        <PieChart>
+          <Pie data={pieData} innerRadius={52} outerRadius={84} paddingAngle={2} dataKey="value" startAngle={90} endAngle={-270}>
+            {pieData.map((_, i) => (<Cell key={i} fill={ALLOC_COLORS[i % ALLOC_COLORS.length]} />))}
+          </Pie>
+          <Tooltip
+            formatter={(v) => [v.toFixed(1) + '%', '']}
+            contentStyle={{ fontSize: 12, borderRadius: 4, border: '1px solid #E3DDD5', background: '#F9F7F4' }}
+          />
+        </PieChart>
+      </ResponsiveContainer>
+    );
+  }
 
   /* Cliente tem uma carteira. Se a API devolver mais de uma, o certo é mostrar
      a dele, que é a que a sessão nomeia em clienteId — não a primeira da
@@ -89,6 +146,36 @@ import React from 'react';
       if (!n) return null;
       return { cliente: cliente - 1, cdi: cdi - 1, meses: n };
     }, [janela, selectedMonth]);
+
+    // Série de patrimônio da janela (para o gráfico de evolução) e série de
+    // rentabilidade acumulada contra o CDI. Sai tudo do que o cliente já
+    // recebe; nenhum campo institucional entra.
+    const seriePatrimonio = useMemo(() => {
+      const mi = D.MONTHS.indexOf(selectedMonth);
+      if (mi < 0 || !code) return [];
+      const de = Math.max(0, mi - 11);
+      const saida = [];
+      for (let i = de; i <= mi; i++) {
+        const r = D.getRow(code, D.MONTHS[i]);
+        saida.push({ month: D.MONTHS[i], value: r ? r.plCurr : null });
+      }
+      return saida;
+    }, [code, selectedMonth]);
+
+    const serieRentabilidade = useMemo(() => {
+      const cliS = [], cdiS = [];
+      let a = 1, b = 1;
+      janela.forEach((m) => {
+        if (m.rent !== null) a *= (1 + m.rent);
+        b *= (1 + (m.cdi || 0));
+        cliS.push({ month: m.mes, value: a - 1 });
+        cdiS.push({ month: m.mes, value: b - 1 });
+      });
+      return [
+        { label: 'Rentabilidade', color: 'var(--navy)', width: 2, data: cliS },
+        { label: 'CDI', color: 'var(--muted)', dash: '4 2', width: 1.5, data: cdiS },
+      ];
+    }, [janela]);
 
     const porClasse = useMemo(() => {
       const mapa = {};
@@ -201,6 +288,28 @@ import React from 'react';
           />
         </div>
 
+        {seriePatrimonio.length > 1 && (
+          <div className="card" style={{ marginTop: 16 }}>
+            <div className="card-header">
+              <div className="card-title">Evolução do patrimônio</div>
+            </div>
+            <div style={{ padding: '4px 8px 12px' }}>
+              <EvolucaoPatrimonio dados={seriePatrimonio} />
+            </div>
+          </div>
+        )}
+
+        {serieRentabilidade[0] && serieRentabilidade[0].data.length > 1 && (
+          <div className="card" style={{ marginTop: 16 }}>
+            <div className="card-header">
+              <div className="card-title">Rentabilidade acumulada vs CDI</div>
+            </div>
+            <div style={{ padding: '4px 8px 12px' }}>
+              <LineChart series={serieRentabilidade} height={200} />
+            </div>
+          </div>
+        )}
+
         <div className="card" style={{ marginTop: 16 }}>
           <div className="card-header">
             <div className="card-title">Rentabilidade mês a mês</div>
@@ -234,6 +343,20 @@ import React from 'react';
         <div className="card" style={{ marginTop: 16 }}>
           <div className="card-header">
             <div className="card-title">Como o patrimônio está alocado</div>
+          </div>
+          <div style={{ display: 'flex', gap: 20, alignItems: 'center', flexWrap: 'wrap', padding: '4px 14px 10px' }}>
+            <div style={{ width: '100%', maxWidth: 220, flexShrink: 0 }}>
+              <AlocacaoPie dados={porClasse} total={totalComp} />
+            </div>
+            <div style={{ flex: 1, minWidth: 180 }}>
+              {porClasse.map((c, i) => (
+                <div key={c.cls} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7 }}>
+                  <div style={{ width: 10, height: 10, borderRadius: 2, background: ALLOC_COLORS[i % ALLOC_COLORS.length], flexShrink: 0 }} />
+                  <div style={{ flex: 1, fontSize: '0.857rem', color: 'var(--body)' }}>{c.cls}</div>
+                  <div style={{ fontSize: '0.857rem', color: 'var(--muted)' }}>{fmtPct(totalComp > 0 ? c.saldo / totalComp : 0, 1)}</div>
+                </div>
+              ))}
+            </div>
           </div>
           <div className="table-wrap">
             <table>

@@ -1578,8 +1578,8 @@ ok('sem mojibake: platform-valor-math.js', !MOJIBAKE.test(valorMath));
 ok('sem mojibake: platform-valor-assessor.jsx', !MOJIBAKE.test(valorPage));
 ok('página registra AtlasPages.ValorAssessor', valorPage.includes('AtlasPages.ValorAssessor'));
 ok('rota /valor-assessor em platform-app.jsx', appContent.includes("path === '/valor-assessor'"));
-ok('navegação contém Valor do assessor em platform-app.jsx', appContent.includes("label:'Valor do assessor'"));
-ok('título da página registrado', appContent.includes("'valor-assessor': 'Valor do assessor'"));
+ok('navegação contém Valor do gerente em platform-app.jsx', appContent.includes("label:'Valor do gerente'"));
+ok('título da página registrado', appContent.includes("'valor-assessor': 'Valor do gerente'"));
 // Check de ordem entre páginas irmãs removido em 2026-08-30: com lazy-load
 // por rota cada página carrega sob demanda, independente das outras, a
 // relação de ordem que este check trancava deixou de existir no sistema.
@@ -2245,10 +2245,10 @@ ok('R$ × dias não é formatado como moeda',
 
   // 29e. Resto da Onda 1: a tela já resolvia o nome do gestor, o CSV de
   // oportunidades continuava exportando o código interno.
-  ok('CSV de oportunidades exporta o nome do assessor, não o código',
-    /Assessor: nomeAssessor\(o\.assessor\)/.test(oportPage));
+  ok('CSV de oportunidades exporta o nome do gerente, não o código',
+    /Gerente: nomeAssessor\(o\.assessor\)/.test(oportPage));
   ok('nenhum CSV das quatro telas exporta código de gestor cru',
-    !/Assessor: o\.assessor\b/.test(oportPage));
+    !/Gerente: o\.assessor\b/.test(oportPage));
 }
 
 

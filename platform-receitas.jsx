@@ -606,7 +606,7 @@ import React from 'react';
     function exportar() {
       const rows = visiveis.map((v) => ({
         Carteira: v.carteira,
-        Assessor: nomeAssessor(assessorDe(v.carteira)),
+        Gerente: nomeAssessor(assessorDe(v.carteira)),
         'Receita base': v.receitaBase,
         'Receita atual': v.receitaAtual,
         'Queda (R$)': v.queda,
@@ -635,7 +635,7 @@ import React from 'react';
               onChange={(e) => setFiltroMgr(e.target.value)}
               style={{ fontSize: '0.786rem', padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)' }}
             >
-              <option value="">Todos os assessores</option>
+              <option value="">Todos os gerentes</option>
               {D.MANAGERS.map((m) => (
                 <option key={m.id} value={m.id}>{m.name}</option>
               ))}
@@ -651,7 +651,7 @@ import React from 'react';
             <thead>
               <tr>
                 <th style={{ minWidth: 140 }}>Carteira</th>
-                <th>Assessor</th>
+                <th>Gerente</th>
                 <th style={{ textAlign: 'right' }}>Receita base</th>
                 <th style={{ textAlign: 'right' }}>Receita atual</th>
                 <th style={{ textAlign: 'right' }}>Queda R$</th>

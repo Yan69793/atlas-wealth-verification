@@ -2,8 +2,8 @@
 --
 -- Três contas sintéticas num único escritório (org 1001) para demonstrar o
 -- recorte de visibilidade de cada papel: o titular vê todas as carteiras, o
--- assessor só as atribuídas a ele, o cliente só a própria. São as contas que
--- os botões "Escritório / Assessor / Cliente" da tela de acesso usam, via
+-- gerente só as atribuídas a ele, o cliente só a própria. São as contas que
+-- os botões "Escritório / Gerente / Cliente" da tela de acesso usam, via
 -- POST /demo/entrar. O papel vem do banco, não do botão: o parâmetro `perfil`
 -- só escolhe QUAL conta entrar.
 --
@@ -22,7 +22,7 @@ INSERT OR IGNORE INTO organizacoes (id, nome, criado_em) VALUES (1001, 'Demo ATL
 INSERT OR IGNORE INTO usuarios (id, organizacao_id, nome, email, senha_hash, role, ativo, cliente_id, criado_em)
 VALUES
   (1001, 1001, 'Escritório', 'demo-escritorio@exemplo.com', 'demo', 'owner', 1, NULL, datetime('now')),
-  (1002, 1001, 'Assessor',   'demo-assessor@exemplo.com',   'demo', 'manager', 1, NULL, datetime('now')),
+  (1002, 1001, 'Gerente',    'demo-gerente@exemplo.com',    'demo', 'manager', 1, NULL, datetime('now')),
   (1003, 1001, 'Cliente',    'demo-cliente@exemplo.com',    'demo', 'client', 1, 'ALPHA_01', datetime('now'));
 
 INSERT OR IGNORE INTO atribuicoes (usuario_id, carteira_code) VALUES

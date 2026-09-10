@@ -1,4 +1,4 @@
-/* platform-valor-assessor.jsx — Valor do assessor (Fase 6).
+/* platform-valor-assessor.jsx — Valor do gerente (Fase 6).
    Sintese das Fases 1-5: quantifica em reais, carteira a carteira, o valor
    entregue pelo assessor. Tres camadas: custo da inacao (R$-dias do caixa
    parado x CDI, Fase 4), retorno liquido real vs CDI (todos os custos,
@@ -136,7 +136,7 @@ import './platform-valor-math.js';
         <div>
           <div className="page-header">
             <div className="page-eyebrow">Advisor Intelligence</div>
-            <h1 className="page-title">Valor do assessor</h1>
+            <h1 className="page-title">Valor do gerente</h1>
           </div>
           <EmptyState
             title="Sem dados na janela"
@@ -155,7 +155,7 @@ import './platform-valor-math.js';
     function exportar() {
       const rows = visiveis.map((v) => ({
         Carteira: v.code,
-        Assessor: nomeAssessor(v.assessor),
+        Gerente: nomeAssessor(v.assessor),
         'Retorno bruto %': Math.round(v.retBruto * 1000) / 10,
         'Custos (R$)': v.custosR$,
         'Custos (% do PL)': Math.round(v.custosPct * 1000) / 10,
@@ -173,7 +173,7 @@ import './platform-valor-math.js';
       <div>
         <div className="page-header">
           <div className="page-eyebrow">Advisor Intelligence</div>
-          <h1 className="page-title">Valor do assessor</h1>
+          <h1 className="page-title">Valor do gerente</h1>
           <div className="page-subtitle" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
             <span>
               {visiveis.length} carteiras · janela de {janela.length} meses · até {fmtMonthLabel(dataFim)} · Custo da inação (90 dias): {fmtCompactBRL(totalInacao)}
@@ -199,7 +199,7 @@ import './platform-valor-math.js';
             onChange={(e) => setFiltroMgr(e.target.value)}
             style={{ fontSize: '0.786rem', padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)' }}
           >
-            <option value="">Todos os assessores</option>
+            <option value="">Todos os gerentes</option>
             {D.MANAGERS.map((m) => (
               <option key={m.id} value={m.id}>{m.name}</option>
             ))}
@@ -217,7 +217,7 @@ import './platform-valor-math.js';
             <thead>
               <tr>
                 <th style={{ minWidth: 140 }}>Carteira</th>
-                <th>Assessor</th>
+                <th>Gerente</th>
                 <th style={{ textAlign: 'right' }}>Retorno bruto</th>
                 <th style={{ textAlign: 'right' }}>Custos</th>
                 <th style={{ textAlign: 'right' }}>Retorno líquido</th>

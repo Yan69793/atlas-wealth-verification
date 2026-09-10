@@ -362,7 +362,7 @@ import React from 'react';
           rows.push({
             Carteira: c.carteira,
             Nome: nomeCarteira(c.carteira),
-            Assessor: nomeAssessor(assessorDe(c.carteira)),
+            Gerente: nomeAssessor(assessorDe(c.carteira)),
             'PL da carteira': c.plTotal,
             Sinal: ROTULO_TIPO[s.tipo] || s.tipo,
             Situacao: ROTULO_ESTADO[s.estado] || s.estado || '',
@@ -477,7 +477,7 @@ import React from 'react';
               <thead>
                 <tr>
                   <th style={{ minWidth: 150 }}>Carteira</th>
-                  <th>Assessor</th>
+                  <th>Gerente</th>
                   <th style={{ textAlign: 'right' }}>Patrimonio</th>
                   <th>Pior achado</th>
                   <th>Achados</th>
@@ -689,7 +689,7 @@ import React from 'react';
                 <thead>
                   <tr>
                     <th style={{ minWidth: 150 }}>Carteira</th>
-                    <th>Assessor</th>
+                    <th>Gerente</th>
                     <th style={{ textAlign: 'right' }}>Patrimonio antes</th>
                     <th style={{ textAlign: 'right' }}>Patrimonio hoje</th>
                     <th style={{ textAlign: 'right' }}>Variacao</th>

@@ -728,9 +728,9 @@ export function paginaLogin({ erro, cadastrarPath, loginPath, demoPath }) {
             </button>
           </form>
           <form method="POST" action="${demoPath}">
-            <input type="hidden" name="perfil" value="assessor" />
+            <input type="hidden" name="perfil" value="gerente" />
             <button type="submit">
-              <span class="demo__rotulo">Assessor</span>
+              <span class="demo__rotulo">Gerente</span>
               <span class="demo__desc">As carteiras que atende</span>
             </button>
           </form>

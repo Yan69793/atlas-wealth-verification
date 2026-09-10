@@ -284,7 +284,7 @@ import React from 'react';
             'Severidade declarada': i.evento.severidadeEvento,
             Carteira: a.carteira,
             Nome: nomeCarteira(a.carteira),
-            Assessor: nomeAssessor(assessorDe(a.carteira)),
+            Gerente: nomeAssessor(assessorDe(a.carteira)),
             Exposicao: a.valor,
             '% do PL': Math.round(a.fracaoPl * 1000) / 10,
             'Exposicao anterior': a.exposicaoAnterior === null ? '' : a.exposicaoAnterior,
@@ -305,7 +305,7 @@ import React from 'react';
           'Data do evento': e.dataEvento,
           Carteira: e.carteira,
           Nome: nomeCarteira(e.carteira),
-          Assessor: nomeAssessor(assessorDe(e.carteira)),
+          Gerente: nomeAssessor(assessorDe(e.carteira)),
           'Exposicao anterior': e.exposicaoAnterior,
           Impacto: e.severidadeAnterior,
           Conta: 'encerrado porque ' + (ROTULO_MOTIVO[e.motivo] || e.motivo),
@@ -400,7 +400,7 @@ import React from 'react';
                     <tr>
                       <th>Estado</th>
                       <th style={{ minWidth: 140 }}>Carteira</th>
-                      <th>Assessor</th>
+                      <th>Gerente</th>
                       <th style={{ textAlign: 'right' }}>Exposicao</th>
                       <th style={{ textAlign: 'right' }}>% do PL</th>
                       <th style={{ textAlign: 'right' }}>Variacao</th>

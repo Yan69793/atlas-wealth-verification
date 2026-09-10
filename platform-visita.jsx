@@ -38,7 +38,7 @@ import './platform-valor-math.js';
     const p = D && D.CATALOG ? D.CATALOG.find((x) => x.code === code) : null;
     const row = D && p ? D.getRow(code, mesCorrente) : null;
 
-    // Valor do assessor para este cliente (janela de 12 meses), mesmo cálculo
+    // Valor do gerente para este cliente (janela de 12 meses), mesmo cálculo
     // da Fase 6, restrito a um código.
     const linha = useMemo(() => {
       if (!D || !p || !meses.length) return null;
@@ -252,9 +252,9 @@ import './platform-valor-math.js';
           )}
         </div>
 
-        {/* Valor do assessor */}
+        {/* Valor do gerente */}
         <div className="visita-card visita-card--full">
-          <div className="visita-card-title">Valor do assessor (12 meses)</div>
+          <div className="visita-card-title">Valor do gerente (12 meses)</div>
           {linha ? (
             <div className="visita-row">
               <span style={{ fontSize: '0.857rem' }}>

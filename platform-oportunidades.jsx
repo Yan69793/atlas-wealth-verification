@@ -357,7 +357,7 @@ import React from 'react';
         Carteira: o.cliente,
         // resto da Onda 1: a tela ja resolvia o nome, o CSV continuava
         // exportando o codigo interno do gestor (AXIOM_AM)
-        Assessor: nomeAssessor(o.assessor),
+        Gerente: nomeAssessor(o.assessor),
         Motivo: csvSeguro(o.motivo),
         Volume: o.volume,
         Prioridade: o.prioridade,
@@ -438,7 +438,7 @@ import React from 'react';
             <thead>
               <tr>
                 <th style={{ minWidth: 140 }}>Carteira</th>
-                <th>Assessor</th>
+                <th>Gerente</th>
                 <th>Ação comercial</th>
                 <th style={{ textAlign: 'right' }}>Volume</th>
                 <th>Prior.</th>

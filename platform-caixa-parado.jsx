@@ -110,7 +110,7 @@ import React from 'react';
     function exportar() {
       const rows = base.map((v) => ({
         Carteira: v.carteira,
-        Assessor: nomeAssessor(assessorDe(v.carteira)),
+        Gerente: nomeAssessor(assessorDe(v.carteira)),
         'Liquidez hoje': v.liquidezAtual,
         '% do PL': Math.round(v.pctPlAtual * 1000) / 10,
         'Dias parado': v.diasParado,
@@ -148,7 +148,7 @@ import React from 'react';
             <thead>
               <tr>
                 <th style={{ minWidth: 140 }}>Carteira</th>
-                <th>Assessor</th>
+                <th>Gerente</th>
                 <th style={{ textAlign: 'right' }}>Liquidez hoje</th>
                 <th style={{ textAlign: 'right' }}>% do PL</th>
                 <th>Dias parado</th>

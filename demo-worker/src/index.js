@@ -62,7 +62,7 @@ const DEMO_PATH = '/demo/entrar';
 // como em qualquer outro login — trocar o perfil não amplia nada.
 const DEMO_EMAILS = Object.freeze({
   escritorio: 'demo-escritorio@exemplo.com',
-  assessor: 'demo-assessor@exemplo.com',
+  gerente: 'demo-gerente@exemplo.com',
   cliente: 'demo-cliente@exemplo.com',
 });
 

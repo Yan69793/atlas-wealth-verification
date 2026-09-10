@@ -105,7 +105,7 @@ import React from 'react';
     function exportar() {
       const rows = lista.map((v) => ({
         Carteira: v.carteira,
-        Assessor: nomeAssessor(assessorDe(v.carteira)),
+        Gerente: nomeAssessor(assessorDe(v.carteira)),
         Ativo: ativoLimpo(v.ativo),
         Emissor: v.instituicao || '',
         Valor: v.valor,
@@ -142,7 +142,7 @@ import React from 'react';
             <thead>
               <tr>
                 <th style={{ minWidth: 140 }}>Carteira</th>
-                <th>Assessor</th>
+                <th>Gerente</th>
                 <th>Ativo</th>
                 <th>Emissor</th>
                 <th style={{ textAlign: 'right' }}>Valor</th>

@@ -201,7 +201,7 @@ import ReactDOM from 'react-dom/client';
     { id:'oportunidades', label:'Oportunidades',      icon:'portfolios', path:'#/oportunidades' },
     { id:'vencimentos',   label:'Vencimentos',        icon:'trending_up', path:'#/vencimentos'  },
     { id:'caixa-parado',  label:'Caixa parado',       icon:'revenue',    path:'#/caixa-parado'  },
-    { id:'valor-assessor', label:'Valor do assessor', icon:'star',      path:'#/valor-assessor' },
+    { id:'valor-assessor', label:'Valor do gerente', icon:'star',      path:'#/valor-assessor' },
     { id:'tendencia',   label:'Tendência do Ciclo',  icon:'trend',      path:'#/tendencia'   },
     { id:'custos',      label:'Transp. de Custos',   icon:'revenue',    path:'#/custos'      },
     { id:'receitas',    label:'Receitas & ROA',      icon:'revenue',    path:'#/receitas'    },
@@ -239,7 +239,7 @@ import ReactDOM from 'react-dom/client';
      tela institucional.
   ------------------------------------------------------------ */
   const ROTAS_DETALHE = ['carteira', 'visita', 'dev-relatorio'];
-  const ROTULO_PAPEL = { owner: 'Titular', manager: 'Assessor', client: 'Cliente' };
+  const ROTULO_PAPEL = { owner: 'Titular', manager: 'Gerente', client: 'Cliente' };
 
   const ROTAS_POR_PAPEL = {
     owner: {
@@ -582,7 +582,7 @@ import ReactDOM from 'react-dom/client';
     oportunidades: 'Oportunidades',
     vencimentos:   'Vencimentos',
     'caixa-parado': 'Caixa parado',
-    'valor-assessor': 'Valor do assessor',
+    'valor-assessor': 'Valor do gerente',
     'visita': 'Visita',
     comparativo:'Comparativo',
     receitas:   'Receitas & ROA',
@@ -861,7 +861,7 @@ import ReactDOM from 'react-dom/client';
       case 'valor-assessor':
         return pages.ValorAssessor
           ? React.createElement(pages.ValorAssessor)
-          : <PlaceholderPage title="Valor do assessor" etapa="valor-assessor" />;
+          : <PlaceholderPage title="Valor do gerente" etapa="valor-assessor" />;
 
       case 'visita': {
         const code = location.segments[1];
