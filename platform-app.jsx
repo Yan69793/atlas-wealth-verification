@@ -369,7 +369,11 @@ import ReactDOM from 'react-dom/client';
           <div className="sidebar-footer">
             <div className="sidebar-user">
               <div className="sidebar-user-name">{nomeSessao || 'Acesso autorizado'}</div>
-              {window.__ATLAS_SESSAO__ && window.__ATLAS_SESSAO__.role && (
+              {/* Sem etiqueta de papel no modo local: a instância tem uma
+                  pessoa só, atrás do perímetro, e nunca teve esse rótulo. A
+                  etiqueta é informação de sessão do demo. */}
+              {window.__ATLAS_SESSAO__ && window.__ATLAS_SESSAO__.role
+                && window.__ATLAS_SESSAO__.origem !== 'local' && (
                 <div>{ROTULO_PAPEL[papel]}</div>
               )}
               {/* Sem fallback de nome de casa: instancia sem platform-brand.js
@@ -1027,10 +1031,18 @@ import ReactDOM from 'react-dom/client';
      vazio que ele não sabe recarregar sozinho. Por isso a hidratação acontece
      ANTES do React montar o app, e o que monta primeiro é esta tela de boot.
 
-     O que o boot NUNCA faz é cair para um conjunto local para "não deixar a
-     tela vazia". No bundle publicado esse conjunto não existe, de propósito.
-     Se a API não responde, a tela diz que não respondeu. Tela vazia é o
-     resultado certo, dado a mais seria o errado.
+     O que o boot NUNCA faz no demo é cair para um conjunto local para "não
+     deixar a tela vazia". No bundle do demo esse conjunto não existe, de
+     propósito. Se a API não responde, a tela diz que não respondeu.
+
+     A exceção é a instância do cliente, e ela é estreita de propósito: só vale
+     quando a página JÁ tem conjunto na janela antes deste módulo rodar
+     (`_AtlasRealData`, o overlay real servido como script clássico pelo Worker
+     da instância) ou quando o pacote é build de desenvolvimento
+     (`__ATLAS_GERAR_DEMO__`), onde o gerador sintético ainda está no bundle. No
+     build publicado do demo os dois são falsos, então a escapatória não existe
+     lá, e requisição negada ou resposta ilegível continuam sendo tela de erro,
+     nunca conjunto local.
   ============================================================ */
 
   var SITUACAO = {
@@ -1039,6 +1051,16 @@ import ReactDOM from 'react-dom/client';
     SEM_SESSAO: 'sem-sessao',
     FALHA: 'falha'
   };
+
+  /* Modo local: a instância do cliente, que não tem API de dado. Lá o overlay
+     real já populou o conjunto como script clássico antes do bundle avaliar, e
+     quem autoriza o acesso é o perímetro (Cloudflare Access). A identidade
+     abaixo não é credencial nem decisão de autorização vinda do browser: não
+     existe API de dado que ela alcance, porque o conjunto estava na página
+     antes desta linha existir. Serve só para o menu e as rotas pararem de ler
+     `null` e mostrarem "Sem acesso" em tela que sempre foi liberada. */
+  var MODO_LOCAL = (typeof __ATLAS_GERAR_DEMO__ !== 'undefined' && !!__ATLAS_GERAR_DEMO__)
+    || (typeof window !== 'undefined' && !!window._AtlasRealData);
 
   var ESTILO_BOOT = {
     minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -1069,7 +1091,11 @@ import ReactDOM from 'react-dom/client';
 
   function carregarDaApi() {
     return pedirJson('/api/sessao').then(function (s) {
-      if (!s.api) return { situacao: SITUACAO.FALHA, detalhe: 'O servidor não respondeu.' };
+      if (!s.api) {
+        if (!MODO_LOCAL) return { situacao: SITUACAO.FALHA, detalhe: 'O servidor não respondeu.' };
+        window.__ATLAS_SESSAO__ = { role: 'owner', nome: '', origem: 'local' };
+        return { situacao: SITUACAO.PRONTO };
+      }
       if (s.negado) return { situacao: SITUACAO.SEM_SESSAO };
       if (s.erro || !s.corpo || !['owner', 'manager', 'client'].includes(s.corpo.role)) {
         return { situacao: SITUACAO.FALHA, detalhe: s.erro || 'Sessão sem papel definido.' };

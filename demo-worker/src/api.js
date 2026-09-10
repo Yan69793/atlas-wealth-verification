@@ -25,7 +25,7 @@
  */
 
 import { ACOES, autorizar, normalizarUsuario, projetarCarteira, projetarCatalogo, projetarComposicao, PROJECOES } from './authz.js';
-import { DATASET } from './dataset.js';
+import { DATASET, POOL_DEMO } from './dataset.js';
 
 const CABECALHOS_JSON = {
   'Content-Type': 'application/json; charset=utf-8',
@@ -167,6 +167,81 @@ function carteirasPermitidas(usuario, escopo) {
   return ORDEM_CATALOGO.filter((c) => validas.includes(c));
 }
 
+/* Os seis conjuntos auxiliares do demo. Cada um tem a chave da carteira num
+ * campo próprio, e é por ele que o recorte por escopo acontece. Sem isto, Radar,
+ * Oportunidades, Vencimentos, Caixa parado, Receita e Eventos mostrariam
+ * carteira que o /api/dados recusou entregar, porque essas telas liam os
+ * conjuntos sintéticos direto do bundle.
+ *
+ * `cliente` recebe todos com lista vazia. Não é esconder na tela: são telas
+ * institucionais, fora do menu dele, e o que ele recebe é a casca sem linha
+ * nenhuma. */
+const AUXILIARES = Object.freeze([
+  'oportunidades', 'vencimentos', 'caixaParado', 'receitaDrop', 'radar', 'credito',
+]);
+
+/* Chaves que descrevem o conjunto, e não o conteúdo dele: parâmetro de leitura,
+ * versão do motor, janela de datas. São as únicas que sobrevivem para o cliente.
+ * O resto (contagem da casa, PL consolidado, cobertura) é fato do escritório. */
+const NEUTRO_AUXILIAR = Object.freeze([
+  'sintetico', 'schema', 'data', 'periodo', 'tenantId', 'geradoEm', 'engine',
+  'limiares', 'baseData', 'baseEstado', 'motivo', 'fonteEventos',
+]);
+
+/* Um registro de radar ou de crédito pode citar mais de uma carteira no mesmo
+ * objeto (emissor compartilhado, fator comum). A chave da carteira também não
+ * está sempre no mesmo lugar: em `oportunidades` ela se chama `cliente`, nas
+ * outras se chama `carteira`, e dentro de `emissores` pode aparecer só na
+ * afirmação em texto. Por isso o recorte varre o registro inteiro atrás dos
+ * códigos do conjunto, em vez de ler um campo fixo: campo fixo erra no dia em
+ * que o motor acrescenta um. O registro só passa se TODOS os códigos que ele
+ * cita estiverem no escopo. */
+const RE_CODIGOS = new RegExp('\\b(' + POOL_DEMO.join('|') + ')\\b', 'g');
+
+function codigosCitados(entrada) {
+  const achados = new Set();
+  const txt = JSON.stringify(entrada);
+  let m;
+  RE_CODIGOS.lastIndex = 0;
+  while ((m = RE_CODIGOS.exec(txt)) !== null) achados.add(m[1]);
+  return achados;
+}
+
+function registroNoEscopo(entrada, permitidas) {
+  if (!entrada || typeof entrada !== 'object') return false;
+  const citados = codigosCitados(entrada);
+  // Registro que não cita carteira nenhuma é agregado do escritório. Ele não
+  // identifica ninguém, e some junto quando o papel não é institucional.
+  for (const code of citados) if (!permitidas.includes(code)) return false;
+  return true;
+}
+
+function recortarAuxiliares(institucional, permitidas) {
+  const fonte = DATASET.auxiliares || {};
+  const saida = {};
+  AUXILIARES.forEach((chave) => {
+    const bruto = fonte[chave];
+    if (!bruto) return;
+    if (!institucional) {
+      const neutro = {};
+      Object.keys(bruto).forEach((k) => {
+        if (Array.isArray(bruto[k])) neutro[k] = [];
+        else if (NEUTRO_AUXILIAR.includes(k)) neutro[k] = bruto[k];
+      });
+      saida[chave] = neutro;
+      return;
+    }
+    const cortado = {};
+    Object.keys(bruto).forEach((k) => {
+      cortado[k] = Array.isArray(bruto[k])
+        ? bruto[k].filter((linha) => registroNoEscopo(linha, permitidas))
+        : bruto[k];
+    });
+    saida[chave] = cortado;
+  });
+  return saida;
+}
+
 /* Monta a resposta no formato que `AtlasData.hidratarDoServidor()` consome.
  * Dois mapas separados de propósito: catálogo e série são objetos de formatos
  * diferentes, e usar um mapa só para os dois faz o segundo sobrescrever o
@@ -236,6 +311,7 @@ function montarPayload(escopo, permitidas) {
     compositions,
     gestores,
     statusScript,
+    auxiliares: recortarAuxiliares(!cliente, permitidas),
   };
 }
 

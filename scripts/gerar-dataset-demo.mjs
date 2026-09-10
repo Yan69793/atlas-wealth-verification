@@ -21,6 +21,21 @@
  * atribuição e por projeção de papel antes de responder (demo-worker/src/
  * authz.js e o GET /api/dados). Este módulo é a fonte, não a resposta.
  *
+ * OS SEIS CONJUNTOS AUXILIARES ENTRAM AQUI TAMBÉM
+ * -----------------------------------------------
+ * Auditoria de 2026-09-10: os seis overlays sintéticos (oportunidades,
+ * vencimentos, caixa parado, receita drop, radar e crédito) continuavam
+ * importados pelo src/main.jsx e viajavam inteiros no bundle, cada um com
+ * registro por carteira de códigos fora do que o /api/dados entrega. O menu do
+ * gestor mantinha as telas de Radar, Oportunidades, Vencimentos e Caixa parado,
+ * e nelas ele via carteira que o escopo dele recusou. A premissa "o bundle não
+ * tem carteira nenhuma" era falsa para esses seis.
+ *
+ * Agora eles são lidos da MESMA fonte sintética, serializados aqui, e servidos
+ * pelo Worker com o mesmo corte por papel. Os arquivos `-demo.js` do produto
+ * ficam só com a casca (global vazio, mesma forma), e quem preenche é o
+ * `hidratarDoServidor()`.
+ *
  * Uso:  node scripts/gerar-dataset-demo.mjs
  */
 
@@ -86,9 +101,63 @@ if (semPl.length) {
   process.exit(1);
 }
 
+/* ------------------------------------------------------- auxiliares do demo
+ *
+ * Cada overlay é um IIFE que escreve uma global na janela e sai cedo se
+ * `window._AtlasRealData` existir. A janela da sandbox é nova e não tem essa
+ * marca, então a marca sintética é sempre a do demo, nunca a da instância.
+ * A lista de códigos encontrada em cada um é conferida contra o catálogo logo
+ * abaixo: um código que não existe no conjunto vira registro órfão no payload,
+ * que nenhum filtro de papel alcança.
+ */
+const AUXILIARES = [
+  { chave: 'oportunidades', arquivo: 'platform-oportunidades-demo.js', global: 'ATLAS_OPORTUNIDADES_DATA', lista: 'oportunidades', campo: 'cliente' },
+  { chave: 'vencimentos', arquivo: 'platform-vencimentos-demo.js', global: 'ATLAS_VENCIMENTOS_DATA', lista: 'vencimentos', campo: 'carteira' },
+  { chave: 'caixaParado', arquivo: 'platform-caixa-parado-demo.js', global: 'ATLAS_CAIXA_PARADO_DATA', lista: 'itens', campo: 'carteira' },
+  { chave: 'receitaDrop', arquivo: 'platform-receita-drop-demo.js', global: 'ATLAS_RECEITA_DROP_DATA', lista: 'itens', campo: 'carteira' },
+  { chave: 'radar', arquivo: 'platform-radar-demo.js', global: 'ATLAS_RADAR_DATA', lista: 'carteiras', campo: 'carteira' },
+  { chave: 'credito', arquivo: 'platform-credito-demo.js', global: 'ATLAS_CREDITO_DATA', lista: 'impactos', campo: 'carteira' },
+];
+
+const auxiliares = {};
+for (const a of AUXILIARES) {
+  const caminho = path.join(ROOT, a.arquivo);
+  const fonte = fs.readFileSync(caminho, 'utf8');
+  const janelaAux = {
+    addEventListener() {}, removeEventListener() {}, dispatchEvent() {},
+    localStorage: { getItem: () => null, setItem() {}, removeItem() {} },
+    console,
+  };
+  try {
+    new Function('window', 'document', 'localStorage', fonte)(
+      janelaAux, { addEventListener() {} }, janelaAux.localStorage);
+  } catch (e) {
+    console.error('[dataset] ' + a.arquivo + ' não carregou: ' + e.message);
+    process.exit(1);
+  }
+  const valor = janelaAux[a.global];
+  if (!valor || !Array.isArray(valor[a.lista])) {
+    console.error('[dataset] ' + a.arquivo + ' não produziu ' + a.global + '.' + a.lista);
+    process.exit(1);
+  }
+  const orfaos = [];
+  for (const linha of valor[a.lista]) {
+    const code = linha && linha[a.campo];
+    if (typeof code === 'string' && codes.indexOf(code) < 0) orfaos.push(code);
+  }
+  if (orfaos.length) {
+    console.error('[dataset] ' + a.arquivo + ' aponta carteira fora do catálogo: ' + orfaos.join(', '));
+    process.exit(1);
+  }
+  auxiliares[a.chave] = valor;
+}
+
 const pacote = {
   fonte: 'platform-data.js',
   fonteSha256: crypto.createHash('sha256').update(src).digest('hex').slice(0, 16),
+  // Soma das seis fontes auxiliares, para o mesmo teste de deriva do dataset.
+  auxiliaresSha256: crypto.createHash('sha256')
+    .update(AUXILIARES.map((a) => fs.readFileSync(path.join(ROOT, a.arquivo), 'utf8')).join('\n')).digest('hex').slice(0, 16),
   meses: D.MONTHS,
   mesesLabel: D.MONTH_LABELS,
   cdi: D.CDI,
@@ -102,6 +171,7 @@ const pacote = {
   statusScript,
   compositions,
   carteiras,
+  auxiliares,
 };
 
 const corpo = [

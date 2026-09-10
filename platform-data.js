@@ -170,7 +170,20 @@
 
   function getCDI(month) { return CDI[month] || 0; }
 
-  var CATALOG = [
+  /* As quarenta carteiras do demo são conteúdo do GERADOR, e conteúdo do
+     gerador não viaja no bundle. Era a promessa do guard acima e o
+     cumprimento estava pela metade: o `if (!__GERAR_DEMO__)` desligava a
+     GERAÇÃO, mas o catálogo continuava aqui como literal e ia inteiro para o
+     bundle publicado, com código, nome, perfil e início de cada uma. O escopo
+     por papel do /api/dados recorta `catalogo`, então o bundle não pode ter a
+     lista cheia: quem tem uma carteira leria as outras trinta e nove pela
+     mesma via que o servidor acabou de fechar.
+
+     Em build, `__GERAR_DEMO__` é `false` e o ramo inteiro sai na minificação,
+     levando os literais. Em dev ele é `true` e o demo funciona como sempre. */
+  var CATALOG = [];
+  if (__GERAR_DEMO__) {
+  CATALOG = [
     // AXIOM_AM (14 carteiras)
     { code:'ALPHA_01', name:'Alpha Gestão I',          risk:'conservador',         inception:'2022-01', mgr:'AXIOM_AM' },
     { code:'ALPHA_02', name:'Alpha Gestão II',         risk:'moderado',            inception:'2022-03', mgr:'AXIOM_AM' },
@@ -216,13 +229,36 @@
     { code:'UMBRA_02',  name:'Umbra Gestão II',        risk:'conservador',         inception:'2026-03', mgr:'DELTA_PB' },
     { code:'COMETA_FAM', name:'Cometa Family',         risk:'moderado',            inception:'2026-02', mgr:'DELTA_PB' },
   ];
+  }
 
-  var MANAGERS = [
+  /* Mesmo tratamento do catálogo: o eixo de gestor é do demo. Em produção ele
+     nasce vazio e quem o preenche é a hidratação (ou o injetor de dado real,
+     na instância, que também recria a lista inteira). */
+  var MANAGERS = [];
+  if (__GERAR_DEMO__) {
+  MANAGERS = [
     { id:'AXIOM_AM',  name:'Axiom Asset Management',  codes:CATALOG.filter(function(p){return p.mgr==='AXIOM_AM';}).map(function(p){return p.code;}), roaTarget:0.00052 * 12 },
     { id:'BEACON_WM', name:'Beacon Wealth Management', codes:CATALOG.filter(function(p){return p.mgr==='BEACON_WM';}).map(function(p){return p.code;}), roaTarget:0.00048 * 12 },
     { id:'CREST_FO',  name:'Crest Family Office',     codes:CATALOG.filter(function(p){return p.mgr==='CREST_FO';}).map(function(p){return p.code;}), roaTarget:0.00055 * 12 },
     { id:'DELTA_PB',  name:'Delta Private Banking',   codes:CATALOG.filter(function(p){return p.mgr==='DELTA_PB';}).map(function(p){return p.code;}), roaTarget:0.00043 * 12 },
   ];
+  }
+
+  /* Os poucos códigos que o roteiro sintético cita FORA do catálogo, em
+     comparação de string e em texto de achado. Ficam atrás do mesmo guard pelo
+     mesmo motivo: em produção o bundle não leva carteira nenhuma, nem citada, e
+     o gate de publicação (scripts/verify-build.mjs) mede isso no artefato.
+     Vazios em produção, as comparações abaixo são falsas e as funções que as
+     usam não produzem nada — que é o certo, porque nelas não há demo para
+     produzir. */
+  var CITE_FEE = '';
+  var CITE_BILLING = '';
+  var INCEPTIONS_TARDIAS = [];
+  if (__GERAR_DEMO__) {
+    CITE_FEE = 'DUNAS_CAP';
+    CITE_BILLING = 'COMETA_FAM';
+    INCEPTIONS_TARDIAS = ['UMBRA_01', 'UMBRA_02', 'COMETA_FAM'];
+  }
 
   // beta e sigma por perfil de risco
   var RISK_PARAMS = {
@@ -305,7 +341,8 @@
    * A mistura é a da pitch: maioria limpa, um punhado para olhar, dois que não
    * saem antes de alguém resolver.
    */
-  var RECIDIVA_CODES = ['HELIOS_01','JOIA_FAM','NOVA_CAP','KAPPA_PV'];
+  var RECIDIVA_CODES = [];
+  if (__GERAR_DEMO__) RECIDIVA_CODES = ['HELIOS_01','JOIA_FAM','NOVA_CAP','KAPPA_PV'];
   var RECIDIVA_MONTHS = ['2025-11','2025-12','2026-01','2026-02','2026-03','2026-04','2026-05','2026-06'];
 
   /* O roteiro inteiro é gerador do demo, então vive dentro do guard. A função
@@ -531,9 +568,9 @@
         plCurr = Math.max(plCurr, 100000);
 
         var feeEff = pd.fee;
-        if (p.code === 'DUNAS_CAP' && month === '2025-10') feeEff = pd.fee * 20;
+        if (CITE_FEE && p.code === CITE_FEE && month === '2025-10') feeEff = pd.fee * 20;
         var revenue = feeEff * plCurr;
-        if (p.code === 'COMETA_FAM' && month === '2026-02') revenue += 48500;
+        if (CITE_BILLING && p.code === CITE_BILLING && month === '2026-02') revenue += 48500;
 
         // Custos do cliente (N0.5): cada camada gerada como fracao do PL com
         // parametros realistas. No modo real/importado, defaults para zero ate
@@ -1112,6 +1149,10 @@
 
   function getRegistration() {
     if (_registrationCache) return _registrationCache;
+    /* Sem catálogo não há de quem falar. Em produção o catálogo só existe
+       depois da hidratação (ver o guard do CATALOG), então esta saída protege
+       a chamada que porventura aconteça antes. */
+    if (!CATALOG.length) return [];
     var rng = subRng('registration|v1');
     var rows = [];
     var usedCodes = [];
@@ -1372,18 +1413,18 @@
         });
       }
     });
-    // anomalia de fee (DUNAS_CAP Out/2025)
-    if (month === '2025-10') {
+    // anomalia de fee (Out/2025), no código que o roteiro do demo apontou
+    if (month === '2025-10' && CITE_FEE) {
       result.push({
-        code:'DUNAS_CAP', name:'Dunas Capital', month:month,
+        code:CITE_FEE, name:'Dunas Capital', month:month,
         ret:0, type:'FEE_ANOMALY',
         text:'Taxa de administração 20× acima do padrão. Possível erro de parametrização no sistema de faturamento.'
       });
     }
-    // anomalia de billing (COMETA_FAM Fev/2026)
-    if (month === '2026-02') {
+    // anomalia de billing (Fev/2026), idem
+    if (month === '2026-02' && CITE_BILLING) {
       result.push({
-        code:'COMETA_FAM', name:'Cometa Family', month:month,
+        code:CITE_BILLING, name:'Cometa Family', month:month,
         ret:0, type:'BILLING_ADJ',
         text:'Receita com ajuste de faturamento de R$ 48.500 sem evento de movimentação correspondente.'
       });
@@ -1571,12 +1612,12 @@
     }
 
     // Regra 2: anomalia de fee (Out/2025)
-    if (month === '2025-10') {
-      alerts.push({ rule:'Fee Anômalo', text:'DUNAS_CAP: taxa de administração calculada é 20× o parâmetro contratual.', severity:'CORRIGIR' });
+    if (month === '2025-10' && CITE_FEE) {
+      alerts.push({ rule:'Fee Anômalo', text:CITE_FEE + ': taxa de administração calculada é 20× o parâmetro contratual.', severity:'CORRIGIR' });
     }
 
     // Regra 3: ROA = 0 com AUM > 10k (inception tardio)
-    var lateInceptions = ['UMBRA_01','UMBRA_02','COMETA_FAM'];
+    var lateInceptions = INCEPTIONS_TARDIAS;
     lateInceptions.forEach(function(code) {
       var p = _codeMap[code];
       if (!p || p.inception > month) {
@@ -1601,8 +1642,8 @@
       var pl = pd.plArr[mi] || 0;
       var revenue = pd.feeArr[mi] || 0;
       var expected = pl * pd.fee;
-      // anomalia DUNAS_CAP Out/2025
-      if (p.code === 'DUNAS_CAP' && month === '2025-10') expected = pl * pd.fee; // base correta
+      // anomalia de fee Out/2025
+      if (CITE_FEE && p.code === CITE_FEE && month === '2025-10') expected = pl * pd.fee; // base correta
       var diff = revenue - expected;
       var diffPct = expected > 0 ? Math.abs(diff) / expected : 0;
       return {
@@ -1746,7 +1787,7 @@
     // I8: anomalia de fee presente em Out/2025
     var anomOut = anomalias('2025-10');
     var feeAnom = anomOut.some(function(a){return a.type==='FEE_ANOMALY';});
-    console.assert(feeAnom, 'I8: anomalia de fee em DUNAS_CAP Out/2025 não encontrada');
+    console.assert(feeAnom, 'I8: anomalia de fee em ' + CITE_FEE + ' Out/2025 não encontrada');
     if (!feeAnom) errs++;
 
     // I9: ~28 pendências cadastrais
@@ -2081,6 +2122,37 @@
         roaTarget: 0
       });
     }
+
+    /* ---- conjuntos auxiliares: oportunidades, vencimentos, caixa parado,
+       receita drop, radar e credito.
+
+       Estas seis globais nasciam CHEIAS dentro do bundle, e por isso o escopo
+       por papel nao as alcancava: quem abria o Radar lia o arquivo e via
+       carteira que o /api/dados tinha acabado de recusar entregar. Desde
+       2026-09-10 os arquivos `-demo.js` ficam so com a casca vazia, e o
+       conteudo chega recortado por papel, na mesma resposta que troca o
+       catalogo e a serie.
+
+       Substituicao, e nao merge. Se o servidor mandou lista vazia, a global
+       fica vazia: preservar o que veio no bundle seria preservar exatamente o
+       que o recorte existe para tirar.
+
+       Sem a chave na resposta, a global fica como esta. E o caminho da
+       instancia, que nao tem API de dado e popula pelo overlay real. */
+    var AUXILIARES = {
+      oportunidades: 'ATLAS_OPORTUNIDADES_DATA',
+      vencimentos: 'ATLAS_VENCIMENTOS_DATA',
+      caixaParado: 'ATLAS_CAIXA_PARADO_DATA',
+      receitaDrop: 'ATLAS_RECEITA_DROP_DATA',
+      radar: 'ATLAS_RADAR_DATA',
+      credito: 'ATLAS_CREDITO_DATA',
+    };
+    var aux = (payload.auxiliares && typeof payload.auxiliares === 'object') ? payload.auxiliares : {};
+    Object.keys(AUXILIARES).forEach(function (chave) {
+      var novo = aux[chave];
+      if (!novo || typeof novo !== 'object') return;
+      window[AUXILIARES[chave]] = novo;
+    });
 
     _dataMode = payload.modo === 'real' ? 'real' : 'demo';
     capturarSnapshot();

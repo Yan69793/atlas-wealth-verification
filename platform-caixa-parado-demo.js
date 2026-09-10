@@ -1,77 +1,29 @@
-/* platform-caixa-parado-demo.js — fallback sintetico de window.ATLAS_CAIXA_PARADO_DATA
-   Mesmo padrao dos demais fallbacks: so roda se o overlay real da instancia
-   (platform-caixa-parado.js, LGPD, gitignored) ainda nao populou a janela.
+/* platform-caixa-parado-demo.js — casca do fallback sintético de
+   window.ATLAS_CAIXA_PARADO_DATA.
 
-   Carteiras do catalogo demo do produto, valores e datas fixos, tudo
-   ficticio. Fatos de liquidez (R$, % do PL, dias), sem julgamento de
-   qualidade: a decisao sobre o caixa e do assessor.
+   ESTE ARQUIVO NÃO CARREGA MAIS CARTEIRA, pelo mesmo motivo do
+   platform-oportunidades-demo.js: o conteúdo por carteira viajava no bundle e
+   escapava do escopo por papel. Quem entrega agora é o GET /api/dados, já
+   recortado, e quem aplica é `AtlasData.hidratarDoServidor()`.
+
+   Os limiares ficam: são parâmetro de leitura, não fato de carteira, e a tela
+   os usa para rotular o que chega.
+
+   A instância não passa por aqui. Lá o overlay real (platform-caixa-parado.js,
+   LGPD, fora do git) popula a mesma global antes, e o `_AtlasRealData` abaixo
+   impede que o sintético se sobreponha a dado de cliente.
 */
 (function () {
   'use strict';
   if (window.ATLAS_CAIXA_PARADO_DATA) return;
-  /* Instancia com dado real: nao popular sintetico. Ver ESTADO/ESTADO-ATUAL.md. */
   if (window._AtlasRealData) return;
 
   window.ATLAS_CAIXA_PARADO_DATA = {
     sintetico: true,
     data: '2026-08-14',
-    janelaDias: 90,
     limiares: { caixaParadoMinPct: 0.10, caixaParadoMinDias: 7 },
     motivo: null,
-    itens: [
-      {
-        carteira: 'ALPHA_01',
-        liquidezAtual: 250000,
-        pctPlAtual: 0.125,
-        diasParado: 9,
-        rsDias: 2250000,
-        rsDiasSequencia: 2100000,
-        pico: 300000,
-        inicioSequencia: '2026-08-06',
-        sequenciaTruncada: false,
-        oportunidadeId: '2026-08-14|ALPHA_01|IDLE_CASH|',
-      },
-      {
-        carteira: 'KAPPA_PV',
-        liquidezAtual: 180000,
-        pctPlAtual: 0.12,
-        diasParado: 15,
-        rsDias: 2700000,
-        rsDiasSequencia: 2520000,
-        pico: 210000,
-        inicioSequencia: '2026-07-31',
-        sequenciaTruncada: false,
-        oportunidadeId: '2026-08-14|KAPPA_PV|IDLE_CASH|',
-      },
-      {
-        carteira: 'BRAVO_FAM',
-        liquidezAtual: 320000,
-        pctPlAtual: 0.123,
-        diasParado: 30,
-        rsDias: 9600000,
-        rsDiasSequencia: 9400000,
-        pico: 380000,
-        inicioSequencia: '2026-07-16',
-        sequenciaTruncada: false,
-        oportunidadeId: '2026-08-14|BRAVO_FAM|IDLE_CASH|',
-      },
-      {
-        /* Caso da sequencia que preenche a janela inteira: o motor para na
-           borda dos 90 dias e nao olha mais para tras, entao a tela mostra
-           "90d+" e "pelo menos desde", em vez de afirmar um numero exato que
-           nao foi medido. Decisao do dono em 2026-08-17. */
-        carteira: 'GAMMA_LRG',
-        liquidezAtual: 410000,
-        pctPlAtual: 0.14,
-        diasParado: 90,
-        rsDias: 36490000,
-        rsDiasSequencia: 36490000,
-        pico: 410000,
-        inicioSequencia: '2026-05-17',
-        sequenciaTruncada: true,
-        oportunidadeId: '2026-08-14|GAMMA_LRG|IDLE_CASH|',
-      },
-    ],
+    itens: [],
     geradoEm: null, // sintetico: sem timestamp de processamento real
   };
 })();

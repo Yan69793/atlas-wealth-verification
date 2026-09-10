@@ -15,10 +15,70 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
+
+/* O pool de 40 códigos de carteira do demo. Nenhum deles pode aparecer em nada
+   que o navegador receba ANTES da resposta autorizada do GET /api/dados.
+
+   Até 2026-09-10 isso não se sustentava: os sete platform-*-demo.js são
+   importados por src/main.jsx, entravam no bundle com registro por carteira, e
+   o escopo por papel do /api/dados não os alcançava. Quem tinha uma carteira no
+   escopo abria Radar, Oportunidades, Vencimentos, Caixa parado, Receita ou
+   Eventos e lia as outras trinta e nove, com emissor, exposição e valor. Por
+   isso a checagem é de CONTEÚDO, e não de nome de arquivo: o defeito passava
+   com todos os nomes certos no lugar.
+
+   Lido do dataset do Worker, que é onde o conjunto do demo passou a viver. */
+/* dataset.js é ESM grande, e o package.json do repositório é CommonJS (herdado
+   de tests/validate.js). Importá-lo direto aqui faz o Node avisar a cada
+   publicação que falta `type: module`, que é justamente o que não pode ser
+   feito. A leitura sai num processo filho, com o stderr descartado, igual ao
+   que tests/validate.js faz para o mesmo arquivo. */
+function poolDoDemo() {
+  try {
+    const url = pathToFileURL(path.join(ROOT, 'demo-worker', 'src', 'dataset.js')).href;
+    const script = 'import { POOL_DEMO } from ' + JSON.stringify(url)
+      + ';process.stdout.write(JSON.stringify(POOL_DEMO || []));';
+    const bruto = execFileSync(process.execPath, ['--input-type=module', '-e', script], {
+      encoding: 'utf8',
+      maxBuffer: 8 * 1024 * 1024,
+      stdio: ['ignore', 'pipe', 'ignore'],
+    });
+    const pool = JSON.parse(bruto);
+    return Array.isArray(pool) ? pool : [];
+  } catch {
+    return [];
+  }
+}
+
+/* Extensões de texto que o navegador consome. Binário não é lido: o que o
+   build publica como imagem já é barrado por nome, e ler MB de PNG aqui seria
+   caro para nada. */
+const TEXTO = /\.(js|mjs|cjs|css|html|json|webmanifest|map)$/i;
+
+/** Procura códigos do pool no conteúdo de dist-app. Devolve um item por arquivo. */
+export function vazamentosDeCarteira(dir, pool) {
+  if (!pool.length) return ['(pool de carteiras do demo não pôde ser lido)'];
+  const achados = [];
+  const anda = (d) => {
+    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+      const full = path.join(d, e.name);
+      if (e.isDirectory()) { anda(full); continue; }
+      if (!TEXTO.test(e.name)) continue;
+      const texto = fs.readFileSync(full, 'utf8');
+      const citados = pool.filter((c) => new RegExp('\\b' + c + '\\b').test(texto));
+      if (citados.length) {
+        achados.push(`${path.relative(dir, full)} cita ${citados.length} carteira(s): ${citados.join(', ')}`);
+      }
+    }
+  };
+  anda(dir);
+  return achados;
+}
 
 /* Espelha a lista NUNCA de build-deploy.mjs e os overlays do .gitignore.
    Regex com `(?:\.min)?` e `i` fecha variantes que não vêm do build. */
@@ -40,8 +100,18 @@ const NUNCA = [
 
 const BINARIOS = /\.(pdf|xlsx?|docx|zip|png|jpe?g)$/i;
 
+/* `verificarDist` é chamada por build-deploy.mjs antes de copiar qualquer
+   coisa, então o conteúdo também tem que ser conferido lá, não só no uso pela
+   linha de comando. O pool é lido uma vez, na avaliação do módulo. */
+const POOL_DO_DEMO = poolDoDemo();
+
 /** Varre dir e devolve os caminhos suspeitos relativos a ele. */
 export function verificarDist(dir) {
+  if (!fs.existsSync(dir)) return [];
+  return [...verificarNomes(dir), ...vazamentosDeCarteira(dir, POOL_DO_DEMO)];
+}
+
+function verificarNomes(dir) {
   const suspeitos = [];
   const anda = (d) => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
@@ -81,5 +151,5 @@ if (isCli) {
     for (const s of suspeitos) console.error('  ' + s);
     process.exit(1);
   }
-  console.log('dist-app/ limpo: nenhum overlay, nenhum binario.');
+  console.log(`dist-app/ limpo: nenhum overlay, nenhum binario, nenhuma das ${POOL_DO_DEMO.length} carteiras do pool.`);
 }

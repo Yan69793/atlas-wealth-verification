@@ -1663,6 +1663,118 @@ const receitaDropDemoPath = path.join(ROOT, 'platform-receita-drop-demo.js');
 const receitaDropDemo = fs.existsSync(receitaDropDemoPath)
   ? fs.readFileSync(receitaDropDemoPath, 'utf8') : '';
 
+/* ─── Onde vive o dado do demo, desde 2026-09-10 ─────────────────────────────
+ *
+ * Os seis conjuntos auxiliares (oportunidades, vencimentos, caixa parado,
+ * receita drop, radar, crédito) viajavam INTEIROS dentro do bundle: os
+ * platform-*-demo.js são importados por src/main.jsx. O escopo por papel do
+ * GET /api/dados não os alcançava, então quem tinha uma carteira no escopo
+ * abria o Radar e via as outras trinta e nove do pool, com sinal, emissor e
+ * valor. Agora o que fica versionado nesses arquivos é a casca, e o conteúdo
+ * chega recortado pelo /api/dados a partir de demo-worker/src/dataset.js.
+ *
+ * Estes checks provam que o demo continua demonstrando cada regra. Como o dado
+ * mudou de lugar, eles leem a fonte que serve a API em vez do arquivo do
+ * bundle. A cobertura não cai, ela acompanha o dado.
+ *
+ * dataset.js é ESM de ~2,9 MB, e este arquivo é CommonJS. `require` de ESM só
+ * existe a partir do Node 22.12, então a leitura sai num processo filho, que
+ * funciona no Node >= 18 que o projeto declara. */
+const AUX_DEMO_OU_POOL = (function lerAuxiliaresDoDataset() {
+  const { execFileSync } = require('child_process');
+  const { pathToFileURL } = require('url');
+  const arquivo = pathToFileURL(path.join(ROOT, 'demo-worker', 'src', 'dataset.js')).href;
+  const script = 'import { DATASET, POOL_DEMO } from ' + JSON.stringify(arquivo)
+    + ';process.stdout.write(JSON.stringify({ auxiliares: DATASET.auxiliares || {}, pool: POOL_DEMO || [] }));';
+  try {
+    const bruto = execFileSync(process.execPath, ['--input-type=module', '-e', script], {
+      encoding: 'utf8',
+      maxBuffer: 64 * 1024 * 1024,
+      stdio: ['ignore', 'pipe', 'ignore'],
+    });
+    return JSON.parse(bruto);
+  } catch {
+    return { auxiliares: {}, pool: [] };
+  }
+})();
+
+const AUX_DEMO = AUX_DEMO_OU_POOL.auxiliares;
+
+/* O pool de 40 carteiras do demo. É a lista de códigos que NÃO pode aparecer
+   em nada que chegue ao navegador antes da resposta autorizada do /api/dados. */
+const POOL_DEMO = AUX_DEMO_OU_POOL.pool;
+
+/* O gerador do dataset é quem lê os overlays do motor e monta o que a API
+   entrega. Os checks abaixo usam ele para amarrar o payload à origem. */
+const GEN_DATASET_SRC = fs.existsSync(path.join(ROOT, 'scripts', 'gerar-dataset-demo.mjs'))
+  ? fs.readFileSync(path.join(ROOT, 'scripts', 'gerar-dataset-demo.mjs'), 'utf8') : '';
+
+const GLOBAL_DO_AUXILIAR = {
+  oportunidades: 'ATLAS_OPORTUNIDADES_DATA',
+  vencimentos: 'ATLAS_VENCIMENTOS_DATA',
+  caixaParado: 'ATLAS_CAIXA_PARADO_DATA',
+  receitaDrop: 'ATLAS_RECEITA_DROP_DATA',
+  radar: 'ATLAS_RADAR_DATA',
+  credito: 'ATLAS_CREDITO_DATA',
+};
+
+/* Mesma forma de antes: uma janela com a global que a tela lê. Só a origem
+   mudou, o check continua lendo `win.ATLAS_X_DATA`. */
+function janelaDoAuxiliar(chave, globalAlternativa) {
+  const win = {};
+  win.window = win;
+  const nome = globalAlternativa || GLOBAL_DO_AUXILIAR[chave];
+  if (nome && AUX_DEMO[chave]) win[nome] = AUX_DEMO[chave];
+  return win;
+}
+
+ok('os seis conjuntos auxiliares do demo são legíveis a partir do Worker',
+  Object.keys(AUX_DEMO).length === 6, Object.keys(AUX_DEMO).join(', '));
+ok('o pool de carteiras do demo é legível (é contra ele que o vazamento se mede)',
+  POOL_DEMO.length > 0 && POOL_DEMO.every((c) => /^[A-Z0-9_]+$/.test(c)), String(POOL_DEMO.length));
+
+// ─── 25c. O bundle não pode carregar carteira antes da resposta autorizada ───
+//
+// O escopo por papel do /api/dados não alcançava estes arquivos: eles são
+// importados por src/main.jsx, entram no bundle, e até 2026-09-10 traziam
+// registro por carteira das 40 do pool. Quem tinha escopo de uma carteira abria
+// Radar, Oportunidades, Vencimentos, Caixa parado, Receita ou Eventos e lia as
+// outras trinta e nove, com emissor, exposição e valor. Estes checks falham no
+// dia em que alguém reescrever conteúdo nesses arquivos.
+const RE_POOL = new RegExp('\\b(' + POOL_DEMO.join('|') + ')\\b');
+for (const [chave, arquivo] of Object.entries({
+  oportunidades: 'platform-oportunidades-demo.js',
+  vencimentos: 'platform-vencimentos-demo.js',
+  caixaParado: 'platform-caixa-parado-demo.js',
+  receitaDrop: 'platform-receita-drop-demo.js',
+  radar: 'platform-radar-demo.js',
+  credito: 'platform-credito-demo.js',
+})) {
+  const src = fs.readFileSync(path.join(ROOT, arquivo), 'utf8');
+  const citados = POOL_DEMO.filter((c) => new RegExp('\\b' + c + '\\b').test(src));
+  ok(`${arquivo} não cita nenhuma carteira do pool`, citados.length === 0, citados.join(', '));
+}
+// A outra metade da mesma trava: o conteúdo existe, mas do lado do Worker.
+for (const chave of Object.keys(GLOBAL_DO_AUXILIAR)) {
+  ok(`o Worker guarda o conjunto ${chave} para servir recortado`,
+    !!AUX_DEMO[chave], chave);
+}
+// Quem aplica o que chegou do servidor é a hidratação, e ela substitui em vez
+// de somar: lista vazia na resposta tem que virar lista vazia na tela, senão o
+// recorte não vale nada.
+const dataSrc = fs.readFileSync(path.join(ROOT, 'platform-data.js'), 'utf8');
+ok('hidratarDoServidor aplica os conjuntos auxiliares do payload',
+  /payload\.auxiliares/.test(dataSrc) && /ATLAS_RADAR_DATA/.test(dataSrc));
+ok('auxiliar recebido substitui o local, nunca soma',
+  /window\[AUXILIARES\[chave\]\] = novo;/.test(dataSrc));
+// O gerador sintético do demo não pode sobreviver ao build publicado: é ele
+// que produz o pool no navegador, e é o que a escapatória de modo local usa.
+ok('o gerador sintético sai do bundle publicado (define por comando)',
+  /__ATLAS_GERAR_DEMO__:\s*command === 'serve' \? 'true' : 'false'/.test(
+    fs.readFileSync(path.join(ROOT, 'vite.config.mjs'), 'utf8')));
+ok('a escapatória de modo local exige conjunto já presente na página',
+  /MODO_LOCAL[\s\S]{0,300}window\._AtlasRealData/.test(appContent));
+
 // 25a. O pior achado: na instância com dado real de cliente, os quatro fallbacks
 // populavam carteira fictícia porque só checavam ausência do próprio overlay. O
 // produtor do overlay real das fases 2/3/4 não existe, então o fallback SEMPRE
@@ -1765,13 +1877,8 @@ ok('R$ × dias não é formatado como moeda',
   ok('motor documenta o intervalo máximo entre snapshots do caixa parado',
     /caixaParadoMaxIntervaloDias:\s*\d+/.test(thresholdsSrc));
 
-  const win = { };
-  win.window = win;
-  let itens = [];
-  try {
-    new Function('window', 'globalThis', receitaDropDemo)(win, win);
-    itens = (win.ATLAS_RECEITA_DROP_DATA && win.ATLAS_RECEITA_DROP_DATA.itens) || [];
-  } catch { /* falha aparece no check de contagem abaixo */ }
+  const win = janelaDoAuxiliar('receitaDrop');
+  const itens = (win.ATLAS_RECEITA_DROP_DATA && win.ATLAS_RECEITA_DROP_DATA.itens) || [];
 
   ok('demo de queda de receita tem itens avaliáveis', itens.length > 0);
   const divergentes = itens.filter((v) => {
@@ -1887,13 +1994,6 @@ ok('R$ × dias não é formatado como moeda',
 // semana, e armazenamento local congelando as linhas da base.
 
 {
-  // Avalia um fallback sintético num sandbox e devolve a janela resultante.
-  function rodarDemo(src) {
-    const win = {};
-    win.window = win;
-    try { new Function('window', 'globalThis', src)(win, win); } catch { /* vira falha no check */ }
-    return win;
-  }
 
   // 28a. Causa raiz: dentro de uma carteira e um período, os eventos da família
   // "movimento de patrimônio" descrevem um fato só. O demo tinha BRAVO_FAM com
@@ -1907,7 +2007,7 @@ ok('R$ × dias não é formatado como moeda',
     !/PRECEDENCIA_CAUSA_RAIZ[^=]*=\s*\[[^\]]*MATURITY_APPROACHING/.test(generatorSrc));
 
   const FAMILIA = ['LARGE_WITHDRAWAL', 'REVENUE_DROP', 'CASH_DECREASE', 'CONCENTRATION_INCREASE', 'POSITION_CLOSED'];
-  const winOport = rodarDemo(oportDemo);
+  const winOport = janelaDoAuxiliar('oportunidades');
   const demoOps = (winOport.ATLAS_OPORTUNIDADES_DATA && winOport.ATLAS_OPORTUNIDADES_DATA.oportunidades) || [];
   ok('demo de oportunidades tem itens avaliáveis', demoOps.length > 0);
 
@@ -1953,7 +2053,7 @@ ok('R$ × dias não é formatado como moeda',
     fs.readFileSync(path.join(ROOT, 'audit-engine/src/intel/idle-cash.ts'), 'utf8')
       .includes('oportunidadeId: idOportunidade('));
 
-  const winCaixa = rodarDemo(caixaDemo);
+  const winCaixa = janelaDoAuxiliar('caixaParado');
   const demoCaixa = (winCaixa.ATLAS_CAIXA_PARADO_DATA && winCaixa.ATLAS_CAIXA_PARADO_DATA.itens) || [];
   ok('demo de caixa parado tem itens avaliáveis', demoCaixa.length > 0);
   ok('todo item de caixa parado tem oportunidadeId na convenção do motor',
@@ -2046,9 +2146,7 @@ ok('R$ × dias não é formatado como moeda',
 {
   const utilsSrc = fs.readFileSync(path.join(ROOT, 'platform-utils.jsx'), 'utf8');
 
-  const winCaixa5 = {};
-  winCaixa5.window = winCaixa5;
-  try { new Function('window', 'globalThis', caixaDemo)(winCaixa5, winCaixa5); } catch { /* vira falha no check */ }
+  const winCaixa5 = janelaDoAuxiliar('caixaParado');
   const demoCaixa = (winCaixa5.ATLAS_CAIXA_PARADO_DATA && winCaixa5.ATLAS_CAIXA_PARADO_DATA.itens) || [];
 
   // 29a. O motivo da oportunidade e a observação do contato saem de textarea:
@@ -2184,11 +2282,13 @@ ok('R$ × dias não é formatado como moeda',
   ok('demo do radar publica window.ATLAS_RADAR_DATA',
     radarDemo.includes('window.ATLAS_RADAR_DATA'));
   ok('demo do radar e sintetico (geradoEm null)',
-    /"geradoEm":\s*null/.test(radarDemo));
+    /geradoEm:/.test(radarDemo) && AUX_DEMO.radar && AUX_DEMO.radar.sintetico === true
+    && AUX_DEMO.radar.geradoEm === null);
   ok('demo do radar nao popula quando ha dado real na instancia',
     radarDemo.includes('window._AtlasRealData'));
   ok('demo do radar e gerado pelo motor, nao escrito a mao',
-    radarDemo.includes('scripts/gerar-radar-demo.mjs')
+    !!(AUX_DEMO.radar && AUX_DEMO.radar.engine && AUX_DEMO.radar.engine.nome)
+    && GEN_DATASET_SRC.includes('platform-radar-demo.js')
     && fs.existsSync(path.join(ROOT, 'scripts', 'gerar-radar-demo.mjs')));
 
   ok('pagina registra AtlasPages.Radar', radarPage.includes('AtlasPages.Radar'));
@@ -2213,11 +2313,8 @@ ok('R$ × dias não é formatado como moeda',
     ok('tela renderiza ' + campo + ' vindo do motor', radarPage.includes(campo));
   }
 
-  // Payload: o que a tela vai receber de verdade.
-  const winRadar = {};
-  winRadar.window = winRadar;
-  try { new Function('window', 'globalThis', radarDemo)(winRadar, winRadar); } catch { /* vira falha no check */ }
-  const R = winRadar.ATLAS_RADAR_DATA;
+  // Payload: o que a tela vai receber de verdade, da fonte que serve a API.
+  const R = AUX_DEMO.radar;
 
   ok('demo do radar carrega e tem schema radar/v1', !!R && R.schema === 'radar/v1');
 
@@ -2406,11 +2503,14 @@ ok('R$ × dias não é formatado como moeda',
 
   ok('demo de credito publica window.ATLAS_CREDITO_DATA',
     credDemo.includes('window.ATLAS_CREDITO_DATA'));
-  ok('demo de credito e sintetico (geradoEm null)', /"geradoEm":\s*null/.test(credDemo));
+  ok('demo de credito e sintetico (geradoEm null)',
+    /geradoEm:/.test(credDemo) && AUX_DEMO.credito && AUX_DEMO.credito.sintetico === true
+    && AUX_DEMO.credito.geradoEm === null);
   ok('demo de credito nao popula quando ha dado real na instancia',
     credDemo.includes('window._AtlasRealData'));
   ok('demo de credito e gerado pelo motor, nao escrito a mao',
-    credDemo.includes('scripts/gerar-credito-demo.mjs')
+    !!(AUX_DEMO.credito && AUX_DEMO.credito.engine && AUX_DEMO.credito.engine.nome)
+    && GEN_DATASET_SRC.includes('platform-credito-demo.js')
     && fs.existsSync(path.join(ROOT, 'scripts', 'gerar-credito-demo.mjs')));
   ok('radar e credito leem a MESMA casa sintetica',
     fs.existsSync(path.join(ROOT, 'scripts', 'demo-carteiras.mjs'))
@@ -2445,11 +2545,8 @@ ok('R$ × dias não é formatado como moeda',
     ok('tela de eventos renderiza ' + campo + ' vindo do motor', evPage.includes(campo));
   }
 
-  // Payload.
-  const winCred = {};
-  winCred.window = winCred;
-  try { new Function('window', 'globalThis', credDemo)(winCred, winCred); } catch { /* vira falha no check */ }
-  const C = winCred.ATLAS_CREDITO_DATA;
+  // Payload, da fonte que serve a API.
+  const C = AUX_DEMO.credito;
 
   ok('demo de credito carrega e tem schema credito/v1', !!C && C.schema === 'credito/v1');
 
