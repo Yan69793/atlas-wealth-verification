@@ -47,7 +47,43 @@ import React from 'react';
     if (!R || !dados || dados.length < 2) return null;
     const { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } = R;
     const chartData = dados.map((d) => ({ label: fmtMonthLabel(d.month), pl: d.value }));
+
+    /* O eixo começa no menor valor da janela, não no zero. Um patrimônio de
+       sete dígitos que andou 2% no mês vira linha reta se o eixo partir de
+       zero: o cliente lê "nada aconteceu" onde houve movimento. A folga é
+       proporcional à amplitude e tem piso, para série quase parada não colar
+       a linha no topo nem estourar o quadro. O aviso embaixo do gráfico
+       existe porque eixo truncado sem aviso exagera a leitura. */
+    const valores = chartData.map((d) => d.pl).filter((v) => typeof v === 'number' && isFinite(v));
+    /* Série sem mês apurado não é gráfico. Sem este corte, o cartão abriria
+       vazio exibindo o aviso de escala, que ali seria falso. */
+    if (valores.length < 2) return null;
+    const min = Math.min.apply(null, valores);
+    const max = Math.max.apply(null, valores);
+    /* O piso acompanha o tamanho do patrimônio, e não um real solto: com
+       amplitude zero, um piso fixo deixa o eixo com centavos e o rótulo
+       maior do que a caixa. */
+    const folga = Math.max((max - min) * 0.12, Math.abs(max) * 0.002, 1);
+    const dominio = [min - folga, max + folga];
+    const largura = dominio[1] - dominio[0];
+
+    /* Unidade e casas saem do passo entre as marcas: a maior unidade em que
+       o passo ainda cabe com duas casas. Unidade fixa pela grandeza do
+       patrimônio quebra nos dois extremos — um bilhão que andou quatrocentos
+       mil imprime "1,20 bi" em todas as marcas, e um milhão que andou
+       quatrocentos reais sai com sete caracteres de número. O "R$" só entra
+       quando não há unidade, porque junto dela o rótulo quebra em duas
+       linhas. */
+    const passo = largura / 4;
+    const alvo = passo / 0.01;
+    const unidade = alvo >= 1e9 ? 1e9 : alvo >= 1e6 ? 1e6 : alvo >= 1e3 ? 1e3 : 1;
+    const sufixo = unidade === 1e9 ? ' bi' : unidade === 1e6 ? ' mi' : unidade === 1e3 ? ' mil' : '';
+    const prefixo = unidade === 1 ? 'R$ ' : '';
+    const casas = Math.min(2, Math.max(0, Math.ceil(-Math.log10(passo / unidade))));
+    const fmtEixo = (v) =>
+      prefixo + (v / unidade).toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas }) + sufixo;
     return (
+      <div>
       <ResponsiveContainer width="100%" height={220} debounce={50}>
         <AreaChart data={chartData} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
           <defs>
@@ -58,7 +94,12 @@ import React from 'react';
           </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="#E3DDD5" vertical={false} />
           <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#9A9188' }} />
-          <YAxis tickFormatter={(v) => fmtCompactBRL(v)} tick={{ fontSize: 10, fill: '#9A9188' }} width={66} />
+          <YAxis
+            domain={dominio}
+            tickFormatter={fmtEixo}
+            tick={{ fontSize: 10, fill: '#9A9188' }}
+            width={72}
+          />
           <Tooltip
             formatter={(v) => [fmtBRL(v), 'Patrimônio']}
             contentStyle={{ fontSize: 12, borderRadius: 4, border: '1px solid #E3DDD5', background: '#F9F7F4' }}
@@ -66,6 +107,10 @@ import React from 'react';
           <Area type="monotone" dataKey="pl" stroke="#05305F" strokeWidth={2} fill="url(#cliPlGrad)" dot={false} connectNulls />
         </AreaChart>
       </ResponsiveContainer>
+      <div style={{ fontSize: '0.714rem', color: 'var(--muted)', textAlign: 'right', marginTop: 4 }}>
+        Escala ajustada à variação do período. O eixo não começa em zero.
+      </div>
+      </div>
     );
   }
 

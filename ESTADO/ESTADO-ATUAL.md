@@ -211,7 +211,7 @@ O portão agora tem três etapas, não duas. `npm test` roda as três em sequên
 
 ```
 844/844 checks OK — todos os checks passaram
-ℹ tests 129   ℹ pass 129   ℹ fail 0   ℹ skipped 0
+ℹ tests 138   ℹ pass 138   ℹ fail 0   ℹ skipped 0
 ℹ tests 292   ℹ pass 292   ℹ fail 0   ℹ skipped 0
 ```
 
@@ -2220,7 +2220,7 @@ e é o que impede a próxima pessoa de repetir.
   Ficaram só os 5 cadastros de linha de base e os cadastros reais que o demo segue recebendo. CLEANUP=PASS,
   RESIDUOS=ZERO, PENDENCIAS=ZERO, RBAC=FECHADO.
 - **2026-09-10, entradas de demonstração dos três papéis.** A tela de acesso ganhou três atalhos
-  sem cadastro — "Escritório", "Assessor" e "Cliente" — cada um entrando numa conta sintética
+  sem cadastro — "Escritório", "Gerente" e "Cliente" — cada um entrando numa conta sintética
   fixa do papel correspondente (migration `0004_demo_contas.sql`, um único escritório, org 1001).
   O papel continua vindo do banco, não do botão: `POST /demo/entrar` só escolhe qual conta entrar,
   e a autorização segue a matriz RBAC de sempre. Nomes profissionais a pedido do dono (nada de
@@ -2232,3 +2232,16 @@ e é o que impede a próxima pessoa de repetir.
   visível (botão da tela de acesso, rótulo de papel, colunas e CSV de Radar, Oportunidades,
   Receitas, Vencimentos, Caixa parado e Eventos, e "Valor do gerente"), com os checks de
   `tests/validate.js` atualizados. Publicado no demo, Version ID `c03cc0d6-6efb-4fb7-a298-bd5e23f9b72b`.
+- **2026-09-10, escala do gráfico de patrimônio do cliente.** O eixo do gráfico começava em zero e,
+  numa carteira de sete dígitos que andou 2% no mês, a linha saía reta: o cliente lia "nada mudou"
+  onde houve movimento. O eixo passou a enquadrar a janela de doze meses com folga proporcional, e a
+  área desenhada subiu de cerca de um sétimo para dois terços da altura do quadro. Os rótulos das
+  marcas saem na maior unidade em que o passo entre elas ainda cabe com duas casas ("1,10 mi" a
+  "1,18 mi", "398,2 mi", "6.986 mil"), o que resolve os dois extremos — bilhão que andou pouco
+  repetia "1,20 bi" em todas as marcas, e milhão que andou pouco saía com sete caracteres de número.
+  Série sem nenhum mês apurado agora sai do cartão em vez de abrir quadro vazio. Como eixo truncado
+  exagera a leitura, o cartão avisa embaixo que a escala está ajustada e não começa em zero. A
+  revisão independente em subagente apontou a unidade escolhida pela largura do domínio em vez do
+  passo, o piso da folga em valor fixo e o cartão vazio com aviso falso; os três foram corrigidos
+  antes de publicar. Portão depois da correção: 844/844 checks, 138/138 testes de app, 292/292 do
+  motor, zero falha. Publicado no demo, Version ID `b7089e68-1b64-4cb0-abd5-80a627c96789`.
