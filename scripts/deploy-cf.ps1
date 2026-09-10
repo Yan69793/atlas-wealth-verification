@@ -105,7 +105,7 @@ if ($Target -eq 'worker') {
     # sobe respondendo 500 pra todo mundo, e sem RESEND_API_KEY/DEMO_EMAIL o
     # aviso de novo cadastro nunca sai. O nome do Worker vem do wrangler.toml,
     # nao e repetido aqui de proposito.
-    $secrets = npx wrangler secret list 2>&1
+    $secrets = (npx wrangler secret list 2>&1) -replace "$([char]27)\[[0-?]*[ -/]*[@-~]", ''
     $faltando = @()
     if (-not ($secrets -match 'DEMO_SENHA'))     { $faltando += 'DEMO_SENHA' }
     if (-not ($secrets -match 'RESEND_API_KEY')) { $faltando += 'RESEND_API_KEY' }

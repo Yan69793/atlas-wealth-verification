@@ -4,7 +4,7 @@
   "description": "Plataforma de verificação mensal de carteiras de investimento",
   "private": true,
   "scripts": {
-    "test": "node tests/validate.js && node --test tests/politica-binarios.test.mjs tests/social-preview.test.mjs tests/admin-perimetro.test.mjs tests/rbac-isolamento.test.mjs tests/sigla-cliente.test.mjs tests/gerente-apresentacao.test.mjs && npm --prefix audit-engine test",
+    "test": "node tests/validate.js && node --test tests/politica-binarios.test.mjs tests/social-preview.test.mjs tests/admin-perimetro.test.mjs tests/rbac-isolamento.test.mjs tests/sigla-cliente.test.mjs tests/gerente-apresentacao.test.mjs tests/preflight-exit.test.mjs && npm --prefix audit-engine test",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",

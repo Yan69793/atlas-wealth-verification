@@ -40,7 +40,7 @@ $prevAcct = $env:CLOUDFLARE_ACCOUNT_ID
 
 try {
   $tokenAtlas = Get-TokenAtlas
-  if (-not $tokenAtlas) { return }
+  if (-not $tokenAtlas) { exit 1 }
 
   $env:CLOUDFLARE_API_TOKEN = $tokenAtlas
   $env:CLOUDFLARE_ACCOUNT_ID = "6448fd4d57773e5e38cbd1a763283a90"
@@ -49,15 +49,18 @@ try {
   $cfg = Join-Path $workerDir "wrangler.nova-conta.toml"
   if (-not (Test-Path $cfg)) {
     Write-Error "demo-worker/wrangler.nova-conta.toml ausente. Nada foi publicado."
-    return
+    exit 1
   }
 
   Push-Location $workerDir
   try {
     if ($Whoami) {
       npx wrangler whoami
-      if ($LASTEXITCODE -ne 0) { Write-Error "whoami falhou com codigo $LASTEXITCODE." }
-      return
+      if ($LASTEXITCODE -ne 0) {
+        Write-Error "whoami falhou com codigo $LASTEXITCODE."
+        exit 1
+      }
+      exit 0
     }
 
     Write-Host "Montando o pacote com build-deploy.mjs..." -ForegroundColor Cyan
@@ -66,7 +69,7 @@ try {
       node scripts/build-deploy.mjs --out demo-worker/public
       if ($LASTEXITCODE -ne 0) {
         Write-Error "build-deploy.mjs abortou. Nada foi publicado."
-        return
+        exit 1
       }
     } finally {
       Pop-Location
@@ -77,34 +80,35 @@ try {
     $achados = Get-ChildItem -Recurse -File (Join-Path $workerDir "public") | Where-Object { $proibidos -contains $_.Name }
     if ($achados) {
       Write-Error ("Dado real no pacote, publicacao cancelada: " + ($achados.Name -join ', '))
-      return
+      exit 1
     }
     $count = (Get-ChildItem -Recurse -File (Join-Path $workerDir "public")).Count
     Write-Host "Pacote pronto: $count arquivos" -ForegroundColor Green
 
     if ($DryRun) {
       Write-Host "Dry run concluido. Nada foi publicado na conta nova." -ForegroundColor Yellow
-      return
+      exit 0
     }
 
     Write-Host "Publicando na conta nova (wrangler.nova-conta.toml)..." -ForegroundColor Cyan
     # Trava real dos secrets (o wrangler nao tem [secrets]). Secret e por
     # CONTA: o da conta antiga nao propaga pra ca, entao a checagem usa o
     # config da conta nova.
-    $secrets = npx wrangler secret list -c wrangler.nova-conta.toml 2>&1
+    $secrets = (npx wrangler secret list -c wrangler.nova-conta.toml 2>&1) -replace "$([char]27)\[[0-?]*[ -/]*[@-~]", ''
     $faltando = @()
     if (-not ($secrets -match 'DEMO_SENHA'))     { $faltando += 'DEMO_SENHA' }
     if (-not ($secrets -match 'RESEND_API_KEY')) { $faltando += 'RESEND_API_KEY' }
     if (-not ($secrets -match 'DEMO_EMAIL'))     { $faltando += 'DEMO_EMAIL' }
     if ($LASTEXITCODE -ne 0 -or $faltando.Count -gt 0) {
       Write-Error ("Secrets ausentes na conta nova: " + ($faltando -join ', ') + ". Rode antes: npx wrangler secret put <NOME> --name app-verificacao-carteiras-atlas (com CLOUDFLARE_API_TOKEN_ATLAS no ambiente).")
-      return
+      exit 1
     }
     npx wrangler deploy -c wrangler.nova-conta.toml --no-autoconfig
     if ($LASTEXITCODE -eq 0) {
       Write-Host "`nPublicado na conta nova. O endereco workers.dev sai impresso acima." -ForegroundColor Green
     } else {
       Write-Error "Publicacao falhou com codigo $LASTEXITCODE."
+      exit 1
     }
   } finally {
     Pop-Location
@@ -113,3 +117,5 @@ try {
   $env:CLOUDFLARE_API_TOKEN = $prevToken
   $env:CLOUDFLARE_ACCOUNT_ID = $prevAcct
 }
+
+exit 0
