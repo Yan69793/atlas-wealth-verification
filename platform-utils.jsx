@@ -806,6 +806,48 @@ import React from 'react';
   }
 
   /* ===========================================================
+     GERENTE: DE-PARA CANÔNICO
+  =========================================================== */
+
+  /* Os dados sintéticos do demo gravaram o gerente como código técnico antes
+     da renomeação de 2026-09-10 (`platform-data.js`), e o código continua vivo
+     nos conjuntos auxiliares, que são gerados uma vez só. Sem este de-para, a
+     coluna de gerente em Oportunidades mostrava `AXIOM_AM` cru na tela.
+
+     Esta é a ÚNICA tabela de tradução de gerente do produto. Qualquer tela que
+     mostre gerente passa por `nomeGerente`, e um teste do portão confere que os
+     alvos daqui são exatamente os ids que existem em MANAGERS — a tabela não
+     pode envelhecer em silêncio.
+
+     Não é permissão nem identidade: é rótulo. O RBAC não lê nada disto. */
+  const GERENTE_LEGADO = {
+    AXIOM_AM: 'renata-freitas',
+    BEACON_WM: 'eduardo-pires',
+    CREST_FO: 'patricia-antunes',
+    DELTA_PB: 'marcelo-bittencourt',
+  };
+
+  /**
+   * nomeGerente(valor) -> nome de apresentação do gerente, ou string vazia.
+   *
+   * Aceita id atual, código técnico antigo ou nome já apresentável. NUNCA
+   * devolve código técnico: se o valor não for reconhecido e tiver cara de
+   * código (maiúsculas, dígito ou sublinhado), devolve vazio para quem chama
+   * decidir o que escrever no lugar. Mostrar código interno em tela é o defeito
+   * que esta função existe para não deixar acontecer.
+   */
+  function nomeGerente(valor) {
+    const v = String(valor == null ? '' : valor).trim();
+    if (!v) return '';
+    const D = (typeof window !== 'undefined') ? window.AtlasData : null;
+    const lista = (D && Array.isArray(D.MANAGERS)) ? D.MANAGERS : [];
+    const alvo = GERENTE_LEGADO[v] || v;
+    const m = lista.find((x) => x && x.id === alvo) || lista.find((x) => x && x.name === v);
+    if (m) return m.name;
+    return /^[A-Z][A-Z0-9_]*$/.test(v) ? '' : v;
+  }
+
+  /* ===========================================================
      EXPORTS
   =========================================================== */
 
@@ -821,6 +863,9 @@ import React from 'react';
        saber que o arquivo existe. */
     sigla: (typeof window !== 'undefined' && window.AtlasSigla) ? window.AtlasSigla.sigla : function () { return ''; },
     siglaCliente: (typeof window !== 'undefined' && window.AtlasSigla) ? window.AtlasSigla.siglaCliente : function (n, f) { return String(f == null ? '' : f); },
+    /* Rótulo de gerente. Único de-para do produto. */
+    nomeGerente,
+    GERENTE_LEGADO,
   };
 
   window.AtlasIcons = { Icon };

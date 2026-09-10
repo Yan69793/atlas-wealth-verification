@@ -107,9 +107,12 @@ import React from 'react';
   }
 
   function nomeAssessor(id) {
-    /* O namespace exporta MANAGERS em caixa alta. Com `managers` o guard caia
-       sempre e a coluna Assessor mostrava o codigo interno (AXIOM_AM) em vez do
-       nome do gestor, na tela e em todo CSV, sem quebrar nada. */
+    /* Delega para o de-para canônico de gerente (`AtlasUtils.nomeGerente`), que
+       é o único do produto e sabe traduzir o código técnico antigo que ainda
+       vive nos conjuntos auxiliares. Antes daqui a busca era só por id atual, e
+       a coluna mostrava `AXIOM_AM` cru na tela e em todo CSV. */
+    const U = window.AtlasUtils;
+    if (U && typeof U.nomeGerente === 'function') return U.nomeGerente(id);
     if (!D || !D.MANAGERS) return id || '';
     const m = D.MANAGERS.find((x) => x.id === id);
     return m ? m.name : (id || '');
